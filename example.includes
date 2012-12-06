@@ -1,0 +1,5 @@
+../../prj/example
+../../lib/STM32F4-Discovery_FW_V1.1.0/Libraries/STM32F4xx_StdPeriph_Driver/inc/
+../../lib/STM32F4-Discovery_FW_V1.1.0/Libraries/STM32F4xx_StdPeriph_Driver/src/
+../../lib/STM32F4-Discovery_FW_V1.1.0/Libraries/CMSIS/ST/STM32F4xx/Include/
+../../lib/STM32F4-Discovery_FW_V1.1.0/Libraries/CMSIS/Include/
