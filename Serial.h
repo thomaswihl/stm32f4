@@ -2,28 +2,20 @@
 #define SERIAL_H
 
 #include "System.h"
+#include "Interrupt.h"
 
-class Serial : System::IrqHandler
+class Serial : Interrupt::Handler
 {
 public:
-    enum Base : uint32_t
-    {
-        USART1 = 0x40011000,
-        USART2 = 0x40004400,
-        USART3 = 0x40004800,
-        UART4 = 0x40004c00,
-        UART5 = 0x40005000,
-        USART6 = 0x40011400,
-    };
 
-    Serial(Base base, System::InterruptIndex irq);
+    Serial(System::BaseAddress base);
     virtual ~Serial();
 
 protected:
-    virtual void irq(int index);
+    virtual void handle(Interrupt::Index index);
 
 private:
-    struct Usart
+    struct USART
     {
         struct __SR
         {
@@ -109,7 +101,7 @@ private:
         }   GTPR;
     }   __attribute__ ((__packed__));
 
-    volatile Usart* mBase;
+    volatile USART* mBase;
 };
 
 #endif // SERIAL_H

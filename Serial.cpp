@@ -1,11 +1,13 @@
 #include "Serial.h"
 
-#include <cassert>
+#include "stm32f4xx_usart.h"
 
-Serial::Serial(Base base, System::InterruptIndex irq) : mBase(reinterpret_cast<volatile Usart*>(base))
+#include <cassert>
+#include <cstdio>
+
+Serial::Serial(System::BaseAddress base) :
+    mBase(reinterpret_cast<volatile USART*>(base))
 {
-    System* sys = System::instance();
-    sys->setInterrupt(irq, this);
 }
 
 Serial::~Serial()
@@ -16,18 +18,13 @@ Serial::~Serial()
 
 }
 
-void Serial::irq(int index)
+void Serial::handle(Interrupt::Index index)
 {
-//    if (USART_GetITStatus(USART2, USART_IT_RXNE))
-//    {
-//        // read byte and clear interrupt bit
-//        char c = USART_ReceiveData(USART2);
-//        _write(1, &c, 1);
-//        if (c == '\r')
-//        {
-//            c = '\n';
-//            _write(1, &c, 1);
-//        }
-//    }
+    if (mBase->SR.RXNE)
+    {
+        char c = mBase->DR;
+        if (c == '\r') std::putchar('\n');
+        else std::putchar(c);
+    }
 }
 
