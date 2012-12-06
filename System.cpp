@@ -23,7 +23,7 @@ void *operator new(std::size_t size)
 
 void *operator new[](std::size_t size)
 {
-   return malloc(size);
+   return ::operator new(size);
 }
 
 void operator delete(void *mem)
@@ -33,7 +33,7 @@ void operator delete(void *mem)
 
 void operator delete[](void *mem)
 {
-   free(mem);
+   ::operator delete(mem);
 }
 
 
