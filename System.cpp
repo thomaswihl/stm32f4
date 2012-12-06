@@ -286,3 +286,14 @@ void System::Trap::handle(Interrupt::Index index)
 }
 
 
+System::Buffer::Buffer(size_t size) :
+    mSize(size),
+    mData(new char[size])
+{
+}
+
+System::Buffer::~Buffer()
+{
+    delete mData;
+}
+

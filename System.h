@@ -25,6 +25,20 @@ class System
 public:
     typedef std::uint32_t BaseAddress;
 
+    class Buffer
+    {
+    public:
+        Buffer(std::size_t size);
+        ~Buffer();
+
+        std::size_t size() { return mSize; }
+        char* data() { return mData; }
+    private:
+        std::size_t mSize;
+        char* mData;
+
+    };
+
     virtual void handleInterrupt(uint32_t index) = 0;
     bool tryHandleInterrupt(uint32_t& index);
     static System* instance();
@@ -55,6 +69,7 @@ protected:
     private:
         const char* mName;
     };
+
 
     void setTrap(Trap::TrapIndex index, Trap* handler);
 

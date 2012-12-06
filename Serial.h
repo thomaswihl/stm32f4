@@ -11,6 +11,9 @@ public:
     Serial(System::BaseAddress base);
     virtual ~Serial();
 
+    void read(System::Buffer& buffer);
+    void write(System::Buffer& buffer);
+
 protected:
     virtual void handle(Interrupt::Index index);
 

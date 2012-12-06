@@ -1,32 +1,14 @@
 
 
 #include "StmSystem.h"
-
+#define assert_param(x) {}
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_usart.h"
+#include "stm32f4xx_rcc.c"
+#include "stm32f4xx_gpio.c"
 
 #include <cstdio>
-
-
-//extern "C"
-//{
-//    void __attribute__((interrupt)) USART2_IRQHandler(void)
-//    {
-//        if (USART_GetITStatus(USART2, USART_IT_RXNE))
-//        {
-//            // read byte and clear interrupt bit
-//            char c = USART_ReceiveData(USART2);
-//            _write(1, &c, 1);
-//            if (c == '\r')
-//            {
-//                c = '\n';
-//                _write(1, &c, 1);
-//            }
-//        }
-//    }
-//}
-
 
 StmSystem system;
 

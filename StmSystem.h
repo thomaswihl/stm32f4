@@ -2,6 +2,7 @@
 #define STMSYSTEM_H
 
 #include "System.h"
+#include "ClockControl.h"
 #include "Interrupt.h"
 #include "Serial.h"
 
@@ -10,6 +11,7 @@ class StmSystem : public System
 public:
     enum class BaseAddress : std::uint32_t
     {
+        RCC = 0x40023800,
         EXTI = 0x40013c00,
         USART1 = 0x40011000,
         USART2 = 0x40004400,
@@ -17,7 +19,6 @@ public:
         UART4 = 0x40004c00,
         UART5 = 0x40005000,
         USART6 = 0x40011400,
-        RCC = 0x40023800,
     };
 
     enum class InterruptIndex : Interrupt::Index
@@ -112,7 +113,8 @@ public:
 
     virtual void handleInterrupt(uint32_t index);
 private:
-    Interrupt mExti;
+    ClockControl mClock;
+    Interrupt mInt;
     Serial mDebug;
 
     void init();

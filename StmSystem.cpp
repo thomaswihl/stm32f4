@@ -38,19 +38,20 @@ void (* const gIsrVectorTable[])(void) = {
     This value must be a multiple of 0x200. */
 
 
-/* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
-#define PLL_M      8
-#define PLL_N      336
+///* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
+//#define PLL_M      8
+//#define PLL_N      336
 
-/* SYSCLK = PLL_VCO / PLL_P */
-#define PLL_P      2
+///* SYSCLK = PLL_VCO / PLL_P */
+//#define PLL_P      2
 
-/* USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ */
-#define PLL_Q      7
+///* USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ */
+//#define PLL_Q      7
 
 
 StmSystem::StmSystem() :
-    mExti(static_cast<System::BaseAddress>(BaseAddress::EXTI), 82),
+    mClock(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
+    mInt(static_cast<System::BaseAddress>(BaseAddress::EXTI), 82),
     mDebug(static_cast<System::BaseAddress>(BaseAddress::USART2))
 {
     init();
@@ -62,34 +63,9 @@ StmSystem::~StmSystem()
 
 void StmSystem::init()
 {
-//    /* Reset the RCC clock configuration to the default reset state ------------*/
-//    /* Set HSION bit */
-//    RCC->CR |= (uint32_t)0x00000001;
-
-//    /* Reset CFGR register */
-//    RCC->CFGR = 0x00000000;
-
-//    /* Reset HSEON, CSSON and PLLON bits */
-//    RCC->CR &= (uint32_t)0xFEF6FFFF;
-
-//    /* Reset PLLCFGR register */
-//    RCC->PLLCFGR = 0x24003010;
-
-//    /* Reset HSEBYP bit */
-//    RCC->CR &= (uint32_t)0xFFFBFFFF;
-
-//    /* Disable all interrupts */
-//    RCC->CIR = 0x00000000;
-
-//    /* Configure the System clock source, PLL Multiplier and Divider factors,
-//    AHB/APBx prescalers and Flash settings ----------------------------------*/
-//    setSysClock();
-
-//    /* Configure the Vector Table location add offset address ------------------*/
-//    SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
 }
 
 void StmSystem::handleInterrupt(uint32_t index)
 {
-    if (!tryHandleInterrupt(index)) mExti.handle(index);
+    if (!tryHandleInterrupt(index)) mInt.handle(index);
 }

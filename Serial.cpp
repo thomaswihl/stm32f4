@@ -18,6 +18,14 @@ Serial::~Serial()
 
 }
 
+void Serial::read(System::Buffer &buffer)
+{
+}
+
+void Serial::write(System::Buffer &buffer)
+{
+}
+
 void Serial::handle(Interrupt::Index index)
 {
     if (mBase->SR.RXNE)

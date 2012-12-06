@@ -1,16 +1,4 @@
 
-#define assert_param(expr) ((void)0)
-#define HSE_VALUE    ((uint32_t)8000000)
-
-#include "stm32f4xx_usart.h"
-
-#include "stm32f4xx_rcc.c"
-#include "stm32f4xx_gpio.c"
-#include "stm32f4xx_usart.c"
-#include <misc.c>
-#include <stm32f4xx_exti.c>
-
-
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/times.h>
@@ -57,16 +45,6 @@ int _kill(int pid, int sig)
 
 int _write(int file, char *ptr, int len)
 {
-    int todo;
-
-    for (todo = 0; todo < len; todo++)
-    {
-        while( !(USART2->SR & USART_FLAG_TC) )
-        {
-            // wait for transmit ready
-        }
-        USART_SendData(USART2, *ptr++);
-    }
     return len;
 }
 
