@@ -413,6 +413,7 @@ private:
     bool getPllConfig(uint32_t clock, uint32_t& div, uint32_t& mul);
 
     friend int testClockControl();
+    friend class ClockControlTest;
 };
 
 #endif // CLOCKCONTROL_H
