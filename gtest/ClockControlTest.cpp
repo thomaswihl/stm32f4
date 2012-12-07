@@ -7,9 +7,8 @@
 #include <cstring>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-int testClockControl()
+void testClockControl()
 {
-    int failCounter = 0;
     static const uint32_t externalClock[] =
     {
         8000000,
@@ -46,12 +45,7 @@ int testClockControl()
         { true, false, true, false },
     };
     ClockControl::RCC data;
-    if (sizeof(data) != 0x88)
-    {
-        printf("Size of RCC is %lu instead of %i.\n", sizeof(data), 0x88);
-        return false;
-    }
-    printf("%7s|%7s|%14s|%12s|%12s|%14s|%20s|%12s|%10s\n", "ext", "pll", "return", "div", "mul", "vco in [MHz]", "vco out [MHz]", "delta [Hz]", "verdict");
+    ASSERT_EQ(sizeof(data), 0x88) << "Wrong structure size, compiler problem";
     for (unsigned int i = 0; i < ARRAY_SIZE(externalClock); ++i)
     {
         std::memset(&data, 0, sizeof(data));
@@ -61,31 +55,18 @@ int testClockControl()
         {
             uint32_t div, mul;
             bool ret = cc.getPllConfig(pllClock[j] * 2, div, mul);
-            bool test = (ret == retResult[i][j] && mul == mulResult[i][j] && div == divResult[i][j]);
-            if (ret) test = test && (externalClock[i] / div) >= 1000000 && (externalClock[i] / div) <= 2000000;
-            if (ret) test = test && (externalClock[i] / div * mul) >= 192000000 && (externalClock[i] / div * mul) <= 432000000;
-            printf("%7.3f|%7.3f|%5s %2s %5s|%4u %2s %4u|%4u %2s %4u|",
-                   externalClock[i] / 1000000.0,
-                   pllClock[j] / 1000000.0,
-                   ret ? "true" : "false", ret == retResult[i][j] ? "==" : "!=", retResult[i][j] ? "true" : "false",
-                    div, div == divResult[i][j] ? "==" : "!=", divResult[i][j],
-                    mul, mul == mulResult[i][j] ? "==" : "!=", mulResult[i][j]);
+            EXPECT_EQ(retResult[i][j], ret);
+            EXPECT_EQ(mulResult[i][j], mul);
+            EXPECT_EQ(divResult[i][j], div);
             if (ret)
             {
-                printf("1 <= %1.2f <= 2|192 <= %6.2f <= 432|%12i|",
-                   externalClock[i] / div / 1000000.0,
-                   externalClock[i] / div * mul / 1000000.0,
-                   externalClock[i] / div * mul - pllClock[j] * 2);
+                EXPECT_GE(externalClock[i] / div, 1000000) << "VCO input should be between 1 and 2 MHz";
+                EXPECT_LE(externalClock[i] / div, 2000000) << "VCO input should be between 1 and 2 MHz";
+                EXPECT_GE(externalClock[i] / div * mul, 192000000) << "VCO onput should be between 192 and 432 MHz";
+                EXPECT_LE(externalClock[i] / div * mul, 432000000) << "VCO onput should be between 192 and 432 MHz";
             }
-            else
-            {
-                printf("%14s|%20s|%12s|", "", "", "");
-            }
-            printf("%10s\n", test ? "PASSED" : "FAILED");
-            if (!test) ++failCounter;
         }
     }
-    return failCounter;
 }
 
 TEST(ClockControl, getPllConfig)

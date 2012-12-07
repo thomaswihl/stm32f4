@@ -25,13 +25,13 @@ INCLUDE_FILES = $(wildcard *.h)
 
 all: proj
 
-proj: 	$(TARGET) $(GTEST_PATH)/libgtest.a
+proj: 	$(TARGET)
 
 $(GTEST_PATH)/libgtest.a:
 	mkdir -p $(GTEST_PATH)
-	cd $(GTEST_PATH); cmake; make
+	cd $(GTEST_PATH); cmake /usr/src/gtest; make
 
-$(TARGET): $(OBJ)
+$(TARGET): $(OBJ) $(GTEST_PATH)/libgtest.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJ) $(LDFLAGS)
 
 %.o: %.S $(INCLUDE_FILES)
