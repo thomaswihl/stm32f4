@@ -6,38 +6,27 @@ ClockControl::ClockControl(System::BaseAddress base, uint32_t externalClock) :
     mBase(reinterpret_cast<volatile RCC*>(base)),
     mExternalClock(externalClock)
 {
-    // enable internal clock
-    mBase->CR.HSION = 1;
-
-//    /* Reset CFGR register */
-//    RCC->CFGR = 0x00000000;
-
-//    /* Reset HSEON, CSSON and PLLON bits */
-//    RCC->CR &= (uint32_t)0xFEF6FFFF;
-
-//    /* Reset PLLCFGR register */
-//    RCC->PLLCFGR = 0x24003010;
-
-//    /* Reset HSEBYP bit */
-//    RCC->CR &= (uint32_t)0xFFFBFFFF;
-
-//    /* Disable all interrupts */
-//    RCC->CIR = 0x00000000;
-
-//    /* Configure the System clock source, PLL Multiplier and Divider factors,
-//        AHB/APBx prescalers and Flash settings ----------------------------------*/
-//    setSysClock();
-
-//    /* Configure the Vector Table location add offset address ------------------*/
-//    SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
 }
 
 ClockControl::~ClockControl()
 {
 }
 
+void ClockControl::reset()
+{
+    // enable internal clock
+    System::setRegister(&mBase->CR, 0x00000081);
+    // configure internal clock as clock source and wait till it is active
+    System::setRegister(&mBase->CFGR, 0x00000000);
+    // reset pll config
+    System::setRegister(&mBase->PLLCFGR, 0x24003010);
+    // reset interrupts
+    System::setRegister(&mBase->CIR, 0x00000000);
+}
+
 bool ClockControl::setSystemClock(uint32_t clock)
 {
+    if (mBase->CR.HSEON) reset();
     // enable external oscillator
     mBase->CR.HSEON = 1;
 

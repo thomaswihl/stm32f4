@@ -46,6 +46,8 @@ StmSystem::~StmSystem()
 
 void StmSystem::init()
 {
+    // mFlash.setWaitStates(...);
+    mClock.setSystemClock(168000000);
 }
 
 void StmSystem::handleInterrupt(uint32_t index)

@@ -10,6 +10,7 @@ public:
     ~ClockControl();
 
     bool setSystemClock(uint32_t clock);
+    void reset();
 private:
     struct RCC
     {

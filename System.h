@@ -42,6 +42,9 @@ public:
     virtual void handleInterrupt(uint32_t index) = 0;
     bool tryHandleInterrupt(uint32_t& index);
     static System* instance();
+
+    template <class T>
+    static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
 protected:
     System();
     ~System();
