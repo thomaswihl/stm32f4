@@ -35,7 +35,8 @@ void (* const gIsrVectorTable[])(void) = {
 StmSystem::StmSystem() :
     mClock(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
     mInt(static_cast<System::BaseAddress>(BaseAddress::EXTI), 82),
-    mDebug(static_cast<System::BaseAddress>(BaseAddress::USART2))
+    mDebug(static_cast<System::BaseAddress>(BaseAddress::USART2), mClock),
+    mFlash(static_cast<System::BaseAddress>(BaseAddress::FLASH), mClock)
 {
     init();
 }
@@ -46,11 +47,25 @@ StmSystem::~StmSystem()
 
 void StmSystem::init()
 {
-    // mFlash.setWaitStates(...);
+    mDebug.setBaudrate(115200);
+    mFlash.set(Flash::Feature::InstructionCache, true);
+    mFlash.set(Flash::Feature::DataCache, true);
     mClock.setSystemClock(168000000);
 }
 
 void StmSystem::handleInterrupt(uint32_t index)
 {
     if (!System::tryHandleInterrupt(index)) mInt.handle(index);
+}
+
+void StmSystem::debugRead(char *msg, int len)
+{
+    System::Buffer buf(msg, len);
+    mDebug.read(buf);
+}
+
+void StmSystem::debugWrite(const char *msg, int len)
+{
+    System::Buffer buf(msg, len);
+    mDebug.write(buf);
 }

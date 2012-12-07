@@ -5,6 +5,7 @@
 #include "ClockControl.h"
 #include "Interrupt.h"
 #include "Serial.h"
+#include "Flash.h"
 
 class StmSystem : public System
 {
@@ -19,6 +20,7 @@ public:
         UART4 = 0x40004c00,
         UART5 = 0x40005000,
         USART6 = 0x40011400,
+        FLASH = 0x40023c00,
     };
 
     enum class InterruptIndex : Interrupt::Index
@@ -112,10 +114,15 @@ public:
     virtual ~StmSystem();
 
     virtual void handleInterrupt(uint32_t index);
+protected:
+    void debugRead(char *msg, int len);
+    void debugWrite(const char *msg, int len);
+
 private:
     ClockControl mClock;
     Interrupt mInt;
     Serial mDebug;
+    Flash mFlash;
 
     void init();
 };

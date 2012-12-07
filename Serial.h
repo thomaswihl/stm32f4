@@ -3,19 +3,24 @@
 
 #include "System.h"
 #include "Interrupt.h"
+#include "ClockControl.h"
 
-class Serial : Interrupt::Handler
+class Serial : public Interrupt::Handler, public ClockControl::ChangeHandler
 {
 public:
 
-    Serial(System::BaseAddress base);
+    Serial(System::BaseAddress base, ClockControl& clockControl);
     virtual ~Serial();
+
+    void setBaudrate(uint32_t baud);
 
     void read(System::Buffer& buffer);
     void write(System::Buffer& buffer);
 
 protected:
     virtual void handle(Interrupt::Index index);
+    virtual void clockPrepareChange(uint32_t newClock);
+    virtual void clockChanged(uint32_t newClock);
 
 private:
     struct USART

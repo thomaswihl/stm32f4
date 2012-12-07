@@ -6,12 +6,33 @@
 class ClockControl
 {
 public:
+    class ChangeHandler
+    {
+    public:
+        virtual void clockPrepareChange(uint32_t newClock) = 0;
+        virtual void clockChanged(uint32_t newClock) = 0;
+    };
+
     ClockControl(System::BaseAddress base, uint32_t externalClock);
     ~ClockControl();
 
+    bool addChangeHandler(ChangeHandler* changeHandler);
+    bool removeChangeHandler(ChangeHandler* changeHandler);
+
     bool setSystemClock(uint32_t clock);
+    uint32_t systemClock();
+    uint32_t ahbClock();
+    uint32_t apb1Clock();
+    uint32_t apb2Clock();
+    void resetClock();
     void reset();
 private:
+    enum
+    {
+        INTERNAL_CLOCK = 16 * 1000 * 1000,
+        CLOCK_WAIT_TIMEOUT = 2000,
+        MAX_CHANGE_HANDLER = 10,
+    };
     struct RCC
     {
         struct __CR
@@ -410,6 +431,7 @@ private:
     };
     volatile RCC* mBase;
     uint32_t mExternalClock;
+    ChangeHandler* mChangeHandler[MAX_CHANGE_HANDLER];
 
     bool getPllConfig(uint32_t clock, uint32_t& div, uint32_t& mul);
 
