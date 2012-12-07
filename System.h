@@ -23,7 +23,7 @@ extern void _start();
 class System
 {
 public:
-    typedef std::uint32_t BaseAddress;
+    typedef unsigned long BaseAddress;
 
     class Buffer
     {

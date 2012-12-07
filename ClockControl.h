@@ -9,7 +9,7 @@ public:
     ClockControl(System::BaseAddress base, uint32_t externalClock);
     ~ClockControl();
 
-    bool setSystemClock();
+    bool setSystemClock(uint32_t clock);
 private:
     struct RCC
     {
@@ -409,6 +409,10 @@ private:
     };
     volatile RCC* mBase;
     uint32_t mExternalClock;
+
+    bool getPllConfig(uint32_t clock, uint32_t& div, uint32_t& mul);
+
+    friend int testClockControl();
 };
 
 #endif // CLOCKCONTROL_H

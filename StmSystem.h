@@ -9,7 +9,7 @@
 class StmSystem : public System
 {
 public:
-    enum class BaseAddress : std::uint32_t
+    enum class BaseAddress : unsigned long
     {
         RCC = 0x40023800,
         EXTI = 0x40013c00,
