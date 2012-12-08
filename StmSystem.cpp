@@ -33,9 +33,24 @@ void (* const gIsrVectorTable[])(void) = {
 }
 
 StmSystem::StmSystem() :
+    mGpioA(static_cast<System::BaseAddress>(BaseAddress::GPIOA)),
+    mGpioB(static_cast<System::BaseAddress>(BaseAddress::GPIOB)),
+    mGpioC(static_cast<System::BaseAddress>(BaseAddress::GPIOC)),
+    mGpioD(static_cast<System::BaseAddress>(BaseAddress::GPIOD)),
+    mGpioE(static_cast<System::BaseAddress>(BaseAddress::GPIOE)),
+    mGpioF(static_cast<System::BaseAddress>(BaseAddress::GPIOF)),
+    mGpioG(static_cast<System::BaseAddress>(BaseAddress::GPIOG)),
+    mGpioH(static_cast<System::BaseAddress>(BaseAddress::GPIOH)),
+    mGpioI(static_cast<System::BaseAddress>(BaseAddress::GPIOI)),
     mClock(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
     mInt(static_cast<System::BaseAddress>(BaseAddress::EXTI), 82),
-    mDebug(static_cast<System::BaseAddress>(BaseAddress::USART2), mClock),
+    mUsart1(static_cast<System::BaseAddress>(BaseAddress::USART1), &mClock, ClockControl::Clock::APB2),
+    mUsart2(static_cast<System::BaseAddress>(BaseAddress::USART2), &mClock, ClockControl::Clock::APB1),
+    mUsart3(static_cast<System::BaseAddress>(BaseAddress::USART3), &mClock, ClockControl::Clock::APB1),
+    mUart4(static_cast<System::BaseAddress>(BaseAddress::UART4), &mClock, ClockControl::Clock::APB1),
+    mUart5(static_cast<System::BaseAddress>(BaseAddress::UART5), &mClock, ClockControl::Clock::APB1),
+    mUsart6(static_cast<System::BaseAddress>(BaseAddress::USART6), &mClock, ClockControl::Clock::APB2),
+    mDebug(mUsart2),
     mFlash(static_cast<System::BaseAddress>(BaseAddress::FLASH), mClock)
 {
     init();
@@ -47,7 +62,13 @@ StmSystem::~StmSystem()
 
 void StmSystem::init()
 {
-    mDebug.setBaudrate(115200);
+    mClock.enable(ClockControl::Function::Usart2);
+    mClock.enable(ClockControl::Function::GpioA);
+    mGpioA.configOutput(Gpio::Pin::Pin2, Gpio::Speed::Medium, Gpio::OutputType::PushPull);
+    mGpioA.configInput(Gpio::Pin::Pin3, Gpio::Speed::Medium);
+    mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::Func7);
+    mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::Func7);
+    mDebug.config(115200);
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
     mClock.setSystemClock(168000000);

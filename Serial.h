@@ -8,11 +8,22 @@
 class Serial : public Interrupt::Handler, public ClockControl::ChangeHandler
 {
 public:
+    enum class WordLength { Eight, Nine };
+    enum class Parity { None = 0, Even = 2, Odd = 3 };
+    enum class StopBits { One, Half, Two, OneAndHalf };
+    enum class HardwareFlowControl { None, Cts, Rts, CtsRts };
 
-    Serial(System::BaseAddress base, ClockControl& clockControl);
+    Serial(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
     virtual ~Serial();
 
-    void setBaudrate(uint32_t baud);
+    void setSpeed(uint32_t speed);
+    void setWordLength(WordLength dataBits);
+    void setParity(Parity parity);
+    void setStopBits(StopBits stopBits);
+    void setHardwareFlowControl(HardwareFlowControl hardwareFlow);
+    void enable(bool enable);
+
+    void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
 
     void read(System::Buffer& buffer);
     void write(System::Buffer& buffer);
@@ -44,7 +55,7 @@ private:
         uint16_t __RESERVED1;
         struct __BRR
         {
-            uint16_t DIV_Fraction : 4;
+            uint16_t DIV_FRACTION : 4;
             uint16_t DIV_MANTISSA : 12;
         }   BRR;
         uint16_t __RESERVED2;
@@ -110,6 +121,8 @@ private:
     }   __attribute__ ((__packed__));
 
     volatile USART* mBase;
+    ClockControl* mClockControl;
+    ClockControl::Clock mClock;
 };
 
 #endif // SERIAL_H

@@ -3,6 +3,7 @@
 
 #include "System.h"
 #include "ClockControl.h"
+#include "Gpio.h"
 #include "Interrupt.h"
 #include "Serial.h"
 #include "Flash.h"
@@ -12,15 +13,24 @@ class StmSystem : public System
 public:
     enum class BaseAddress : unsigned long
     {
-        RCC = 0x40023800,
         EXTI = 0x40013c00,
+        FLASH = 0x40023c00,
+        GPIOA = 0x40020000,
+        GPIOB = 0x40020400,
+        GPIOC = 0x40020800,
+        GPIOD = 0x40020c00,
+        GPIOE = 0x40021000,
+        GPIOF = 0x40021400,
+        GPIOG = 0x40021800,
+        GPIOH = 0x40021c00,
+        GPIOI = 0x40022000,
+        RCC = 0x40023800,
         USART1 = 0x40011000,
         USART2 = 0x40004400,
         USART3 = 0x40004800,
         UART4 = 0x40004c00,
         UART5 = 0x40005000,
         USART6 = 0x40011400,
-        FLASH = 0x40023c00,
     };
 
     enum class InterruptIndex : Interrupt::Index
@@ -119,9 +129,24 @@ protected:
     void debugWrite(const char *msg, int len);
 
 private:
+    Gpio mGpioA;
+    Gpio mGpioB;
+    Gpio mGpioC;
+    Gpio mGpioD;
+    Gpio mGpioE;
+    Gpio mGpioF;
+    Gpio mGpioG;
+    Gpio mGpioH;
+    Gpio mGpioI;
     ClockControl mClock;
     Interrupt mInt;
-    Serial mDebug;
+    Serial mUsart1;
+    Serial mUsart2;
+    Serial mUsart3;
+    Serial mUart4;
+    Serial mUart5;
+    Serial mUsart6;
+    Serial& mDebug;
     Flash mFlash;
 
     void init();

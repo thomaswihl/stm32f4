@@ -64,19 +64,38 @@ void ClockControl::reset()
     System::setRegister(&mBase->AHB3RSTR, 0x00000000);
     System::setRegister(&mBase->APB1RSTR, 0x00000000);
     System::setRegister(&mBase->APB2RSTR, 0x00000000);
-    System::setRegister(&mBase->AHB1ENR, 0x00100000);
-    System::setRegister(&mBase->AHB2ENR, 0x00000000);
-    System::setRegister(&mBase->AHB3ENR, 0x00000000);
-    System::setRegister(&mBase->APB1ENR, 0x00000000);
-    System::setRegister(&mBase->APB2ENR, 0x00000000);
-    System::setRegister(&mBase->AHB1LPENR, 0x7e6791ff);
-    System::setRegister(&mBase->AHB2LPENR, 0x000000f1);
-    System::setRegister(&mBase->AHB3LPENR, 0x00000001);
-    System::setRegister(&mBase->APB1LPENR, 0x36fec9ff);
-    System::setRegister(&mBase->APB2LPENR, 0x00075f33);
+    System::setRegister(&mBase->Enable[AHB1], 0x00100000);
+    System::setRegister(&mBase->Enable[AHB2], 0x00000000);
+    System::setRegister(&mBase->Enable[AHB3], 0x00000000);
+    System::setRegister(&mBase->Enable[APB1], 0x00000000);
+    System::setRegister(&mBase->Enable[APB2 ], 0x00000000);
+    System::setRegister(&mBase->LowPowerEnable[AHB1], 0x7e6791ff);
+    System::setRegister(&mBase->LowPowerEnable[AHB2], 0x000000f1);
+    System::setRegister(&mBase->LowPowerEnable[AHB3], 0x00000001);
+    System::setRegister(&mBase->LowPowerEnable[APB1], 0x36fec9ff);
+    System::setRegister(&mBase->LowPowerEnable[APB2], 0x00075f33);
     System::setRegister(&mBase->BDCR, 0x00000000);
     System::setRegister(&mBase->CSR, 0x0e000000);
     System::setRegister(&mBase->SSCGR, 0x00000000);
+}
+
+void ClockControl::enable(ClockControl::Function function, bool inLowPower)
+{
+    uint32_t index = static_cast<uint32_t>(function);
+    uint32_t offset = index % 32;
+    index /= 32;
+    mBase->Enable[index] |= (1 << offset);
+    if (inLowPower) mBase->LowPowerEnable[index] |= (1 << offset);
+    else mBase->LowPowerEnable[index] &= ~(1 << offset);
+}
+
+void ClockControl::disable(ClockControl::Function function)
+{
+    uint32_t index = static_cast<uint32_t>(function);
+    uint32_t offset = index % 32;
+    index /= 32;
+    mBase->Enable[index] &= ~(1 << offset);
+    mBase->LowPowerEnable[index] &= ~(1 << offset);
 }
 
 bool ClockControl::setSystemClock(uint32_t clock)
@@ -99,7 +118,7 @@ bool ClockControl::setSystemClock(uint32_t clock)
             return false;
         }
     }
-    mBase->APB1ENR.PWREN = 1;
+    enable(Function::Pwr);
     // AHB = system clock
     mBase->CFGR.HPRE = 0;   // 0-7 = /1, 8 = /2, 9 = /4, 10 = /8, 11 = /16 ... 15 = /512
     // APB2 = AHB / 2
@@ -138,49 +157,40 @@ bool ClockControl::setSystemClock(uint32_t clock)
     return true;
 }
 
-uint32_t ClockControl::systemClock()
+uint32_t ClockControl::clock(Clock clock)
 {
-    static const uint32_t PLLP_TABLE[] = { 2, 4, 6, 8 };
-
-    uint32_t clock = 0;
+    uint32_t systemClock = 0;
     switch (mBase->CFGR.SWS)
     {
     case 0: // internal clock
-        clock = INTERNAL_CLOCK;
+        systemClock = INTERNAL_CLOCK;
         break;
     case 1: // external clock
-        clock = mExternalClock;
+        systemClock = mExternalClock;
         break;
     case 2: // pll
         if (mBase->PLLCFGR.PLLSRC)
         {
             // external clock
-            clock = mExternalClock;
+            systemClock = mExternalClock;
         }
         else
         {
             // internal clock
-            clock = INTERNAL_CLOCK;
+            systemClock = INTERNAL_CLOCK;
         }
-        clock = clock / mBase->PLLCFGR.PLLM * mBase->PLLCFGR.PLLN / PLLP_TABLE[mBase->PLLCFGR.PLLP];
+        systemClock = systemClock / mBase->PLLCFGR.PLLM * mBase->PLLCFGR.PLLN / ((mBase->PLLCFGR.PLLP + 1) * 2);
         break;
     }
-    return clock;
-}
-
-uint32_t ClockControl::ahbClock()
-{
-    return systemClock() >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 7);
-}
-
-uint32_t ClockControl::apb1Clock()
-{
-    return ahbClock() >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
-}
-
-uint32_t ClockControl::apb2Clock()
-{
-    return ahbClock() >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
+    uint32_t ahbClock = systemClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 7);
+    switch (clock)
+    {
+    case Clock::System: return systemClock;
+    case Clock::AHB: return ahbClock;
+    case Clock::APB1: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
+    case Clock::APB2: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
+    }
+    return 0;
 }
 
 bool ClockControl::getPllConfig(uint32_t clock, uint32_t &div, uint32_t &mul)
