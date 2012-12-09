@@ -111,7 +111,6 @@ private:
             uint16_t ONEBIT : 1;
             uint16_t __RESERVED0 : 4;
         }   CR3;
-
         uint16_t __RESERVED5;
         struct __GTPR
         {
@@ -123,6 +122,7 @@ private:
     volatile USART* mBase;
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
+    uint32_t mSpeed;
 };
 
 #endif // SERIAL_H

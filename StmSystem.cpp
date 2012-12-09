@@ -64,8 +64,8 @@ void StmSystem::init()
 {
     mClock.enable(ClockControl::Function::Usart2);
     mClock.enable(ClockControl::Function::GpioA);
-    mGpioA.configOutput(Gpio::Pin::Pin2, Gpio::Speed::Medium, Gpio::OutputType::PushPull);
-    mGpioA.configInput(Gpio::Pin::Pin3, Gpio::Speed::Medium);
+    mGpioA.configOutput(Gpio::Pin::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Low);
+    mGpioA.configInput(Gpio::Pin::Pin3);
     mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::Func7);
     mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::Func7);
     mDebug.config(115200);

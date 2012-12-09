@@ -8,7 +8,8 @@
 Serial::Serial(System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
     mBase(reinterpret_cast<volatile USART*>(base)),
     mClockControl(clockControl),
-    mClock(clock)
+    mClock(clock),
+    mSpeed(0)
 {
     clockControl->addChangeHandler(this);
 }
@@ -25,9 +26,10 @@ void Serial::setSpeed(uint32_t speed)
 {
     uint32_t clock = mClockControl->clock(mClock);
     uint32_t accuracy = 8 * (2 - mBase->CR1.OVER8);
-    uint32_t divider = static_cast<uint64_t>(clock) * accuracy / ((2 - mBase->CR1.OVER8) * speed);
+    uint32_t divider = clock / speed;
     mBase->BRR.DIV_MANTISSA = divider / accuracy;
     mBase->BRR.DIV_FRACTION = divider % accuracy;
+    mSpeed = speed;
 }
 
 void Serial::setWordLength(Serial::WordLength dataBits)
@@ -102,5 +104,6 @@ void Serial::clockPrepareChange(uint32_t newClock)
 
 void Serial::clockChanged(uint32_t newClock)
 {
+    if (mSpeed != 0) setSpeed(mSpeed);
 }
 

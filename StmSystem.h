@@ -120,15 +120,6 @@ public:
         __COUNT
     };
 
-    StmSystem();
-    virtual ~StmSystem();
-
-    virtual void handleInterrupt(uint32_t index);
-protected:
-    void debugRead(char *msg, int len);
-    void debugWrite(const char *msg, int len);
-
-private:
     Gpio mGpioA;
     Gpio mGpioB;
     Gpio mGpioC;
@@ -149,6 +140,15 @@ private:
     Serial& mDebug;
     Flash mFlash;
 
+    StmSystem();
+    virtual ~StmSystem();
+
+    virtual void handleInterrupt(uint32_t index);
+protected:
+    void debugRead(char *msg, int len);
+    void debugWrite(const char *msg, int len);
+
+private:
     void init();
 };
 

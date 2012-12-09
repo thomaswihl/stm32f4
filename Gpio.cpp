@@ -16,7 +16,7 @@ bool Gpio::get(Pin index)
 
 void Gpio::set(Gpio::Pin index)
 {
-    mBase->IDR |= (1 << static_cast<int>(index));
+    mBase->ODR |= (1 << static_cast<int>(index));
 }
 
 void Gpio::set(uint16_t indices)
@@ -31,7 +31,7 @@ void Gpio::setValue(uint16_t value)
 
 void Gpio::reset(Gpio::Pin index)
 {
-    mBase->IDR &= ~(1 << static_cast<int>(index));
+    mBase->ODR &= ~(1 << static_cast<int>(index));
 }
 
 void Gpio::reset(uint16_t indices)
@@ -66,24 +66,23 @@ void Gpio::setPull(Gpio::Pin index, Gpio::Pull pull)
 void Gpio::setAlternate(Gpio::Pin index, Gpio::AltFunc altFunc)
 {
     int i = static_cast<int>(index);
-    if (i < 8) mBase->AFRL = (mBase->AFRL & (0xf << i * 4)) | (static_cast<uint32_t>(altFunc) << (i * 4));
-    else mBase->AFRH = (mBase->AFRH & (0xf << (i- 8) * 4)) | (static_cast<uint32_t>(altFunc) << ((i - 8) * 4));
+    if (i < 8) mBase->AFRL = (mBase->AFRL & ~(0xf << i * 4)) | (static_cast<uint32_t>(altFunc) << (i * 4));
+    else mBase->AFRH = (mBase->AFRH & ~(0xf << (i- 8) * 4)) | (static_cast<uint32_t>(altFunc) << ((i - 8) * 4));
     setMode(index, Mode::Alternate);
 }
 
-void Gpio::configInput(Gpio::Pin index, Gpio::Speed speed, Gpio::Pull pull)
+void Gpio::configInput(Gpio::Pin index, Gpio::Pull pull)
 {
     setMode(index, Mode::Input);
-    setSpeed(index, speed);
     setPull(index, pull);
 }
 
-void Gpio::configOutput(Gpio::Pin index, Gpio::Speed speed, Gpio::OutputType outputType, Pull pull)
+void Gpio::configOutput(Gpio::Pin index, Gpio::OutputType outputType, Pull pull, Gpio::Speed speed)
 {
     setMode(index, Mode::Output);
-    setSpeed(index, speed);
     setOutputType(index, outputType);
     setPull(index, pull);
+    setSpeed(index, speed);
 }
 
 

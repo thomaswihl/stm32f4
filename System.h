@@ -46,10 +46,16 @@ public:
     virtual void debugRead(char* msg, int len) = 0;
     bool tryHandleInterrupt(uint32_t& index);
     static System* instance();
+    static char* increaseHeap(unsigned int incr);
+    uint32_t memFree();
+    uint32_t memUsed();
+    uint32_t stackFree();
+    uint32_t stackUsed();
 
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
 protected:
+
     System();
     ~System();
 
@@ -82,6 +88,7 @@ protected:
 
 private:
     static System* mSystem;
+    static char* mHeapEnd;
 
     Trap mNmi;
     Trap mHardFault;

@@ -17,7 +17,7 @@ public:
         GpioA = 0, GpioB, GpioC, GpioD, GpioE, GpioF, GpioG, GpioH, GpioI, Crc = 12, BkpSRam = 18, CcmDataRam = 20, Dma1 = 21, Dma2 = 22, EthMax = 25, EthMaxTx, EthMacRx, EthMacPtp, OtgHs, OtgHsulpi,
         Dcmi = 32, Cryp = 36, Hash, Rng, OtgFs,
         Fsmc = 64,
-        Tim2 = 128, Tim3, Tim4, Tim5, Tim6, Tim7, Tim12, Tim13, Tim14, WWdg = 139, Spi2 = 142, Spi3, Usart2, Usart3, Usart4, Uart5, I2c1, I2c2, I2c3, Can1 = 153, Can2, Pwr = 156, Dac,
+        Tim2 = 128, Tim3, Tim4, Tim5, Tim6, Tim7, Tim12, Tim13, Tim14, WWdg = 139, Spi2 = 142, Spi3, Usart2 = 145, Usart3, Usart4, Uart5, I2c1, I2c2, I2c3, Can1 = 153, Can2, Pwr = 156, Dac,
         Tim1 = 160, Tim8, Usart1 = 164, Usart6, Adc1 = 128, Adc2, Adc3, Sdio, Spi1, SysCfg = 14, Tim9 = 176, Tim10, Tim11, Spi5 = 180, Spi6
     };
     enum class Clock
@@ -37,7 +37,7 @@ public:
     void resetClock();
     void reset();
 
-    void enable(Function function, bool inLowPower = false);
+    void enable(Function function, bool inLowPower = true);
     void disable(Function function);
 
 private:

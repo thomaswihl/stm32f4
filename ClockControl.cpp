@@ -133,7 +133,7 @@ bool ClockControl::setSystemClock(uint32_t clock)
     // VCO out = VCO in * 336 = 336MHz
     mBase->PLLCFGR.PLLN = mul;  // 192..432
     // PLL out = VCO out / 2 = 168MHz
-    mBase->PLLCFGR.PLLP = 3;    // 0 = /2, 1 = /4, 2 = /6, 3 = /8
+    mBase->PLLCFGR.PLLP = 0;    // 0 = /2, 1 = /4, 2 = /6, 3 = /8
     // PLL48CLK = VCO out / 7 = 48MHz
     mBase->PLLCFGR.PLLQ = 7;    // 2..15
     // external oscillator is source for PLL
@@ -187,7 +187,7 @@ uint32_t ClockControl::clock(Clock clock)
     {
     case Clock::System: return systemClock;
     case Clock::AHB: return ahbClock;
-    case Clock::APB1: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
+    case Clock::APB1: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE1) - 3);
     case Clock::APB2: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
     }
     return 0;

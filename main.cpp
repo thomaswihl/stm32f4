@@ -12,27 +12,54 @@
 
 StmSystem system;
 
+void sleep()
+{
+    for (int i = 0; i < 1000000; ++i)
+    {
+
+    }
+}
+
 int main()
 {
-    std::printf("Welcome!\n");
+//    std::printf("System clock is %.3fMHz, AHB clock is %.3fMHz, APB1 is %.3fMHz, APB2 is %.3fMHz\n",
+//                system.mClock.clock(ClockControl::Clock::System) / 1000000.0f,
+//                system.mClock.clock(ClockControl::Clock::AHB) / 1000000.0f,
+//                system.mClock.clock(ClockControl::Clock::APB1) / 1000000.0f,
+//                system.mClock.clock(ClockControl::Clock::APB2) / 1000000.0f);
+    std::printf("System clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz.\n",
+                system.mClock.clock(ClockControl::Clock::System) / 1000000,
+                system.mClock.clock(ClockControl::Clock::AHB) / 1000000,
+                system.mClock.clock(ClockControl::Clock::APB1) / 1000000,
+                system.mClock.clock(ClockControl::Clock::APB2) / 1000000);
+    std::printf("RAM  : %luk free, %luk used.\n", system.memFree() / 1024, system.memUsed() / 1024);
+    std::printf("STACK: %luk free, %luk used.\n", system.stackFree() / 1024, system.stackUsed() / 1024);
 
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+    system.mClock.enable(ClockControl::Function::GpioD);
 
-    GPIO_InitTypeDef GPIO_InitStructure;
-    /* Configure PD12, PD13, PD14 and PD15 in output pushpull mode */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-    GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15);
+    system.mGpioD.configOutput(Gpio::Pin::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
+    system.mGpioD.configOutput(Gpio::Pin::Pin13, Gpio::OutputType::PushPull);
+    system.mGpioD.configOutput(Gpio::Pin::Pin14, Gpio::OutputType::PushPull);
+    system.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
     while (true)
     {
-
+        system.mGpioD.set(Gpio::Pin::Pin12);
+        sleep();
+        system.mGpioD.set(Gpio::Pin::Pin13);
+        sleep();
+        system.mGpioD.set(Gpio::Pin::Pin14);
+        sleep();
+        system.mGpioD.set(Gpio::Pin::Pin15);
+        sleep();
+        system.mGpioD.reset(Gpio::Pin::Pin12);
+        sleep();
+        system.mGpioD.reset(Gpio::Pin::Pin13);
+        sleep();
+        system.mGpioD.reset(Gpio::Pin::Pin14);
+        sleep();
+        system.mGpioD.reset(Gpio::Pin::Pin15);
+        sleep();
     }
 
     return 0;

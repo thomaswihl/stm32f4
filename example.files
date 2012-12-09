@@ -1,3 +1,4 @@
+.gdbinit
 Makefile
 main.cpp
 stm32f407vg.ld

@@ -30,8 +30,8 @@ public:
     void setPull(Pin index, Pull pull);
     void setAlternate(Pin index, AltFunc altFunc);
 
-    void configInput(Pin index, Speed speed, Pull pull = Pull::None);
-    void configOutput(Pin index, Speed speed, OutputType outputType, Pull pull = Pull::None);
+    void configInput(Pin index, Pull pull = Pull::None);
+    void configOutput(Pin index, OutputType outputType, Pull pull = Pull::None, Speed speed = Speed::Medium);
 
 
 private:
