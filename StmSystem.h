@@ -4,7 +4,8 @@
 #include "System.h"
 #include "ClockControl.h"
 #include "Gpio.h"
-#include "Interrupt.h"
+#include "InterruptController.h"
+#include "ExternalInterrupt.h"
 #include "Serial.h"
 #include "Flash.h"
 
@@ -24,6 +25,7 @@ public:
         GPIOG = 0x40021800,
         GPIOH = 0x40021c00,
         GPIOI = 0x40022000,
+        NVIC = 0xe000e100,
         RCC = 0x40023800,
         USART1 = 0x40011000,
         USART2 = 0x40004400,
@@ -33,7 +35,7 @@ public:
         USART6 = 0x40011400,
     };
 
-    enum class InterruptIndex : Interrupt::Index
+    enum class InterruptIndex : InterruptController::Index
     {
         WWDG,
         PVD,
@@ -129,8 +131,9 @@ public:
     Gpio mGpioG;
     Gpio mGpioH;
     Gpio mGpioI;
-    ClockControl mClock;
-    Interrupt mInt;
+    ClockControl mRcc;
+    ExternalInterrupt mExtI;
+    InterruptController mNvic;
     Serial mUsart1;
     Serial mUsart2;
     Serial mUsart3;
@@ -143,7 +146,7 @@ public:
     StmSystem();
     virtual ~StmSystem();
 
-    virtual inline void handleInterrupt(uint32_t index) { mInt.handle(index); }
+    virtual inline void handleInterrupt(uint32_t index) { mNvic.handle(index); }
 protected:
     void debugRead(char *msg, int len);
     void debugWrite(const char *msg, int len);

@@ -1,7 +1,7 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include "Interrupt.h"
+#include "ExternalInterrupt.h"
 
 #include <cstdint>
 extern "C"
@@ -59,10 +59,10 @@ protected:
     System();
     ~System();
 
-    class Trap : public Interrupt::Handler
+    class Trap : public InterruptController::Handler
     {
     public:
-        enum TrapIndex
+        enum class Index
         {
             NMI = 2,
             HardFault = 3,
@@ -70,7 +70,6 @@ protected:
             BusFault = 5,
             UsageFault = 6,
             SVCall = 11,
-            DebugMonitor = 12,
             PendSV = 14,
             SysTick = 15,
             __COUNT
@@ -78,13 +77,23 @@ protected:
 
         Trap(const char* name);
         virtual ~Trap() { }
-        virtual void handle(Interrupt::Index index);
+        virtual void handle(InterruptController::Index index);
     private:
         const char* mName;
     };
 
+    class SysTick : public Trap
+    {
+    public:
+        SysTick(const char* name);
+        virtual ~SysTick() { }
 
-    void setTrap(Trap::TrapIndex index, Trap* handler);
+        virtual void handle(InterruptController::Index index);
+    private:
+        uint32_t mTick;
+    };
+
+    void setTrap(Trap::Index index, Trap* handler);
 
 private:
     static System* mSystem;
@@ -96,11 +105,10 @@ private:
     Trap mBusFault;
     Trap mUsageFault;
     Trap mSVCall;
-    Trap mDebugMonitor;
     Trap mPendSV;
     Trap mSysTick;
 
-    Trap* mTrap[Trap::__COUNT];
+    Trap* mTrap[static_cast<unsigned int>(Trap::Index::__COUNT)];
 };
 
 #endif

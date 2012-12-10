@@ -14,6 +14,40 @@
 
 extern "C"
 {
+void __attribute__((interrupt)) Trap()
+{
+    register int index __asm("r0");
+    __asm volatile("mrs r0, IPSR");
+    //std::printf("Interrupt: %i\n", index & 0xff);
+    System::instance()->handleTrap(index & 0xff);
+}
+
+void __attribute__((interrupt)) Isr()
+{
+    register int index __asm("r0");
+    __asm volatile("mrs r0, IPSR");
+    //std::printf("Interrupt: %i\n", index & 0xff);
+    System::instance()->handleInterrupt((index & 0xff) - 16);
+}
+
+extern void (* const gIsrVectorTable[])(void);
+__attribute__ ((section(".isr_vector_table")))
+void (* const gIsrVectorTable[])(void) = {
+    // 16 trap functions for ARM
+    (void (* const)())&__stack_end, (void (* const)())&_start, Trap, Trap, Trap, Trap, Trap, 0,
+    0, 0, 0, Trap, Trap, 0, Trap, Trap,
+    // 82 hardware interrupts specific to the STM32F407
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+    Isr, Isr
+};
+
 // required for C++
 void* __dso_handle;
 
@@ -202,34 +236,34 @@ System::System() :
     mBusFault("BusFault"),
     mUsageFault("UsageFault"),
     mSVCall("SVCall"),
-    mDebugMonitor("DebugMonitor"),
     mPendSV("PendSV"),
     mSysTick("SysTick")
 {
     // Make sure we are the first and only instance
     assert(mSystem == 0);
     mSystem = this;
-    setTrap(Trap::NMI, &mNmi);
-    setTrap(Trap::HardFault, &mHardFault);
-    setTrap(Trap::MemManage, &mMemManage);
-    setTrap(Trap::BusFault, &mBusFault);
-    setTrap(Trap::UsageFault, &mUsageFault);
-    setTrap(Trap::SVCall, &mSVCall);
-    setTrap(Trap::DebugMonitor, &mDebugMonitor);
-    setTrap(Trap::PendSV, &mPendSV);
-    setTrap(Trap::SysTick, &mSysTick);
+    setTrap(Trap::Index::NMI, &mNmi);
+    setTrap(Trap::Index::HardFault, &mHardFault);
+    setTrap(Trap::Index::MemManage, &mMemManage);
+    setTrap(Trap::Index::BusFault, &mBusFault);
+    setTrap(Trap::Index::UsageFault, &mUsageFault);
+    setTrap(Trap::Index::SVCall, &mSVCall);
+    setTrap(Trap::Index::PendSV, &mPendSV);
+    setTrap(Trap::Index::SysTick, &mSysTick);
 }
 
 System::~System()
 {
 }
 
+// The stack looks like this: (FPSCR, S15-S0) xPSR, PC, LR, R12, R3, R2, R1, R0
+// With SP at R0 and (FPSCR, S15-S0) being optional
 void System::handleTrap(uint32_t index)
 {
     if (mTrap[index] != 0) mTrap[index]->handle(index);
 }
 
-void System::setTrap(Trap::TrapIndex index, Trap *handler)
+void System::setTrap(Trap::Index index, Trap *handler)
 {
     mTrap[static_cast<int>(index)] = handler;
 }
@@ -238,7 +272,7 @@ System::Trap::Trap(const char *name) : mName(name)
 {
 }
 
-void System::Trap::handle(Interrupt::Index index)
+void System::Trap::handle(InterruptController::Index index)
 {
     std::printf("TRAP: %s(%i)\n", mName, index);
     while (true)
@@ -246,6 +280,19 @@ void System::Trap::handle(Interrupt::Index index)
         __asm("wfi");
     }
 }
+
+System::SysTick::SysTick(const char *name) :
+    Trap(name),
+    mTick(0)
+{
+}
+
+void System::SysTick::handle(InterruptController::Index index)
+{
+    ++mTick;
+}
+
+
 
 
 System::Buffer::Buffer(size_t size) :

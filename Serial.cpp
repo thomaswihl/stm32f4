@@ -86,7 +86,7 @@ void Serial::write(System::Buffer &buffer)
     }
 }
 
-void Serial::handle(Interrupt::Index index)
+void Serial::handle(InterruptController::Index index)
 {
     if (mBase->SR.RXNE)
     {

@@ -2,44 +2,6 @@
 
 #include <cstdio>
 
-extern "C"
-{
-void __attribute__((interrupt)) Trap()
-{
-    register int index __asm("r0");
-    __asm volatile("mrs r0, IPSR");
-    //std::printf("Interrupt: %i\n", index & 0xff);
-    System::instance()->handleTrap(index & 0xff);
-}
-
-void __attribute__((interrupt)) Isr()
-{
-    register int index __asm("r0");
-    __asm volatile("mrs r0, IPSR");
-    //std::printf("Interrupt: %i\n", index & 0xff);
-    System::instance()->handleInterrupt((index & 0xff) - 16);
-}
-
-extern void (* const gIsrVectorTable[])(void);
-__attribute__ ((section(".isr_vector_table")))
-void (* const gIsrVectorTable[])(void) = {
-    // 16 trap functions for ARM
-    (void (* const)())&__stack_end, (void (* const)())&_start, Trap, Trap, Trap, Trap, 0, 0,
-    0, 0, Trap, Trap, 0, Trap, Trap,
-    // 82 hardware interrupts specific to the STM32F407
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr
-};
-
-}
-
 StmSystem::StmSystem() :
     mGpioA(static_cast<System::BaseAddress>(BaseAddress::GPIOA)),
     mGpioB(static_cast<System::BaseAddress>(BaseAddress::GPIOB)),
@@ -50,16 +12,17 @@ StmSystem::StmSystem() :
     mGpioG(static_cast<System::BaseAddress>(BaseAddress::GPIOG)),
     mGpioH(static_cast<System::BaseAddress>(BaseAddress::GPIOH)),
     mGpioI(static_cast<System::BaseAddress>(BaseAddress::GPIOI)),
-    mClock(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
-    mInt(static_cast<System::BaseAddress>(BaseAddress::EXTI), 82),
-    mUsart1(static_cast<System::BaseAddress>(BaseAddress::USART1), &mClock, ClockControl::Clock::APB2),
-    mUsart2(static_cast<System::BaseAddress>(BaseAddress::USART2), &mClock, ClockControl::Clock::APB1),
-    mUsart3(static_cast<System::BaseAddress>(BaseAddress::USART3), &mClock, ClockControl::Clock::APB1),
-    mUart4(static_cast<System::BaseAddress>(BaseAddress::UART4), &mClock, ClockControl::Clock::APB1),
-    mUart5(static_cast<System::BaseAddress>(BaseAddress::UART5), &mClock, ClockControl::Clock::APB1),
-    mUsart6(static_cast<System::BaseAddress>(BaseAddress::USART6), &mClock, ClockControl::Clock::APB2),
+    mRcc(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
+    mExtI(static_cast<System::BaseAddress>(BaseAddress::EXTI), 23),
+    mNvic(static_cast<System::BaseAddress>(BaseAddress::NVIC), 82),
+    mUsart1(static_cast<System::BaseAddress>(BaseAddress::USART1), &mRcc, ClockControl::Clock::APB2),
+    mUsart2(static_cast<System::BaseAddress>(BaseAddress::USART2), &mRcc, ClockControl::Clock::APB1),
+    mUsart3(static_cast<System::BaseAddress>(BaseAddress::USART3), &mRcc, ClockControl::Clock::APB1),
+    mUart4(static_cast<System::BaseAddress>(BaseAddress::UART4), &mRcc, ClockControl::Clock::APB1),
+    mUart5(static_cast<System::BaseAddress>(BaseAddress::UART5), &mRcc, ClockControl::Clock::APB1),
+    mUsart6(static_cast<System::BaseAddress>(BaseAddress::USART6), &mRcc, ClockControl::Clock::APB2),
     mDebug(mUsart2),
-    mFlash(static_cast<System::BaseAddress>(BaseAddress::FLASH), mClock)
+    mFlash(static_cast<System::BaseAddress>(BaseAddress::FLASH), mRcc)
 {
     init();
 }
@@ -70,16 +33,16 @@ StmSystem::~StmSystem()
 
 void StmSystem::init()
 {
-    mClock.enable(ClockControl::Function::Usart2);
-    mClock.enable(ClockControl::Function::GpioA);
+    mRcc.enable(ClockControl::Function::Usart2);
+    mRcc.enable(ClockControl::Function::GpioA);
     mGpioA.configOutput(Gpio::Pin::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Low);
     mGpioA.configInput(Gpio::Pin::Pin3);
-    mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::Func7);
-    mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::Func7);
+    mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::USART2);
+    mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::USART2);
     mDebug.config(115200);
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
-    mClock.setSystemClock(168000000);
+    mRcc.setSystemClock(168000000);
 }
 
 void StmSystem::debugRead(char *msg, int len)

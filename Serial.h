@@ -2,10 +2,10 @@
 #define SERIAL_H
 
 #include "System.h"
-#include "Interrupt.h"
 #include "ClockControl.h"
+#include "InterruptController.h"
 
-class Serial : public Interrupt::Handler, public ClockControl::ChangeHandler
+class Serial : public InterruptController::Handler, public ClockControl::ChangeHandler
 {
 public:
     enum class WordLength { Eight, Nine };
@@ -29,7 +29,7 @@ public:
     void write(System::Buffer& buffer);
 
 protected:
-    virtual void handle(Interrupt::Index index);
+    virtual void handle(InterruptController::Index index);
     virtual void clockPrepareChange(uint32_t newClock);
     virtual void clockChanged(uint32_t newClock);
 

@@ -8,11 +8,13 @@ StmSystem.h
 StmSystem.cpp
 Serial.h
 Serial.cpp
-Interrupt.h
-Interrupt.cpp
+ExternalInterrupt.h
+ExternalInterrupt.cpp
 ClockControl.h
 ClockControl.cpp
 Flash.h
 Flash.cpp
 Gpio.h
 Gpio.cpp
+InterruptController.h
+InterruptController.cpp
