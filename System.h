@@ -42,10 +42,10 @@ public:
     };
 
     virtual void handleInterrupt(uint32_t index) = 0;
+    virtual void handleTrap(uint32_t index);
     virtual void debugWrite(const char* msg, int len) = 0;
     virtual void debugRead(char* msg, int len) = 0;
-    bool tryHandleInterrupt(uint32_t& index);
-    static System* instance();
+    static inline System* instance() { return mSystem; }
     static char* increaseHeap(unsigned int incr);
     uint32_t memFree();
     uint32_t memUsed();

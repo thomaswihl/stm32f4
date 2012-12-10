@@ -143,7 +143,7 @@ public:
     StmSystem();
     virtual ~StmSystem();
 
-    virtual void handleInterrupt(uint32_t index);
+    virtual inline void handleInterrupt(uint32_t index) { mInt.handle(index); }
 protected:
     void debugRead(char *msg, int len);
     void debugWrite(const char *msg, int len);

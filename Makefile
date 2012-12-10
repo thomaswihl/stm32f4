@@ -14,18 +14,13 @@ OBJCOPY = $(TOOLCHAIN)/arm-none-eabi-objcopy
 OBJDUMP = $(TOOLCHAIN)/arm-none-eabi-objdump
 GDB     = $(TOOLCHAIN)/arm-none-eabi-gdb
 
-CFLAGS  = -g -O0 -Wall -Tstm32f407vg.ld
+CFLAGS  = -g -O2 -Wall -Tstm32f407vg.ld
 CFLAGS += -mthumb -mcpu=cortex-m4
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -Wl,-Map,$(TARGET).map
 CFLAGS += -nostartfiles
 CFLAGS += -std=c++0x
 CPPFLAGS = -fno-rtti -fno-exceptions
-
-CFLAGS += -I"$(STM_STD_PERIPH)/STM32F4xx_StdPeriph_Driver/inc/"
-CFLAGS += -I"$(STM_STD_PERIPH)/STM32F4xx_StdPeriph_Driver/src/"
-CFLAGS += -I"$(STM_STD_PERIPH)/CMSIS/ST/STM32F4xx/Include/"
-CFLAGS += -I"$(STM_STD_PERIPH)/CMSIS/Include/"
 
 #LDFLAGS = -lstdc++
 
@@ -60,8 +55,8 @@ clean:
 	rm -f *.o
 	rm -f $(TARGET).map
 	rm -f $(TARGET).elf
-	rm -f $(TARGET).hex
 	rm -f $(TARGET).bin
+	rm -f elf-dump
 
 .PHONY: flash
 flash:
@@ -75,6 +70,6 @@ debug:
 	$(GDB) $(TARGET).elf
 	
 .PHONY: elf-dump
-elf-dump:
-	$(OBJDUMP) -sSd $(TARGET).elf
+elf-dump: proj
+	$(OBJDUMP) -sSd $(TARGET).elf > elf-dump
 	

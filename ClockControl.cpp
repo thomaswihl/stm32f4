@@ -5,7 +5,8 @@
 
 ClockControl::ClockControl(System::BaseAddress base, uint32_t externalClock) :
     mBase(reinterpret_cast<volatile RCC*>(base)),
-    mExternalClock(externalClock)
+    mExternalClock(externalClock),
+    mChangeHandler(10)
 {
 }
 
@@ -13,30 +14,31 @@ ClockControl::~ClockControl()
 {
 }
 
-bool ClockControl::addChangeHandler(ClockControl::ChangeHandler *changeHandler)
+void ClockControl::addChangeHandler(ClockControl::ChangeHandler *changeHandler)
 {
-    for (unsigned int i = 0; i < MAX_CHANGE_HANDLER; ++i)
-    {
-        if (mChangeHandler[i] == 0)
-        {
-            mChangeHandler[i] = changeHandler;
-            return true;
-        }
-    }
-    return false;
+    mChangeHandler.push_back(changeHandler);
+//    for (unsigned int i = 0; i < MAX_CHANGE_HANDLER; ++i)
+//    {
+//        if (mChangeHandler[i] == 0)
+//        {
+//            mChangeHandler[i] = changeHandler;
+//            return true;
+//        }
+//    }
+//    return false;
 }
 
-bool ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandler)
+void ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandler)
 {
-    for (unsigned int i = 0; i < MAX_CHANGE_HANDLER; ++i)
+    std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin();
+    for (; i != mChangeHandler.end(); ++i)
     {
-        if (mChangeHandler[i] == changeHandler)
+        if (*i == changeHandler)
         {
-            mChangeHandler[i] = 0;
-            return true;
+            mChangeHandler.erase(i);
+            return;
         }
     }
-    return false;
 }
 
 void ClockControl::resetClock()
@@ -100,9 +102,10 @@ void ClockControl::disable(ClockControl::Function function)
 
 bool ClockControl::setSystemClock(uint32_t clock)
 {
-    for (unsigned int i = 0; i < MAX_CHANGE_HANDLER; ++i)
+    std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin();
+    for (; i != mChangeHandler.end(); ++i)
     {
-        if (mChangeHandler[i] != 0) mChangeHandler[i]->clockPrepareChange(clock);
+        (*i)->clockPrepareChange(clock);
     }
     if (mBase->CR.HSEON) resetClock();
     // enable external oscillator
@@ -149,9 +152,10 @@ bool ClockControl::setSystemClock(uint32_t clock)
     {
     }
 
-    for (unsigned int i = 0; i < MAX_CHANGE_HANDLER; ++i)
+    i = mChangeHandler.begin();
+    for (; i != mChangeHandler.end(); ++i)
     {
-        if (mChangeHandler[i] != 0) mChangeHandler[i]->clockChanged(clock);
+        (*i)->clockChanged(clock);
     }
 
     return true;

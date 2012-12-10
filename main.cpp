@@ -1,12 +1,4 @@
-
-
 #include "StmSystem.h"
-#define assert_param(x) {}
-#include "stm32f4xx_rcc.h"
-#include "stm32f4xx_gpio.h"
-#include "stm32f4xx_usart.h"
-#include "stm32f4xx_rcc.c"
-#include "stm32f4xx_gpio.c"
 
 #include <cstdio>
 

@@ -3,6 +3,8 @@
 
 #include "System.h"
 
+#include <vector>
+
 class ClockControl
 {
 public:
@@ -28,8 +30,8 @@ public:
     ClockControl(System::BaseAddress base, uint32_t externalClock);
     ~ClockControl();
 
-    bool addChangeHandler(ChangeHandler* changeHandler);
-    bool removeChangeHandler(ChangeHandler* changeHandler);
+    void addChangeHandler(ChangeHandler* changeHandler);
+    void removeChangeHandler(ChangeHandler* changeHandler);
 
     bool setSystemClock(uint32_t clock);
     uint32_t clock(Clock clock);
@@ -49,7 +51,6 @@ private:
     {
         INTERNAL_CLOCK = 16 * 1000 * 1000,
         CLOCK_WAIT_TIMEOUT = 2000,
-        MAX_CHANGE_HANDLER = 10,
     };
     struct RCC
     {
@@ -452,7 +453,7 @@ private:
     };
     volatile RCC* mBase;
     uint32_t mExternalClock;
-    ChangeHandler* mChangeHandler[MAX_CHANGE_HANDLER];
+    std::vector<ChangeHandler*> mChangeHandler;
 
     bool getPllConfig(uint32_t clock, uint32_t& div, uint32_t& mul);
 

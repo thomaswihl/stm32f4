@@ -66,7 +66,7 @@ void _start()
     // we should call wfe or wfi but that does bad things to st-link
     while (true)
     {
-        //__asm("wfi");
+        __asm("wfi");
     }
 }
 
@@ -144,9 +144,9 @@ void* _sbrk(unsigned int incr)
 void _exit(int v)
 {
     _write(1, "Exiting\n", 8);
-    while (1)
+    while (true)
     {
-        __asm("WFE");
+        __asm("wfi");
     }
 }
 
@@ -154,11 +154,6 @@ void _exit(int v)
 
 System* System::mSystem;
 char* System::mHeapEnd;
-
-System* System::instance()
-{
-    return mSystem;
-}
 
 char* System::increaseHeap(unsigned int incr)
 {
@@ -189,14 +184,14 @@ uint32_t System::memUsed()
 uint32_t System::stackFree()
 {
     register char* stack __asm("r0");
-    __asm volatile("MOV r0, sp\n" ::: "r0", "cc", "memory");
+    __asm volatile("mov r0, sp");
     return stack - &__stack_start;
 }
 
 uint32_t System::stackUsed()
 {
-    register char* stack __asm("r0");
-    __asm volatile("MOV r0, sp\n" ::: "r0", "cc", "memory");
+    register char* stack __asm("sp");
+    //__asm volatile("mov r0, sp");
     return &__stack_end - stack;
 }
 
@@ -229,20 +224,9 @@ System::~System()
 {
 }
 
-bool System::tryHandleInterrupt(uint32_t &index)
+void System::handleTrap(uint32_t index)
 {
-    if (index < static_cast<unsigned int>(Trap::__COUNT))
-    {
-        // It's a trap so handle it
-        if (mTrap[index] != 0) mTrap[index]->handle(index);
-    }
-    else
-    {
-        // It's an interrupt, we can't handle it
-        index -= static_cast<uint32_t>(Trap::__COUNT);
-        return false;
-    }
-    return true;
+    if (mTrap[index] != 0) mTrap[index]->handle(index);
 }
 
 void System::setTrap(Trap::TrapIndex index, Trap *handler)
@@ -257,6 +241,10 @@ System::Trap::Trap(const char *name) : mName(name)
 void System::Trap::handle(Interrupt::Index index)
 {
     std::printf("TRAP: %s(%i)\n", mName, index);
+    while (true)
+    {
+        __asm("wfi");
+    }
 }
 
 
