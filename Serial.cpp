@@ -70,6 +70,14 @@ void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity 
     enable(true);
 }
 
+void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
+{
+}
+
+void Serial::configInterrupt(InterruptController *interrupt, StmSystem::InterruptIndex index)
+{
+}
+
 void Serial::read(System::Buffer &buffer)
 {
 }

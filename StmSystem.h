@@ -6,6 +6,7 @@
 #include "Gpio.h"
 #include "InterruptController.h"
 #include "ExternalInterrupt.h"
+#include "Dma.h"
 #include "Serial.h"
 #include "Flash.h"
 
@@ -14,6 +15,8 @@ class StmSystem : public System
 public:
     enum class BaseAddress : unsigned long
     {
+        DMA1 = 0x40026000,
+        DMA2 = 0x40026400,
         EXTI = 0x40013c00,
         FLASH = 0x40023c00,
         GPIOA = 0x40020000,
@@ -134,6 +137,8 @@ public:
     ClockControl mRcc;
     ExternalInterrupt mExtI;
     InterruptController mNvic;
+    Dma mDma1;
+    Dma mDma2;
     Serial mUsart1;
     Serial mUsart2;
     Serial mUsart3;

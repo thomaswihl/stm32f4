@@ -15,6 +15,8 @@ StmSystem::StmSystem() :
     mRcc(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
     mExtI(static_cast<System::BaseAddress>(BaseAddress::EXTI), 23),
     mNvic(static_cast<System::BaseAddress>(BaseAddress::NVIC), 82),
+    mDma1(static_cast<System::BaseAddress>(BaseAddress::DMA1)),
+    mDma2(static_cast<System::BaseAddress>(BaseAddress::DMA2)),
     mUsart1(static_cast<System::BaseAddress>(BaseAddress::USART1), &mRcc, ClockControl::Clock::APB2),
     mUsart2(static_cast<System::BaseAddress>(BaseAddress::USART2), &mRcc, ClockControl::Clock::APB1),
     mUsart3(static_cast<System::BaseAddress>(BaseAddress::USART3), &mRcc, ClockControl::Clock::APB1),

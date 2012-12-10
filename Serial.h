@@ -4,6 +4,7 @@
 #include "System.h"
 #include "ClockControl.h"
 #include "InterruptController.h"
+#include "Dma.h"
 
 class Serial : public InterruptController::Handler, public ClockControl::ChangeHandler
 {
@@ -24,6 +25,8 @@ public:
     void enable(bool enable);
 
     void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
+    void configDma(Dma::Stream* tx, Dma::Stream* rx);
+    void configInterrupt(InterruptController* interrupt, StmSystem::InterruptIndex index);
 
     void read(System::Buffer& buffer);
     void write(System::Buffer& buffer);
@@ -123,6 +126,8 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
+    Dma::Stream* mDmaTx;
+    Dma::Stream* mDmaRx;
 };
 
 #endif // SERIAL_H
