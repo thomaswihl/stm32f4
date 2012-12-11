@@ -42,7 +42,7 @@ void StmSystem::init()
     mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::USART2);
     mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::USART2);
     mDebug.config(115200);
-    mDebug.configDma(new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel4), 0);
+    //mDebug.configDma(new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel4), 0);
     mDebug.configInterrupt(new InterruptController::Line(mNvic, static_cast<InterruptController::Index>(InterruptIndex::USART2)));
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);

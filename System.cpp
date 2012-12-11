@@ -16,16 +16,16 @@ extern "C"
 {
 void __attribute__((interrupt)) Trap()
 {
-    register int index __asm("r0");
-    __asm volatile("mrs r0, IPSR");
+    register int index __asm("r12");
+    __asm volatile("mrs r12, IPSR");
     //std::printf("Interrupt: %i\n", index & 0xff);
     System::instance()->handleTrap(index & 0xff);
 }
 
 void __attribute__((interrupt)) Isr()
 {
-    register int index __asm("r0");
-    __asm volatile("mrs r0, IPSR");
+    register int index __asm("r12");
+    __asm volatile("mrs r12, IPSR");
     //std::printf("Interrupt: %i\n", index & 0xff);
     System::instance()->handleInterrupt((index & 0xff) - 16);
 }
@@ -189,6 +189,12 @@ void __throw_bad_alloc()
     _write(1, "Out of memory, exiting.\n", 24);
     exit(1);
 }
+
+void __throw_length_error(const char*)
+{
+    _write(1, "Length error, exiting.\n", 24);
+    exit(1);
+}
 }
 
 System* System::mSystem;
@@ -206,6 +212,7 @@ char* System::increaseHeap(unsigned int incr)
         _write(1, "ERROR: Heap full!\n", 18);
         abort();
     }
+    memset(prevHeapEnd, 0, incr);
     mHeapEnd += incr;
     return prevHeapEnd;
 }
@@ -265,7 +272,12 @@ System::~System()
 // With SP at R0 and (FPSCR, S15-S0) being optional
 void System::handleTrap(uint32_t index)
 {
-    if (mTrap[index] != 0) mTrap[index]->handle(index);
+    if (index < static_cast<unsigned int>(Trap::Index::__COUNT) && mTrap[index] != 0) mTrap[index]->handle(index);
+    _write(1, "Unhandled trap\n", 15);
+    while (true)
+    {
+        __asm("wfi");
+    }
 }
 
 void System::setTrap(Trap::Index index, Trap *handler)
@@ -279,7 +291,13 @@ System::Trap::Trap(const char *name) : mName(name)
 
 void System::Trap::handle(InterruptController::Index index)
 {
-    std::printf("TRAP: %s(%i)\n", mName, index);
+    char c;
+    _write(1, "TRAP: ", 6);
+    c = '0' + index / 10;
+    _write(1, &c, 1);
+    c = '0' + index % 10;
+    _write(1, &c, 1);
+    _write(1, "\n", 1);
     while (true)
     {
         __asm("wfi");

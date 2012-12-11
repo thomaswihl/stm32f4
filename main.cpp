@@ -19,7 +19,7 @@ int main()
 //                system.mRcc.clock(ClockControl::Clock::AHB) / 1000000.0f,
 //                system.mRcc.clock(ClockControl::Clock::APB1) / 1000000.0f,
 //                system.mRcc.clock(ClockControl::Clock::APB2) / 1000000.0f);
-    std::printf("System clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz.\n",
+    std::printf("\nSystem clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz.\n",
                 system.mRcc.clock(ClockControl::Clock::System) / 1000000,
                 system.mRcc.clock(ClockControl::Clock::AHB) / 1000000,
                 system.mRcc.clock(ClockControl::Clock::APB1) / 1000000,

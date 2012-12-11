@@ -28,7 +28,7 @@ bool CircularBuffer::push(char c)
 bool CircularBuffer::pop(char& c)
 {
     if (used() == 0) return false;
-    ++mUsed;
+    --mUsed;
     c = *mRead++;
     align(mRead);
     return true;
@@ -42,6 +42,7 @@ unsigned int CircularBuffer::write(const char *data, unsigned int len)
         unsigned int appended = appendPart(data, len);
         data += appended;
         len -= appended;
+        mUsed += appended;
         totalAppended += appended;
     }
     return totalAppended;

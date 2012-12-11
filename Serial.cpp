@@ -91,7 +91,11 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
 void Serial::configInterrupt(InterruptController::Line* interrupt)
 {
     if (mInterrupt != 0) delete mInterrupt;
+    mBase->CR1.TCIE = 0;
+    mBase->CR1.RXNEIE = 1;
     mInterrupt = interrupt;
+    mInterrupt->setHandler(this);
+    mInterrupt->enable();
 }
 
 int Serial::read(char* data, int size)
@@ -122,10 +126,10 @@ int Serial::write(const char *data, int size)
     {
         for (int i = 0; i < size; ++i)
         {
-            mBase->DR = *data++;
             while (!mBase->SR.TC)
             {
             }
+            mBase->DR = *data++;
         }
     }
     return size;
