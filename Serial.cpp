@@ -96,17 +96,11 @@ void Serial::configInterrupt(InterruptController::Line* interrupt)
 
 int Serial::read(char* data, int size)
 {
-    while (mReadBuffer.size() == 0)
+    while (mReadBuffer.used() == 0)
     {
     }
-    size_t read = 0;
-    while (mReadBuffer.size() > 0 && size > 0)
-    {
-        *data++ = mReadBuffer.pop();
-        --size;
-        ++read;
-    }
-    return read;
+
+    return mReadBuffer.read(data, size);
 }
 
 int Serial::write(const char *data, int size)
@@ -117,7 +111,7 @@ int Serial::write(const char *data, int size)
     }
     else if (mInterrupt != 0)
     {
-        mWriteBuffer.append(data, size);
+        mWriteBuffer.write(data, size);
         if (!mBase->CR1.TCIE)
         {
             mBase->CR1.TCIE = 1;
@@ -147,14 +141,9 @@ void Serial::handle(InterruptController::Index index)
     }
     if (mBase->SR.TC)
     {
-        if (mWriteBuffer.size() != 0)
-        {
-            mBase->DR = mWriteBuffer.pop();
-        }
-        else
-        {
-            mBase->CR1.TCIE = 0;
-        }
+        char c;
+        if (mWriteBuffer.pop(c)) mBase->DR = c;
+        else mBase->CR1.TCIE = 0;
     }
 }
 

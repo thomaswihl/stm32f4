@@ -5,8 +5,9 @@
 CircularBuffer::CircularBuffer(unsigned int size) :
     mSize(size),
     mBuffer(new char[size]),
-    mNextWrite(mBuffer),
-    mLastRead(mBuffer + size - 1)
+    mWrite(mBuffer),
+    mRead(mBuffer),
+    mUsed(0)
 {
 }
 
@@ -15,37 +16,28 @@ CircularBuffer::~CircularBuffer()
     delete mBuffer;
 }
 
-unsigned int CircularBuffer::size()
-{
-    int diff = mNextWrite - (mLastRead + 1);
-    if (diff < 0) diff += mSize;
-    return static_cast<unsigned int>(diff);
-}
-
-unsigned int CircularBuffer::free()
-{
-    return mSize - size();
-}
-
 bool CircularBuffer::push(char c)
 {
-    if (mLastRead == mNextWrite) return false;
-    *mNextWrite++ = c;
-    if (mNextWrite >= (mBuffer + mSize)) mNextWrite = mBuffer;
+    if (free() == 0) return false;
+    ++mUsed;
+    *mWrite++ = c;
+    align(mWrite);
     return true;
 }
 
-char CircularBuffer::pop()
+bool CircularBuffer::pop(char& c)
 {
-    ++mLastRead;
-    if (mLastRead >= (mBuffer + mSize)) mLastRead = mBuffer;
-    return *mLastRead;
+    if (used() == 0) return false;
+    ++mUsed;
+    c = *mRead++;
+    align(mRead);
+    return true;
 }
 
-unsigned int CircularBuffer::append(const char *data, unsigned int len)
+unsigned int CircularBuffer::write(const char *data, unsigned int len)
 {
     unsigned int totalAppended = 0;
-    while (len > 0 && mNextWrite != mLastRead)
+    while (len > 0 && free() != 0)
     {
         unsigned int appended = appendPart(data, len);
         data += appended;
@@ -55,21 +47,33 @@ unsigned int CircularBuffer::append(const char *data, unsigned int len)
     return totalAppended;
 }
 
+unsigned int CircularBuffer::read(const char *data, unsigned int len)
+{
+    return 0;
+}
+
 unsigned int CircularBuffer::getContBuffer(char *&data)
 {
-    data = mLastRead + 1;
-    if (data >= (mBuffer + mSize)) data = mBuffer;
-    if (data < mNextWrite) return mNextWrite - data;
+    data = mRead;
+    if (data < mWrite) return mWrite - data;
     return (mBuffer + mSize) - data;
+}
+
+unsigned int CircularBuffer::skip(unsigned int len)
+{
+    len = std::min(len, used());
+    mRead += len;
+    if (mRead >= (mBuffer + mSize)) mRead -= mSize;
+    return len;
 }
 
 unsigned int CircularBuffer::appendPart(const char *data, unsigned int len)
 {
-    unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mNextWrite), std::min(len, free()));
-    std::memcpy(mNextWrite, data, maxLen);
+    unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mWrite), std::min(len, free()));
+    std::memcpy(mWrite, data, maxLen);
     len -= maxLen;
-    mNextWrite += maxLen;
-    if (mNextWrite >= (mBuffer + mSize)) mNextWrite = mBuffer;
+    mWrite += maxLen;
+    if (mWrite >= (mBuffer + mSize)) mWrite = mBuffer;
     return maxLen;
 }
 
