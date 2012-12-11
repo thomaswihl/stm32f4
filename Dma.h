@@ -13,11 +13,17 @@ public:
         enum class ChannelIndex { Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7 };
 
         Stream(Dma& dma, StreamIndex stream, ChannelIndex channel);
+        ~Stream();
+
+        void enable();
+        void disable();
+        void waitReady();
 
     private:
         Dma& mDma;
         uint8_t mStream;
         uint8_t mChannel;
+
     };
 
     Dma(unsigned int base);

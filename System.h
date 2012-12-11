@@ -25,26 +25,10 @@ class System
 public:
     typedef unsigned long BaseAddress;
 
-    class Buffer
-    {
-    public:
-        Buffer(std::size_t size);
-        Buffer(char* data, std::size_t size);
-        Buffer(const char* data, std::size_t size);
-        ~Buffer();
-
-        std::size_t size() { return mSize; }
-        char* data() { return mData; }
-    private:
-        std::size_t mSize;
-        char* mData;
-        bool mDelete;
-    };
-
     virtual void handleInterrupt(uint32_t index) = 0;
     virtual void handleTrap(uint32_t index);
-    virtual void debugWrite(const char* msg, int len) = 0;
-    virtual void debugRead(char* msg, int len) = 0;
+    virtual int debugWrite(const char* msg, int len) = 0;
+    virtual int debugRead(char* msg, int len) = 0;
     static inline System* instance() { return mSystem; }
     static char* increaseHeap(unsigned int incr);
     uint32_t memFree();

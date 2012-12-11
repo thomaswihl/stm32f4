@@ -20,3 +20,5 @@ InterruptController.h
 InterruptController.cpp
 Dma.h
 Dma.cpp
+CircularBuffer.h
+CircularBuffer.cpp

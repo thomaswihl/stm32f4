@@ -5,6 +5,9 @@
 #include "ClockControl.h"
 #include "InterruptController.h"
 #include "Dma.h"
+#include "CircularBuffer.h"
+
+#include <queue>
 
 class Serial : public InterruptController::Handler, public ClockControl::ChangeHandler
 {
@@ -26,10 +29,10 @@ public:
 
     void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
     void configDma(Dma::Stream* tx, Dma::Stream* rx);
-    void configInterrupt(InterruptController* interrupt, StmSystem::InterruptIndex index);
+    void configInterrupt(InterruptController::Line* interrupt);
 
-    void read(System::Buffer& buffer);
-    void write(System::Buffer& buffer);
+    int read(char* data, int size);
+    int write(const char* data, int size);
 
 protected:
     virtual void handle(InterruptController::Index index);
@@ -122,12 +125,18 @@ private:
         }   GTPR;
     }   __attribute__ ((__packed__));
 
+    enum { READ_BUFFER_SIZE = 256, WRITE_BUFFER_SIZE = 256 };
+
     volatile USART* mBase;
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
+    InterruptController::Line* mInterrupt;
     Dma::Stream* mDmaTx;
     Dma::Stream* mDmaRx;
+    CircularBuffer mReadBuffer;
+    CircularBuffer mWriteBuffer;
+
 };
 
 #endif // SERIAL_H

@@ -23,12 +23,19 @@ static const uint32_t pllClock[] =
     216000000,
      50000000,
 };
-static const bool retResult[ARRAY_SIZE(externalClock)][ARRAY_SIZE(pllClock)] =
+static const bool pllConfigResult[ARRAY_SIZE(externalClock)][ARRAY_SIZE(pllClock)] =
 {
     { true, true, true, false },
     { true, true, true, false },
     { true, false, true, false },
     { true, false, true, false },
+};
+static const bool systemClockResult[ARRAY_SIZE(externalClock)][ARRAY_SIZE(pllClock)] =
+{
+    { true, true, false, false },
+    { true, true, false, false },
+    { true, false, false, false },
+    { true, false, false, false },
 };
 
 void testClockControl()
@@ -58,7 +65,7 @@ void testClockControl()
         {
             uint32_t div, mul;
             bool ret = cc.getPllConfig(pllClock[j] * 2, div, mul);
-            EXPECT_EQ(retResult[i][j], ret);
+            EXPECT_EQ(pllConfigResult[i][j], ret);
             EXPECT_EQ(mulResult[i][j], mul);
             EXPECT_EQ(divResult[i][j], div);
             if (ret)
@@ -77,7 +84,7 @@ TEST(ClockControl, getPllConfig)
     testClockControl();
 }
 
-TEST(ClockControl, systemClock)
+TEST(ClockControl, clock)
 {
     uint32_t* data = new uint32_t[SIZE_OF_RCC / 4];
     unsigned long base = reinterpret_cast<unsigned long>(data);
@@ -91,8 +98,14 @@ TEST(ClockControl, systemClock)
 
             ClockControl cc(base, externalClock[i]);
             bool ret = cc.setSystemClock(pllClock[j]);
-            EXPECT_EQ(retResult[i][j], ret);
-            if (ret) EXPECT_GE(pllClock[j], cc.systemClock());
+            EXPECT_EQ(systemClockResult[i][j], ret);
+            if (ret)
+            {
+                EXPECT_GE(pllClock[j], cc.clock(ClockControl::Clock::System));
+                EXPECT_GE(168000000, cc.clock(ClockControl::Clock::AHB));
+                EXPECT_GE(84000000, cc.clock(ClockControl::Clock::APB2));
+                EXPECT_GE(42000000, cc.clock(ClockControl::Clock::APB1));
+            }
         }
     }
     delete[] data;
@@ -108,8 +121,8 @@ TEST(ClockControl, reset)
 
     ClockControl cc(base, externalClock[0]);
     bool ret = cc.setSystemClock(pllClock[0]);
-    EXPECT_EQ(retResult[0][0], ret);
-    if (ret) EXPECT_GE(pllClock[0], cc.systemClock());
+    EXPECT_EQ(systemClockResult[0][0], ret);
+    if (ret) EXPECT_GE(pllClock[0], cc.clock(ClockControl::Clock::System));
     cc.reset();
     EXPECT_EQ(0x00000081, data[0]);
     EXPECT_EQ(0x24003010, data[1]);

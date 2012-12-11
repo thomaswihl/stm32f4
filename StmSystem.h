@@ -153,8 +153,8 @@ public:
 
     virtual inline void handleInterrupt(uint32_t index) { mNvic.handle(index); }
 protected:
-    void debugRead(char *msg, int len);
-    void debugWrite(const char *msg, int len);
+    int debugRead(char *msg, int len);
+    int debugWrite(const char *msg, int len);
 
 private:
     void init();

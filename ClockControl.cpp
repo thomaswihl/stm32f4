@@ -6,7 +6,7 @@
 ClockControl::ClockControl(System::BaseAddress base, uint32_t externalClock) :
     mBase(reinterpret_cast<volatile RCC*>(base)),
     mExternalClock(externalClock),
-    mChangeHandler(10)
+    mChangeHandler()
 {
 }
 
@@ -17,15 +17,6 @@ ClockControl::~ClockControl()
 void ClockControl::addChangeHandler(ClockControl::ChangeHandler *changeHandler)
 {
     mChangeHandler.push_back(changeHandler);
-//    for (unsigned int i = 0; i < MAX_CHANGE_HANDLER; ++i)
-//    {
-//        if (mChangeHandler[i] == 0)
-//        {
-//            mChangeHandler[i] = changeHandler;
-//            return true;
-//        }
-//    }
-//    return false;
 }
 
 void ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandler)
@@ -102,8 +93,8 @@ void ClockControl::disable(ClockControl::Function function)
 
 bool ClockControl::setSystemClock(uint32_t clock)
 {
-    std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin();
-    for (; i != mChangeHandler.end(); ++i)
+    if (clock > 168000000) return false;
+    for (std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
     {
         (*i)->clockPrepareChange(clock);
     }
@@ -152,8 +143,7 @@ bool ClockControl::setSystemClock(uint32_t clock)
     {
     }
 
-    i = mChangeHandler.begin();
-    for (; i != mChangeHandler.end(); ++i)
+    for (std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
     {
         (*i)->clockChanged(clock);
     }

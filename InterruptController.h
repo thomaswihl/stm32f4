@@ -12,6 +12,10 @@ public:
     InterruptController(unsigned int base, std::size_t vectorSize);
     ~InterruptController();
 
+    void handle(Index index);
+    void setPriotity(Index index, Priority priority);
+    void trigger(Index index);
+
     class Handler
     {
     public:
@@ -20,11 +24,18 @@ public:
         virtual void handle(Index index) = 0;
     };
 
-    void set(Index index, Handler *handler, Priority priority = Priority::Prio0, bool enabled = true);
-    void handle(Index index);
-    void enable(Index index);
-    void disable(Index index);
-    void setPriotity(Index index, Priority priority);
+    class Line
+    {
+    public:
+        Line(InterruptController& interruptController, Index index);
+        ~Line();
+        void setHandler(Handler *handler);
+        void enable();
+        void disable();
+    private:
+        InterruptController& mInterruptController;
+        Index mIndex;
+    };
 
 private:
     struct NVIC

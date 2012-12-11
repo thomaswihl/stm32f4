@@ -10,28 +10,9 @@ InterruptController::~InterruptController()
 {
 }
 
-void InterruptController::set(Index index, Handler *handler, Priority priority, bool enabled)
-{
-    mHandler[index] = handler;
-    setPriotity(index, priority);
-    if (handler == 0) disable(index);
-    else if (enabled) enable(index);
-}
-
-
 void InterruptController::handle(Index index)
 {
     if (mHandler[index] != 0) mHandler[index]->handle(index);
-}
-
-void InterruptController::enable(InterruptController::Index index)
-{
-    mBase->ISER[index / 32] = 1 << (index % 32);
-}
-
-void InterruptController::disable(InterruptController::Index index)
-{
-    mBase->ICER[index / 32] = 1 << (index % 32);
 }
 
 void InterruptController::setPriotity(InterruptController::Index index, InterruptController::Priority priority)
@@ -39,3 +20,29 @@ void InterruptController::setPriotity(InterruptController::Index index, Interrup
     mBase->IPR[index] = static_cast<uint8_t>(priority) << 4;
 }
 
+InterruptController::Line::Line(InterruptController &interruptController, InterruptController::Index index) :
+    mInterruptController(interruptController),
+    mIndex(index)
+{
+}
+
+InterruptController::Line::~Line()
+{
+    disable();
+    setHandler(0);
+}
+
+void InterruptController::Line::setHandler(InterruptController::Handler *handler)
+{
+    mInterruptController.mHandler[mIndex] = handler;
+}
+
+void InterruptController::Line::enable()
+{
+    mInterruptController.mBase->ISER[mIndex / 32] = 1 << (mIndex % 32);
+}
+
+void InterruptController::Line::disable()
+{
+    mInterruptController.mBase->ICER[mIndex / 32] = 1 << (mIndex % 32);
+}

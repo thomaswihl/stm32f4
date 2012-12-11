@@ -93,15 +93,12 @@ void _start()
     // Make sure we have one instance of our System class
     assert(System::instance() != 0);
 
-    main();
+    int ret = main();
 
     // calls __fini_array and then calls _fini()
     __libc_fini_array();
-    // we should call wfe or wfi but that does bad things to st-link
-    while (true)
-    {
-        __asm("wfi");
-    }
+
+    exit(ret);
 }
 
 void _init()
@@ -149,8 +146,7 @@ int _kill(int pid, int sig)
 
 int _write(int file, const char *ptr, int len)
 {
-    System::instance()->debugWrite(ptr, len);
-    return len;
+    return System::instance()->debugWrite(ptr, len);
 }
 
 int _fstat(int file, struct stat *st)
@@ -185,6 +181,15 @@ void _exit(int v)
 }
 
 }   // extern "C"
+
+namespace std
+{
+void __throw_bad_alloc()
+{
+    _write(1, "Out of memory, exiting.\n", 24);
+    exit(1);
+}
+}
 
 System* System::mSystem;
 char* System::mHeapEnd;
@@ -291,33 +296,3 @@ void System::SysTick::handle(InterruptController::Index index)
 {
     ++mTick;
 }
-
-
-
-
-System::Buffer::Buffer(size_t size) :
-    mSize(size),
-    mData(new char[size]),
-    mDelete(true)
-{
-}
-
-System::Buffer::Buffer(char *data, std::size_t size) :
-    mSize(size),
-    mData(data),
-    mDelete(false)
-{
-}
-
-System::Buffer::Buffer(const char *data, std::size_t size) :
-    mSize(size),
-    mData(const_cast<char*>(data)),
-    mDelete(false)
-{
-}
-
-System::Buffer::~Buffer()
-{
-    if (mDelete) delete mData;
-}
-

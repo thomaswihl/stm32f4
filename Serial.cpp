@@ -7,7 +7,9 @@ Serial::Serial(System::BaseAddress base, ClockControl *clockControl, ClockContro
     mBase(reinterpret_cast<volatile USART*>(base)),
     mClockControl(clockControl),
     mClock(clock),
-    mSpeed(0)
+    mSpeed(0),
+    mReadBuffer(READ_BUFFER_SIZE),
+    mWriteBuffer(WRITE_BUFFER_SIZE)
 {
     clockControl->addChangeHandler(this);
 }
@@ -72,26 +74,67 @@ void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity 
 
 void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
 {
-}
-
-void Serial::configInterrupt(InterruptController *interrupt, StmSystem::InterruptIndex index)
-{
-}
-
-void Serial::read(System::Buffer &buffer)
-{
-}
-
-void Serial::write(System::Buffer &buffer)
-{
-    char* data = buffer.data();
-    for (unsigned int i = 0; i < buffer.size(); ++i)
+    if (mDmaTx != 0)
     {
-        mBase->DR = *data++;
-        while (!mBase->SR.TC)
+        mDmaTx->waitReady();
+        delete mDmaTx;
+    }
+    if (mDmaRx != 0)
+    {
+        mDmaRx->waitReady();
+        delete mDmaRx;
+    }
+    mDmaTx = tx;
+    mDmaRx = rx;
+}
+
+void Serial::configInterrupt(InterruptController::Line* interrupt)
+{
+    if (mInterrupt != 0) delete mInterrupt;
+    mInterrupt = interrupt;
+}
+
+int Serial::read(char* data, int size)
+{
+    while (mReadBuffer.size() == 0)
+    {
+    }
+    size_t read = 0;
+    while (mReadBuffer.size() > 0 && size > 0)
+    {
+        *data++ = mReadBuffer.pop();
+        --size;
+        ++read;
+    }
+    return read;
+}
+
+int Serial::write(const char *data, int size)
+{
+    if (mDmaTx != 0)
+    {
+
+    }
+    else if (mInterrupt != 0)
+    {
+        mWriteBuffer.append(data, size);
+        if (!mBase->CR1.TCIE)
         {
+            mBase->CR1.TCIE = 1;
+            mBase->DR = *data++;
         }
     }
+    else
+    {
+        for (int i = 0; i < size; ++i)
+        {
+            mBase->DR = *data++;
+            while (!mBase->SR.TC)
+            {
+            }
+        }
+    }
+    return size;
 }
 
 void Serial::handle(InterruptController::Index index)
@@ -101,6 +144,17 @@ void Serial::handle(InterruptController::Index index)
         char c = mBase->DR;
         if (c == '\r') std::putchar('\n');
         else std::putchar(c);
+    }
+    if (mBase->SR.TC)
+    {
+        if (mWriteBuffer.size() != 0)
+        {
+            mBase->DR = mWriteBuffer.pop();
+        }
+        else
+        {
+            mBase->CR1.TCIE = 0;
+        }
     }
 }
 
