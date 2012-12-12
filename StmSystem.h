@@ -9,11 +9,13 @@
 #include "Dma.h"
 #include "Serial.h"
 #include "Flash.h"
+#include "SysTickControl.h"
+#include "FpuControl.h"
 
 class StmSystem : public System
 {
 public:
-    enum class BaseAddress : unsigned long
+    enum BaseAddress : System::BaseAddress
     {
         DMA1 = 0x40026000,
         DMA2 = 0x40026400,
@@ -36,6 +38,8 @@ public:
         UART4 = 0x40004c00,
         UART5 = 0x40005000,
         USART6 = 0x40011400,
+        STK = 0xe000e010,
+        FPU = 0xe000ed88,
     };
 
     enum class InterruptIndex : InterruptController::Index
@@ -137,6 +141,7 @@ public:
     ClockControl mRcc;
     ExternalInterrupt mExtI;
     InterruptController mNvic;
+    SysTickControl mSysTick;
     Dma mDma1;
     Dma mDma2;
     Serial mUsart1;
@@ -147,14 +152,17 @@ public:
     Serial mUsart6;
     Serial& mDebug;
     Flash mFlash;
+    FpuControl mFpu;
+
 
     StmSystem();
     virtual ~StmSystem();
 
     virtual inline void handleInterrupt(uint32_t index) { mNvic.handle(index); }
+    virtual void handleTrap(uint32_t index);
 protected:
-    int debugRead(char *msg, int len);
-    int debugWrite(const char *msg, int len);
+    virtual int debugRead(char *msg, int len);
+    virtual int debugWrite(const char *msg, int len);
 
 private:
     void init();

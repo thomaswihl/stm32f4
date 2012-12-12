@@ -8,6 +8,7 @@ ClockControl::ClockControl(System::BaseAddress base, uint32_t externalClock) :
     mExternalClock(externalClock),
     mChangeHandler()
 {
+    static_assert(sizeof(RCC) == 0x88, "Struct has wrong size, compiler problem.");
 }
 
 ClockControl::~ClockControl()
@@ -21,8 +22,7 @@ void ClockControl::addChangeHandler(ClockControl::ChangeHandler *changeHandler)
 
 void ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandler)
 {
-    std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin();
-    for (; i != mChangeHandler.end(); ++i)
+    for (auto i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
     {
         if (*i == changeHandler)
         {
@@ -94,9 +94,10 @@ void ClockControl::disable(ClockControl::Function function)
 bool ClockControl::setSystemClock(uint32_t clock)
 {
     if (clock > 168000000) return false;
-    for (std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
+    //for (auto i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
+    for (ChangeHandler*& handler : mChangeHandler)
     {
-        (*i)->clockPrepareChange(clock);
+        handler->clockPrepareChange(clock);
     }
     if (mBase->CR.HSEON) resetClock();
     // enable external oscillator
@@ -143,9 +144,9 @@ bool ClockControl::setSystemClock(uint32_t clock)
     {
     }
 
-    for (std::vector<ChangeHandler*>::iterator i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
+    for (ChangeHandler*& handler : mChangeHandler)
     {
-        (*i)->clockChanged(clock);
+        handler->clockChanged(clock);
     }
 
     return true;

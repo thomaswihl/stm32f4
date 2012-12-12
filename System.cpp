@@ -18,15 +18,18 @@ void __attribute__((interrupt)) Trap()
 {
     register int index __asm("r12");
     __asm volatile("mrs r12, IPSR");
-    //std::printf("Interrupt: %i\n", index & 0xff);
     System::instance()->handleTrap(index & 0xff);
+}
+
+void __attribute__((interrupt)) SysTick()
+{
+    System::sysTick();
 }
 
 void __attribute__((interrupt)) Isr()
 {
     register int index __asm("r12");
     __asm volatile("mrs r12, IPSR");
-    //std::printf("Interrupt: %i\n", index & 0xff);
     System::instance()->handleInterrupt((index & 0xff) - 16);
 }
 
@@ -35,7 +38,7 @@ __attribute__ ((section(".isr_vector_table")))
 void (* const gIsrVectorTable[])(void) = {
     // 16 trap functions for ARM
     (void (* const)())&__stack_end, (void (* const)())&_start, Trap, Trap, Trap, Trap, Trap, 0,
-    0, 0, 0, Trap, Trap, 0, Trap, Trap,
+    0, 0, 0, Trap, Trap, 0, Trap, SysTick,
     // 82 hardware interrupts specific to the STM32F407
     Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
     Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
@@ -55,26 +58,6 @@ void __cxa_pure_virtual()
 {
     std::printf("Pure fitual function called!\n");
     std::abort();
-}
-
-void *operator new(std::size_t size)
-{
-   return malloc(size);
-}
-
-void *operator new[](std::size_t size)
-{
-   return ::operator new(size);
-}
-
-void operator delete(void *mem)
-{
-   free(mem);
-}
-
-void operator delete[](void *mem)
-{
-   ::operator delete(mem);
 }
 
 // init stuff
@@ -182,6 +165,26 @@ void _exit(int v)
 
 }   // extern "C"
 
+void *operator new(std::size_t size)
+{
+   return malloc(size);
+}
+
+void *operator new[](std::size_t size)
+{
+   return ::operator new(size);
+}
+
+void operator delete(void *mem)
+{
+   free(mem);
+}
+
+void operator delete[](void *mem)
+{
+   ::operator delete(mem);
+}
+
 namespace std
 {
 void __throw_bad_alloc()
@@ -199,6 +202,7 @@ void __throw_length_error(const char*)
 
 System* System::mSystem;
 char* System::mHeapEnd;
+unsigned int System::mSysTick = 0;
 
 char* System::increaseHeap(unsigned int incr)
 {
@@ -241,6 +245,22 @@ uint32_t System::stackUsed()
     return &__stack_end - stack;
 }
 
+void System::postEvent(std::shared_ptr<Event> event)
+{
+    mEventQueue.push(event);
+}
+
+std::shared_ptr<System::Event> System::waitForEvent()
+{
+    while (mEventQueue.size() == 0)
+    {
+        __asm("wfi");
+    }
+    std::shared_ptr<System::Event> event = mEventQueue.back();
+    mEventQueue.pop();
+    return event;
+}
+
 System::System() :
     mNmi("Nmi"),
     mHardFault("HardFault"),
@@ -248,8 +268,7 @@ System::System() :
     mBusFault("BusFault"),
     mUsageFault("UsageFault"),
     mSVCall("SVCall"),
-    mPendSV("PendSV"),
-    mSysTick("SysTick")
+    mPendSV("PendSV")
 {
     // Make sure we are the first and only instance
     assert(mSystem == 0);
@@ -261,7 +280,6 @@ System::System() :
     setTrap(Trap::Index::UsageFault, &mUsageFault);
     setTrap(Trap::Index::SVCall, &mSVCall);
     setTrap(Trap::Index::PendSV, &mPendSV);
-    setTrap(Trap::Index::SysTick, &mSysTick);
 }
 
 System::~System()

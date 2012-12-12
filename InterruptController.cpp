@@ -3,6 +3,7 @@
 InterruptController::InterruptController(unsigned int base, std::size_t vectorSize) :
     mBase(reinterpret_cast<volatile NVIC*>(base))
 {
+    static_assert(sizeof(NVIC) == 0xe04, "Struct has wrong size, compiler problem.");
     mHandler = new Handler*[vectorSize];
 }
 

@@ -4,6 +4,9 @@
 #include "ExternalInterrupt.h"
 
 #include <cstdint>
+#include <queue>
+#include <memory>
+
 extern "C"
 {
 // Linker symbols
@@ -23,6 +26,17 @@ extern void _start();
 class System
 {
 public:
+    class Event
+    {
+    public:
+        enum class Component { Invalid, Serial };
+
+        Event() : mComponent(Component::Invalid) { }
+        Event(Component component) : mComponent(component) { }
+        Component component() { return mComponent; }
+    private:
+        Component mComponent;
+    };
     typedef unsigned long BaseAddress;
 
     virtual void handleInterrupt(uint32_t index) = 0;
@@ -36,8 +50,14 @@ public:
     uint32_t stackFree();
     uint32_t stackUsed();
 
+    void postEvent(std::shared_ptr<Event> event);
+    std::shared_ptr<Event> waitForEvent();
+
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
+
+    static inline void sysTick() { ++mSysTick; }
+    static inline unsigned int ticks() { return mSysTick; }
 protected:
 
     System();
@@ -90,9 +110,11 @@ private:
     Trap mUsageFault;
     Trap mSVCall;
     Trap mPendSV;
-    Trap mSysTick;
 
     Trap* mTrap[static_cast<unsigned int>(Trap::Index::__COUNT)];
+
+    std::queue<std::shared_ptr<Event>> mEventQueue;
+    static unsigned int mSysTick;
 };
 
 #endif

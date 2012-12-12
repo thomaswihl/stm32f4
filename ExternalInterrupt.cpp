@@ -5,6 +5,7 @@
 ExternalInterrupt::ExternalInterrupt(unsigned int base, std::size_t vectorSize) :
     mBase(reinterpret_cast<volatile EXTI*>(base))
 {
+    static_assert(sizeof(EXTI) == 0x18, "Struct has wrong size, compiler problem.");
     mHandler = new InterruptController::Handler*[vectorSize];
 }
 

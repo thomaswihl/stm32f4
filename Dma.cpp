@@ -3,6 +3,7 @@
 Dma::Dma(unsigned int base) :
     mBase(reinterpret_cast<volatile DMA*>(base))
 {
+    static_assert(sizeof(DMA) == 0xd0, "Struct has wrong size, compiler problem.");
 }
 
 void Dma::clearInterrupt(uint8_t stream, uint8_t flag)

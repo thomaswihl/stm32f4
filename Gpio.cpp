@@ -3,6 +3,7 @@
 Gpio::Gpio(unsigned int base) :
     mBase(reinterpret_cast<volatile GPIO*>(base))
 {
+    static_assert(sizeof(GPIO) == 0x28, "Struct has wrong size, compiler problem.");
 }
 
 Gpio::~Gpio()

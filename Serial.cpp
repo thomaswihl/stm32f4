@@ -3,7 +3,8 @@
 #include <cassert>
 #include <cstdio>
 
-Serial::Serial(System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
+Serial::Serial(System &system, System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
+    mSystem(system),
     mBase(reinterpret_cast<volatile USART*>(base)),
     mClockControl(clockControl),
     mClock(clock),
@@ -11,6 +12,7 @@ Serial::Serial(System::BaseAddress base, ClockControl *clockControl, ClockContro
     mReadBuffer(READ_BUFFER_SIZE),
     mWriteBuffer(WRITE_BUFFER_SIZE)
 {
+    static_assert(sizeof(USART) == 0x1c, "Struct has wrong size, compiler problem.");
     clockControl->addChangeHandler(this);
 }
 
@@ -90,12 +92,15 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
 
 void Serial::configInterrupt(InterruptController::Line* interrupt)
 {
-    if (mInterrupt != 0) delete mInterrupt;
+    if (mInterrupt != nullptr) delete mInterrupt;
     mBase->CR1.TCIE = 0;
     mBase->CR1.RXNEIE = 1;
     mInterrupt = interrupt;
-    mInterrupt->setHandler(this);
-    mInterrupt->enable();
+    if (mInterrupt != nullptr)
+    {
+        mInterrupt->setHandler(this);
+        mInterrupt->enable();
+    }
 }
 
 int Serial::read(char* data, int size)
@@ -139,9 +144,8 @@ void Serial::handle(InterruptController::Index index)
 {
     if (mBase->SR.RXNE)
     {
-        char c = mBase->DR;
-        if (c == '\r') std::putchar('\n');
-        else std::putchar(c);
+        mReadBuffer.push(mBase->DR);
+        mSystem.postEvent(std::shared_ptr<System::Event>(new Event(reinterpret_cast<System::BaseAddress>(mBase), Event::Type::ReceivedByte)));
     }
     if (mBase->SR.TC)
     {

@@ -2,13 +2,18 @@
 
 #include <cstdio>
 
+
 StmSystem system;
 
-void sleep()
+void handleSerialEvent(std::shared_ptr<Serial::Event> event)
 {
-    for (int i = 0; i < 1000000; ++i)
+    switch (event->type())
     {
-
+    case Serial::Event::Type::ReceivedByte:
+        char c = std::getchar();
+        std::putchar(c);
+        if (c == '\r') std::putchar('\n');
+        break;
     }
 }
 
@@ -34,24 +39,34 @@ int main()
     system.mGpioD.configOutput(Gpio::Pin::Pin14, Gpio::OutputType::PushPull);
     system.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
+    static const unsigned int SLEEP_TIME = 125000;
     while (true)
     {
         system.mGpioD.set(Gpio::Pin::Pin12);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.set(Gpio::Pin::Pin13);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.set(Gpio::Pin::Pin14);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.set(Gpio::Pin::Pin15);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.reset(Gpio::Pin::Pin12);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.reset(Gpio::Pin::Pin13);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.reset(Gpio::Pin::Pin14);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
         system.mGpioD.reset(Gpio::Pin::Pin15);
-        sleep();
+        system.mSysTick.usleep(SLEEP_TIME);
+        std::shared_ptr<System::Event> event = system.waitForEvent();
+        switch (event->component())
+        {
+        case System::Event::Component::Invalid:
+            break;
+        case System::Event::Component::Serial:
+            handleSerialEvent(std::static_pointer_cast<Serial::Event>(event));
+            break;
+        }
     }
 
     return 0;

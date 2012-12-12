@@ -3,34 +3,43 @@
 #include <cstdio>
 
 StmSystem::StmSystem() :
-    mGpioA(static_cast<System::BaseAddress>(BaseAddress::GPIOA)),
-    mGpioB(static_cast<System::BaseAddress>(BaseAddress::GPIOB)),
-    mGpioC(static_cast<System::BaseAddress>(BaseAddress::GPIOC)),
-    mGpioD(static_cast<System::BaseAddress>(BaseAddress::GPIOD)),
-    mGpioE(static_cast<System::BaseAddress>(BaseAddress::GPIOE)),
-    mGpioF(static_cast<System::BaseAddress>(BaseAddress::GPIOF)),
-    mGpioG(static_cast<System::BaseAddress>(BaseAddress::GPIOG)),
-    mGpioH(static_cast<System::BaseAddress>(BaseAddress::GPIOH)),
-    mGpioI(static_cast<System::BaseAddress>(BaseAddress::GPIOI)),
-    mRcc(static_cast<System::BaseAddress>(BaseAddress::RCC), 8000000),
-    mExtI(static_cast<System::BaseAddress>(BaseAddress::EXTI), 23),
-    mNvic(static_cast<System::BaseAddress>(BaseAddress::NVIC), 82),
-    mDma1(static_cast<System::BaseAddress>(BaseAddress::DMA1)),
-    mDma2(static_cast<System::BaseAddress>(BaseAddress::DMA2)),
-    mUsart1(static_cast<System::BaseAddress>(BaseAddress::USART1), &mRcc, ClockControl::Clock::APB2),
-    mUsart2(static_cast<System::BaseAddress>(BaseAddress::USART2), &mRcc, ClockControl::Clock::APB1),
-    mUsart3(static_cast<System::BaseAddress>(BaseAddress::USART3), &mRcc, ClockControl::Clock::APB1),
-    mUart4(static_cast<System::BaseAddress>(BaseAddress::UART4), &mRcc, ClockControl::Clock::APB1),
-    mUart5(static_cast<System::BaseAddress>(BaseAddress::UART5), &mRcc, ClockControl::Clock::APB1),
-    mUsart6(static_cast<System::BaseAddress>(BaseAddress::USART6), &mRcc, ClockControl::Clock::APB2),
+    mGpioA(BaseAddress::GPIOA),
+    mGpioB(BaseAddress::GPIOB),
+    mGpioC(BaseAddress::GPIOC),
+    mGpioD(BaseAddress::GPIOD),
+    mGpioE(BaseAddress::GPIOE),
+    mGpioF(BaseAddress::GPIOF),
+    mGpioG(BaseAddress::GPIOG),
+    mGpioH(BaseAddress::GPIOH),
+    mGpioI(BaseAddress::GPIOI),
+    mRcc(BaseAddress::RCC, 8000000),
+    mExtI(BaseAddress::EXTI, 23),
+    mNvic(BaseAddress::NVIC, 82),
+    mSysTick(BaseAddress::STK, &mRcc, 1),
+    mDma1(BaseAddress::DMA1),
+    mDma2(BaseAddress::DMA2),
+    mUsart1(*this, BaseAddress::USART1, &mRcc, ClockControl::Clock::APB2),
+    mUsart2(*this, BaseAddress::USART2, &mRcc, ClockControl::Clock::APB1),
+    mUsart3(*this, BaseAddress::USART3, &mRcc, ClockControl::Clock::APB1),
+    mUart4(*this, BaseAddress::UART4, &mRcc, ClockControl::Clock::APB1),
+    mUart5(*this, BaseAddress::UART5, &mRcc, ClockControl::Clock::APB1),
+    mUsart6(*this, BaseAddress::USART6, &mRcc, ClockControl::Clock::APB2),
     mDebug(mUsart2),
-    mFlash(static_cast<System::BaseAddress>(BaseAddress::FLASH), mRcc)
+    mFlash(BaseAddress::FLASH, mRcc),
+    mFpu(BaseAddress::FPU)
 {
     init();
 }
 
 StmSystem::~StmSystem()
 {
+}
+
+void StmSystem::handleTrap(uint32_t index)
+{
+    mDebug.configDma(nullptr, nullptr);
+    mDebug.configInterrupt(nullptr);
+    System::handleTrap(index);
 }
 
 void StmSystem::init()
@@ -47,6 +56,7 @@ void StmSystem::init()
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
     mRcc.setSystemClock(168000000);
+    mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 
 int StmSystem::debugRead(char *msg, int len)

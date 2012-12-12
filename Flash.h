@@ -33,8 +33,8 @@ private:
             uint16_t ICRST : 1;
             uint16_t DCRST : 1;
             uint16_t __RESERVED1 : 3;
-            uint16_t __RESERVED2;
         }   ACR;
+        uint16_t __RESERVED0;
     };
     volatile FLASH* mBase;
 

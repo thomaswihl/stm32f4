@@ -3,6 +3,7 @@
 Flash::Flash(System::BaseAddress base, ClockControl &clockControl) :
     mBase(reinterpret_cast<volatile FLASH*>(base))
 {
+    static_assert(sizeof(FLASH) == 0x4, "Struct has wrong size, compiler problem.");
     clockControl.addChangeHandler(this);
 }
 

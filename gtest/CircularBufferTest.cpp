@@ -286,7 +286,6 @@ TEST(CircularBuffer, bufferEmptyPushPop)
     unsigned int size = mCircularBuffer->free();
     unsigned int free = size;
     std::uniform_int_distribution<int> dist(1, free);
-    char buf[size + extra];
     for (int i = 0; i < 1000; ++i)
     {
         std::uniform_int_distribution<int>::param_type param(1, free);
