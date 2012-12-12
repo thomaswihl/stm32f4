@@ -1,6 +1,6 @@
 
 # our executable (base) name
-TARGET=stm_test
+TARGET=stm-test
 GTEST_PATH=gtest
 
 # DONE with the config

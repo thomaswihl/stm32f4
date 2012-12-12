@@ -36,21 +36,30 @@ bool CircularBuffer::pop(char& c)
 
 unsigned int CircularBuffer::write(const char *data, unsigned int len)
 {
-    unsigned int totalAppended = 0;
+    unsigned int totalLen = 0;
     while (len > 0 && free() != 0)
     {
-        unsigned int appended = appendPart(data, len);
-        data += appended;
-        len -= appended;
-        mUsed += appended;
-        totalAppended += appended;
+        unsigned int partLen = writePart(data, len);
+        data += partLen;
+        len -= partLen;
+        mUsed += partLen;
+        totalLen += partLen;
     }
-    return totalAppended;
+    return totalLen;
 }
 
-unsigned int CircularBuffer::read(const char *data, unsigned int len)
+unsigned int CircularBuffer::read(char *data, unsigned int len)
 {
-    return 0;
+    unsigned int totalLen = 0;
+    while (len > 0 && used() != 0)
+    {
+        unsigned int partLen = readPart(data, len);
+        data += partLen;
+        len -= partLen;
+        mUsed -= partLen;
+        totalLen += partLen;
+    }
+    return totalLen;
 }
 
 unsigned int CircularBuffer::getContBuffer(char *&data)
@@ -68,13 +77,23 @@ unsigned int CircularBuffer::skip(unsigned int len)
     return len;
 }
 
-unsigned int CircularBuffer::appendPart(const char *data, unsigned int len)
+unsigned int CircularBuffer::writePart(const char *data, unsigned int len)
 {
     unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mWrite), std::min(len, free()));
     std::memcpy(mWrite, data, maxLen);
     len -= maxLen;
     mWrite += maxLen;
-    if (mWrite >= (mBuffer + mSize)) mWrite = mBuffer;
+    align(mWrite);
+    return maxLen;
+}
+
+unsigned int CircularBuffer::readPart(char *data, unsigned int len)
+{
+    unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mRead), std::min(len, used()));
+    std::memcpy(data, mRead, maxLen);
+    len -= maxLen;
+    mRead += maxLen;
+    align(mRead);
     return maxLen;
 }
 

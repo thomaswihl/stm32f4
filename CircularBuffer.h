@@ -14,7 +14,7 @@ public:
     bool pop(char &c);
 
     unsigned int write(const char* data, unsigned int len);
-    unsigned int read(const char* data, unsigned int len);
+    unsigned int read(char *data, unsigned int len);
 
     unsigned int getContBuffer(char*& data);
     unsigned int skip(unsigned int len);
@@ -25,9 +25,12 @@ protected:
     char* mRead;
     unsigned int mUsed;
 
-    unsigned int appendPart(const char* data, unsigned int len);
-    friend void testCircularBuffer();
+    unsigned int writePart(const char* data, unsigned int len);
+    unsigned int readPart(char *data, unsigned int len);
     inline void align(char*& ptr) { if (ptr >= (mBuffer + mSize)) ptr = mBuffer; }
+
+    friend int testCircularBuffer();
+
 };
 
 #endif // CIRCULARBUFFER_H
