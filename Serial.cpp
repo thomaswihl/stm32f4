@@ -107,6 +107,7 @@ int Serial::read(char* data, int size)
 {
     while (mReadBuffer.used() == 0)
     {
+        __asm("wfi");
     }
 
     return mReadBuffer.read(data, size);
@@ -120,11 +121,15 @@ int Serial::write(const char *data, int size)
     }
     else if (mInterrupt != 0)
     {
-        mWriteBuffer.write(data, size);
         if (!mBase->CR1.TCIE)
         {
+            mWriteBuffer.write(data + 1, size - 1);
             mBase->CR1.TCIE = 1;
             mBase->DR = *data++;
+        }
+        else
+        {
+            mWriteBuffer.write(data, size);
         }
     }
     else

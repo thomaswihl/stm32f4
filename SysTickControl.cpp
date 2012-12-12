@@ -12,8 +12,9 @@ SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock, un
 
 void SysTickControl::enable()
 {
-    uint32_t clock = mClock->clock(ClockControl::Clock::System) / 1000;
+    uint32_t clock = mClock->clock(ClockControl::Clock::AHB) / 8000;
     clock *= mInterval;
+    mBase->CTRL.CLKSOURCE = 0;
     mBase->RELOAD = clock;
     mBase->VAL = 0;
     mBase->CTRL.TICKINT = 1;
