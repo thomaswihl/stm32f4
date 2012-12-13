@@ -322,7 +322,9 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
         nullptr
     };
     static_assert(sizeof(TRAP_NAME) / sizeof(TRAP_NAME[0]) == 16, "Not enough trap names defined, should be 16.");
-    printf("TRAP: %s\n", TRAP_NAME[static_cast<int>(index)]);
+    int intIndex = static_cast<int>(index);
+    if (intIndex < 16 && TRAP_NAME[intIndex] != nullptr) printf("TRAP: %s\n", TRAP_NAME[intIndex]);
+    else printf("TRAP: %i\n", intIndex);
     switch (index)
     {
     case TrapIndex::HardFault:
@@ -357,11 +359,12 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
         break;
     }
 
-    printf("Stack:\n");
     static const char* REGISTER_NAME[] =
     {
         "R0", "R1", "R2", "R3", "R12", "LR", "PC", "xPSR"
     };
+
+    printf("Stack:\n");
 
     int i = 0;
     for (const char*& str : REGISTER_NAME)
