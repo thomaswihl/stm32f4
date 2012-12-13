@@ -179,6 +179,8 @@ public:
 
     virtual inline void handleInterrupt(uint32_t index) { mNvic.handle(index); }
     virtual void handleTrap(System::TrapIndex index, unsigned int* stackPointer);
+
+    void printInfo();
 protected:
     virtual int debugRead(char *msg, int len);
     virtual int debugWrite(const char *msg, int len);

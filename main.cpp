@@ -17,11 +17,13 @@
  */
 
 #include "StmSystem.h"
+#include "CommandInterpreter.h"
 
 #include <cstdio>
 
 
 StmSystem gSys;
+CommandInterpreter gCmd;
 
 void handleSerialEvent(System::Event::Component component, Serial::EventType event)
 {
@@ -31,10 +33,16 @@ void handleSerialEvent(System::Event::Component component, Serial::EventType eve
         char c;
         gSys.mDebug.read(&c, 1);
         gSys.mDebug.write(&c, 1);
+        //gCmd.append(c);
         if (c == '\r')
         {
             const char* t = "\n# ";
             gSys.mDebug.write(t, 3);
+        }
+        else if (c == 18)
+        {
+            gSys.mRcc.resetClock();
+            gSys.printInfo();
         }
         break;
     }
@@ -42,14 +50,7 @@ void handleSerialEvent(System::Event::Component component, Serial::EventType eve
 
 int main()
 {
-    std::printf("\nSystem clock is %gMHz, AHB clock is %gMHz, APB1 is %gMHz, APB2 is %gMHz\n",
-                gSys.mRcc.clock(ClockControl::Clock::System) / 1000000.0f,
-                gSys.mRcc.clock(ClockControl::Clock::AHB) / 1000000.0f,
-                gSys.mRcc.clock(ClockControl::Clock::APB1) / 1000000.0f,
-                gSys.mRcc.clock(ClockControl::Clock::APB2) / 1000000.0f);
-    std::printf("RAM  : %gk free, %gk used.\n", gSys.memFree() / 1024.0f, gSys.memUsed() / 1024.0f);
-    std::printf("STACK: %gk free, %gk used.\n", gSys.stackFree() / 1024.0f, gSys.stackUsed() / 1024.0f);
-
+    gSys.printInfo();
     gSys.mRcc.enable(ClockControl::Function::GpioD);
 
     gSys.mGpioD.configOutput(Gpio::Pin::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
@@ -65,6 +66,7 @@ int main()
     {
         if (gSys.waitForEvent(event))
         {
+            gSys.mGpioD.reset(Gpio::Pin::Pin12);
             switch (event.component())
             {
             case System::Event::Component::USART2:
@@ -73,6 +75,7 @@ int main()
             default:
                 break;
             }
+            gSys.mGpioD.set(Gpio::Pin::Pin12);
         }
     }
 

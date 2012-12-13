@@ -87,3 +87,14 @@ int StmSystem::debugWrite(const char *msg, int len)
 {
     return mDebug.write(msg, len);
 }
+
+void StmSystem::printInfo()
+{
+    std::printf("\nSystem clock is %gMHz, AHB clock is %gMHz, APB1 is %gMHz, APB2 is %gMHz\n",
+                mRcc.clock(ClockControl::Clock::System) / 1000000.0f,
+                mRcc.clock(ClockControl::Clock::AHB) / 1000000.0f,
+                mRcc.clock(ClockControl::Clock::APB1) / 1000000.0f,
+                mRcc.clock(ClockControl::Clock::APB2) / 1000000.0f);
+    std::printf("RAM  : %gk free, %gk used.\n", memFree() / 1024.0f, memUsed() / 1024.0f);
+    std::printf("STACK: %gk free, %gk used.\n", stackFree() / 1024.0f, stackUsed() / 1024.0f);
+}

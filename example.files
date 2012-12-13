@@ -26,3 +26,5 @@ SysTickControl.h
 SysTickControl.cpp
 FpuControl.h
 FpuControl.cpp
+CommandInterpreter.h
+CommandInterpreter.cpp

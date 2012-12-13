@@ -52,6 +52,10 @@ void ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandle
 
 void ClockControl::resetClock()
 {
+    for (ChangeHandler*& handler : mChangeHandler)
+    {
+        handler->clockPrepareChange(INTERNAL_CLOCK);
+    }
     // enable internal clock
     System::setRegister(&mBase->CR, 0x00000081);
     // configure internal clock as clock source and wait till it is active
@@ -65,6 +69,10 @@ void ClockControl::resetClock()
     System::setRegister(&mBase->CIR, 0x00000000);
     // reset I2S pll
     System::setRegister(&mBase->PLLI2SCFGR, 0x20003000);
+    for (ChangeHandler*& handler : mChangeHandler)
+    {
+        handler->clockChanged(INTERNAL_CLOCK);
+    }
 }
 
 void ClockControl::reset()
