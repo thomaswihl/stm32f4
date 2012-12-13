@@ -14,7 +14,7 @@ OBJCOPY = $(TOOLCHAIN)/arm-none-eabi-objcopy
 OBJDUMP = $(TOOLCHAIN)/arm-none-eabi-objdump
 GDB     = $(TOOLCHAIN)/arm-none-eabi-gdb
 
-CFLAGS  = -g -O0 -Wall -Tstm32f407vg.ld
+CFLAGS  = -g -O2 -Wall -Tstm32f407vg.ld
 CFLAGS += -mthumb -mcpu=cortex-m4
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -Wl,-Map,$(TARGET).map
@@ -32,6 +32,7 @@ OBJ    = $(CSRC:.c=.o) $(CPPSRC:.cpp=.o) $(SSRC:.S=.o)
 INCLUDE_FILES = $(wildcard *.h)
 
 .PHONY: proj
+	make elf-dump
 
 all: proj
 
@@ -71,5 +72,5 @@ debug:
 	
 .PHONY: elf-dump
 elf-dump: proj
-	$(OBJDUMP) -sSd $(TARGET).elf > elf-dump
+	$(OBJDUMP) -d $(TARGET).elf > elf-dump
 	

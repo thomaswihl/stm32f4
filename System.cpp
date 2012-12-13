@@ -32,14 +32,19 @@
 
 extern "C"
 {
-void __attribute__((interrupt)) Trap()
+
+void __attribute__((naked)) Trap()
 {
-    System::instance()->handleTrap();
+    register unsigned int* stackPointer asm("sp");
+    System::instance()->handleTrap(stackPointer);
+    __asm("ldr r0, =_exit");
+    __asm("bx r0");
 }
 
-void __attribute__((interrupt)) SysTick()
+void __attribute__((naked)) SysTick()
 {
     System::sysTick();
+    __asm("bx lr");
 }
 
 void __attribute__((interrupt)) Isr()
@@ -170,7 +175,7 @@ void* _sbrk(unsigned int incr)
 
 void _exit(int v)
 {
-    _write(1, "Exiting\n", 8);
+    _write(1, "EXIT\n", 5);
     while (true)
     {
         __asm("wfi");
@@ -295,7 +300,7 @@ System::~System()
 
 // The stack looks like this: (FPSCR, S15-S0) xPSR, PC, LR, R12, R3, R2, R1, R0
 // With SP at R0 and (FPSCR, S15-S0) being optional
-void System::handleTrap(TrapIndex index)
+void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
 {
     static const char* TRAP_NAME[] =
     {
@@ -350,6 +355,19 @@ void System::handleTrap(TrapIndex index)
         break;
     default:
         break;
+    }
+
+    printf("Stack:\n");
+    static const char* REGISTER_NAME[] =
+    {
+        "R0", "R1", "R2", "R3", "R12", "LR", "PC", "xPSR"
+    };
+
+    int i = 0;
+    for (const char*& str : REGISTER_NAME)
+    {
+        printf("  %4s = %08x (%u)\n", str, stackPointer[i], stackPointer[i]);
+        ++i;
     }
 
     while (true)

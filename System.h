@@ -70,8 +70,8 @@ public:
     typedef unsigned long BaseAddress;
 
     virtual void handleInterrupt(uint32_t index) = 0;
-    virtual void handleTrap(TrapIndex index);
-    inline void handleTrap() { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE)); }
+    virtual void handleTrap(TrapIndex index, unsigned int *stackPointer);
+    inline void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
     inline void handleInterrupt() { handleInterrupt(mBase->ICSR.VECTACTIVE - 16); }
     virtual int debugWrite(const char* msg, int len) = 0;
     virtual int debugRead(char* msg, int len) = 0;

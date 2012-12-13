@@ -54,11 +54,11 @@ StmSystem::~StmSystem()
 {
 }
 
-void StmSystem::handleTrap(System::TrapIndex index)
+void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
 {
     mDebug.configDma(nullptr, nullptr);
     mDebug.configInterrupt(nullptr);
-    System::handleTrap(index);
+    System::handleTrap(index, stackPointer);
 }
 
 void StmSystem::init()
