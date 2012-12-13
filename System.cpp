@@ -34,9 +34,7 @@ extern "C"
 {
 void __attribute__((interrupt)) Trap()
 {
-    register int index __asm("r12");
-    __asm volatile("mrs r12, IPSR");
-    System::instance()->handleTrap(index & 0xff);
+    System::instance()->handleTrap();
 }
 
 void __attribute__((interrupt)) SysTick()
@@ -46,9 +44,7 @@ void __attribute__((interrupt)) SysTick()
 
 void __attribute__((interrupt)) Isr()
 {
-    register int index __asm("r12");
-    __asm volatile("mrs r12, IPSR");
-    System::instance()->handleInterrupt((index & 0xff) - 16);
+    System::instance()->handleInterrupt();
 }
 
 extern void (* const gIsrVectorTable[])(void);
@@ -279,25 +275,18 @@ std::shared_ptr<System::Event> System::waitForEvent()
     return event;
 }
 
-System::System() :
-    mNmi("Nmi"),
-    mHardFault("HardFault"),
-    mMemManage("MemManage"),
-    mBusFault("BusFault"),
-    mUsageFault("UsageFault"),
-    mSVCall("SVCall"),
-    mPendSV("PendSV")
+System::System(BaseAddress base) :
+    mBase(reinterpret_cast<volatile SCB*>(base))
 {
+    static_assert(sizeof(SCB) == 0x40, "Struct has wrong size, compiler problem.");
     // Make sure we are the first and only instance
     assert(mSystem == 0);
     mSystem = this;
-    setTrap(Trap::Index::NMI, &mNmi);
-    setTrap(Trap::Index::HardFault, &mHardFault);
-    setTrap(Trap::Index::MemManage, &mMemManage);
-    setTrap(Trap::Index::BusFault, &mBusFault);
-    setTrap(Trap::Index::UsageFault, &mUsageFault);
-    setTrap(Trap::Index::SVCall, &mSVCall);
-    setTrap(Trap::Index::PendSV, &mPendSV);
+    mBase->SHCSR.USGFAULTENA = 1;
+    mBase->SHCSR.BUSFAULTENA = 1;
+    mBase->SHCSR.MEMFAULTENA = 1;
+    mBase->CCR.UNALIGNTRP = 1;
+    mBase->CCR.DIV0TRP = 1;
 }
 
 System::~System()
@@ -306,47 +295,65 @@ System::~System()
 
 // The stack looks like this: (FPSCR, S15-S0) xPSR, PC, LR, R12, R3, R2, R1, R0
 // With SP at R0 and (FPSCR, S15-S0) being optional
-void System::handleTrap(uint32_t index)
+void System::handleTrap(TrapIndex index)
 {
-    if (index < static_cast<unsigned int>(Trap::Index::__COUNT) && mTrap[index] != 0) mTrap[index]->handle(index);
-    _write(1, "Unhandled trap\n", 15);
+    static const char* TRAP_NAME[] =
+    {
+        nullptr,
+        nullptr,
+        "NMI",
+        "Hard Fault",
+        "Memory Management",
+        "Bus Fault",
+        "Usage Fault",
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        "System Service Call",
+        "Debug Monitor",
+        nullptr,
+        "Pending Request",
+        nullptr
+    };
+    static_assert(sizeof(TRAP_NAME) / sizeof(TRAP_NAME[0]) == 16, "Not enough trap names defined, should be 16.");
+    printf("TRAP: %s\n", TRAP_NAME[static_cast<int>(index)]);
+    switch (index)
+    {
+    case TrapIndex::HardFault:
+        if (mBase->HFSR.VECTTBL) printf("  %s\n", "Bus fault on vector table read.\n");
+        if (mBase->HFSR.FORCED) printf("  %s\n", "Forced hard fault.\n");
+        break;
+    case TrapIndex::MemManage:
+        if (mBase->CFSR.MLSPERR) printf("  Floating point lazy state preservation.\n");
+        if (mBase->CFSR.MSTKERR) printf("  Stacking for exception entry fault.\n");
+        if (mBase->CFSR.MUNSTKERR) printf("  Unstacking for return from exception fault.\n");
+        if (mBase->CFSR.DACCVIOL) printf("  Data access violation.\n");
+        if (mBase->CFSR.IACCVIOL) printf("  Instruction access violation.\n");
+        if (mBase->CFSR.MMARVALID) printf("  At address %08lx (%lu).\n", mBase->MMFAR, mBase->MMFAR);
+        break;
+    case TrapIndex::BusFault:
+        if (mBase->CFSR.LSPERR) printf("  Floating point lazy state preservation.\n");
+        if (mBase->CFSR.STKERR) printf("  Stacking for exception entry fault.\n");
+        if (mBase->CFSR.UNSTKERR) printf("  Unstacking for return from exception fault.\n");
+        if (mBase->CFSR.IMPRECISERR) printf("  Imprecise data bus error.\n");
+        if (mBase->CFSR.IBUSERR) printf("  Instruction bus error.\n");
+        if (mBase->CFSR.BFARVALID) printf("  At address %08lx (%lu).\n", mBase->BFAR, mBase->BFAR);
+        break;
+    case TrapIndex::UsageFault:
+        if (mBase->CFSR.DIVBYZERO) printf("  Divide by zero.\n");
+        if (mBase->CFSR.UNALIGNED) printf("  Unaligned data access.\n");
+        if (mBase->CFSR.NOCP) printf("  FPU is deactivated/not available.\n");
+        if (mBase->CFSR.INVPC) printf("  Invalid PC loaded.\n");
+        if (mBase->CFSR.INVSTATE) printf("  Invalid state (EPSR).\n");
+        if (mBase->CFSR.UNDEFINSTR) printf("  Undefined instruction.\n");
+        break;
+    default:
+        break;
+    }
+
     while (true)
     {
         __asm("wfi");
     }
-}
-
-void System::setTrap(Trap::Index index, Trap *handler)
-{
-    mTrap[static_cast<int>(index)] = handler;
-}
-
-System::Trap::Trap(const char *name) : mName(name)
-{
-}
-
-void System::Trap::handle(InterruptController::Index index)
-{
-    char c;
-    _write(1, "TRAP: ", 6);
-    c = '0' + index / 10;
-    _write(1, &c, 1);
-    c = '0' + index % 10;
-    _write(1, &c, 1);
-    _write(1, "\n", 1);
-    while (true)
-    {
-        __asm("wfi");
-    }
-}
-
-System::SysTick::SysTick(const char *name) :
-    Trap(name),
-    mTick(0)
-{
-}
-
-void System::SysTick::handle(InterruptController::Index index)
-{
-    ++mTick;
 }

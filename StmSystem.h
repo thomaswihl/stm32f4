@@ -58,6 +58,7 @@ public:
         USART6 = 0x40011400,
         STK = 0xe000e010,
         FPU = 0xe000ed88,
+        SCB = 0xe000ed00,
     };
 
     enum class InterruptIndex : InterruptController::Index
@@ -177,7 +178,7 @@ public:
     virtual ~StmSystem();
 
     virtual inline void handleInterrupt(uint32_t index) { mNvic.handle(index); }
-    virtual void handleTrap(uint32_t index);
+    virtual void handleTrap(System::TrapIndex index);
 protected:
     virtual int debugRead(char *msg, int len);
     virtual int debugWrite(const char *msg, int len);

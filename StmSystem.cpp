@@ -21,6 +21,7 @@
 #include <cstdio>
 
 StmSystem::StmSystem() :
+    System(BaseAddress::SCB),
     mGpioA(BaseAddress::GPIOA),
     mGpioB(BaseAddress::GPIOB),
     mGpioC(BaseAddress::GPIOC),
@@ -53,7 +54,7 @@ StmSystem::~StmSystem()
 {
 }
 
-void StmSystem::handleTrap(uint32_t index)
+void StmSystem::handleTrap(System::TrapIndex index)
 {
     mDebug.configDma(nullptr, nullptr);
     mDebug.configInterrupt(nullptr);
