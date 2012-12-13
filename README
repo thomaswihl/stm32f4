@@ -1,0 +1,4 @@
+This is a full system for the stm32f4 family.
+
+ The goal was no assembler, minimum C all C++ (but no exceptions,
+they are too much for that little fella).
