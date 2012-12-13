@@ -20,7 +20,7 @@
 #define SYSTEM_H
 
 #include "ExternalInterrupt.h"
-
+#include "CircularBuffer.h"
 #include <cstdint>
 #include <queue>
 #include <memory>
@@ -229,10 +229,10 @@ private:
     static System* mSystem;
     static char* mHeapEnd;
 
-    std::queue<Event> mEventQueue;
     static unsigned int mSysTick;
 
     volatile SCB* mBase;
+    CircularBuffer<Event> mEventQueue;
 };
 
 #endif

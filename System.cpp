@@ -271,17 +271,16 @@ void System::postEvent(Event event)
 
 bool System::waitForEvent(Event &event)
 {
-    while (mEventQueue.size() == 0)
+    while (mEventQueue.used() == 0)
     {
         __asm("wfi");
     }
-    event = mEventQueue.back();
-    mEventQueue.pop();
-    return true;
+    return mEventQueue.pop(event);
 }
 
 System::System(BaseAddress base) :
-    mBase(reinterpret_cast<volatile SCB*>(base))
+    mBase(reinterpret_cast<volatile SCB*>(base)),
+    mEventQueue(16)
 {
     static_assert(sizeof(SCB) == 0x40, "Struct has wrong size, compiler problem.");
     // Make sure we are the first and only instance
@@ -371,10 +370,5 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
     {
         printf("  %4s = %08x (%u)\n", str, stackPointer[i], stackPointer[i]);
         ++i;
-    }
-
-    while (true)
-    {
-        __asm("wfi");
     }
 }

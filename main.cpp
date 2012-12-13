@@ -21,7 +21,7 @@
 #include <cstdio>
 
 
-StmSystem system;
+StmSystem gSys;
 
 void handleSerialEvent(System::Event::Component component, Serial::EventType event)
 {
@@ -29,12 +29,12 @@ void handleSerialEvent(System::Event::Component component, Serial::EventType eve
     {
     case Serial::EventType::ReceivedByte:
         char c;
-        system.mDebug.read(&c, 1);
-        system.mDebug.write(&c, 1);
+        gSys.mDebug.read(&c, 1);
+        gSys.mDebug.write(&c, 1);
         if (c == '\r')
         {
-            c = '\n';
-            system.mDebug.write(&c, 1);
+            const char* t = "\n# ";
+            gSys.mDebug.write(t, 3);
         }
         break;
     }
@@ -42,33 +42,28 @@ void handleSerialEvent(System::Event::Component component, Serial::EventType eve
 
 int main()
 {
-    std::printf("System clock is %.3fMHz, AHB clock is %.3fMHz, APB1 is %.3fMHz, APB2 is %.3fMHz\n",
-                system.mRcc.clock(ClockControl::Clock::System) / 1000000.0f,
-                system.mRcc.clock(ClockControl::Clock::AHB) / 1000000.0f,
-                system.mRcc.clock(ClockControl::Clock::APB1) / 1000000.0f,
-                system.mRcc.clock(ClockControl::Clock::APB2) / 1000000.0f);
-//    std::printf("\nSystem clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz.\n",
-//                system.mRcc.clock(ClockControl::Clock::System) / 1000000,
-//                system.mRcc.clock(ClockControl::Clock::AHB) / 1000000,
-//                system.mRcc.clock(ClockControl::Clock::APB1) / 1000000,
-//                system.mRcc.clock(ClockControl::Clock::APB2) / 1000000);
-    std::printf("RAM  : %luk free, %luk used.\n", system.memFree() / 1024, system.memUsed() / 1024);
-    std::printf("STACK: %luk free, %luk used.\n", system.stackFree() / 1024, system.stackUsed() / 1024);
+    std::printf("\nSystem clock is %gMHz, AHB clock is %gMHz, APB1 is %gMHz, APB2 is %gMHz\n",
+                gSys.mRcc.clock(ClockControl::Clock::System) / 1000000.0f,
+                gSys.mRcc.clock(ClockControl::Clock::AHB) / 1000000.0f,
+                gSys.mRcc.clock(ClockControl::Clock::APB1) / 1000000.0f,
+                gSys.mRcc.clock(ClockControl::Clock::APB2) / 1000000.0f);
+    std::printf("RAM  : %gk free, %gk used.\n", gSys.memFree() / 1024.0f, gSys.memUsed() / 1024.0f);
+    std::printf("STACK: %gk free, %gk used.\n", gSys.stackFree() / 1024.0f, gSys.stackUsed() / 1024.0f);
 
-    system.mRcc.enable(ClockControl::Function::GpioD);
+    gSys.mRcc.enable(ClockControl::Function::GpioD);
 
-    system.mGpioD.configOutput(Gpio::Pin::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
-    system.mGpioD.configOutput(Gpio::Pin::Pin13, Gpio::OutputType::PushPull);
-    system.mGpioD.configOutput(Gpio::Pin::Pin14, Gpio::OutputType::PushPull);
-    system.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Pin::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
+    gSys.mGpioD.configOutput(Gpio::Pin::Pin13, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Pin::Pin14, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
-    system.mGpioD.set(Gpio::Pin::Pin12);
+    gSys.mGpioD.set(Gpio::Pin::Pin12);
     std::printf("# ");
     std::fflush(stdout);
     System::Event event;
     while (true)
     {
-        if (system.waitForEvent(event))
+        if (gSys.waitForEvent(event))
         {
             switch (event.component())
             {

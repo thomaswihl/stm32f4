@@ -19,36 +19,126 @@
 #ifndef CIRCULARBUFFER_H
 #define CIRCULARBUFFER_H
 
+#include <algorithm>
+#include <cstring>
+
+template<class T>
 class CircularBuffer
 {
 public:
-    CircularBuffer(unsigned int size);
-    ~CircularBuffer();
+    CircularBuffer(unsigned int size)  :
+        mSize(size),
+        mBuffer(new T[size]),
+        mWrite(mBuffer),
+        mRead(mBuffer),
+        mUsed(0)
+    {
+    }
+
+    ~CircularBuffer()
+    {
+        delete mBuffer;
+    }
 
     inline unsigned int used() { return mUsed; }
     inline unsigned int free() { return mSize - mUsed; }
 
-    bool push(char c);
-    bool pop(char &c);
+    bool push(T c)
+    {
+        if (free() == 0) return false;
+        ++mUsed;
+        *const_cast<T*>(mWrite) = c;
+        ++mWrite;
+        align(mWrite);
+        return true;
+    }
 
-    unsigned int write(const char* data, unsigned int len);
-    unsigned int read(char *data, unsigned int len);
+    bool pop(T &c)
+    {
+        if (used() == 0) return false;
+        --mUsed;
+        c = *const_cast<T*>(mRead);
+        ++mRead;
+        align(mRead);
+        return true;
+    }
 
-    unsigned int getContBuffer(char*& data);
-    unsigned int skip(unsigned int len);
+    unsigned int write(const T *data, unsigned int len)
+    {
+        unsigned int totalLen = 0;
+        while (len > 0 && free() != 0)
+        {
+            unsigned int partLen = writePart(data, len);
+            data += partLen;
+            len -= partLen;
+            mUsed += partLen;
+            totalLen += partLen;
+        }
+        return totalLen;
+    }
+
+    unsigned int read(char *data, unsigned int len)
+    {
+        unsigned int totalLen = 0;
+        while (len > 0 && used() != 0)
+        {
+            unsigned int partLen = readPart(data, len);
+            data += partLen;
+            len -= partLen;
+            mUsed -= partLen;
+            totalLen += partLen;
+        }
+        return totalLen;
+    }
+
+
+    unsigned int getContBuffer(char*& data)
+    {
+        data = mRead;
+        if (data < mWrite) return mWrite - data;
+        return (mBuffer + mSize) - data;
+    }
+
+    unsigned int skip(unsigned int len)
+    {
+        len = std::min(len, used());
+        mRead += len;
+        if (mRead >= (mBuffer + mSize)) mRead -= mSize;
+        return len;
+    }
+
 protected:
     unsigned int mSize;
-    char* mBuffer;
-    char* mWrite;
-    char* mRead;
-    unsigned int mUsed;
+    T* mBuffer;
+    volatile T* mWrite;
+    volatile T* mRead;
+    volatile unsigned int mUsed;
 
-    unsigned int writePart(const char* data, unsigned int len);
-    unsigned int readPart(char *data, unsigned int len);
-    inline void align(char*& ptr) { if (ptr >= (mBuffer + mSize)) ptr = mBuffer; }
+    unsigned int writePart(const T* data, unsigned int len)
+    {
+        unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mWrite), std::min(len, free()));
+        std::memcpy(const_cast<T*>(mWrite), data, maxLen * sizeof(T));
+        len -= maxLen;
+        mWrite += maxLen;
+        align(mWrite);
+        return maxLen;
+    }
+
+    unsigned int readPart(T *data, unsigned int len)
+    {
+        unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mRead), std::min(len, used()));
+        std::memcpy(data, const_cast<const T*>(mRead), maxLen * sizeof(T));
+        len -= maxLen;
+        mRead += maxLen;
+        align(mRead);
+        return maxLen;
+    }
+
+    inline void align(volatile T*& ptr) { if (ptr >= (mBuffer + mSize)) ptr = mBuffer; }
 
     friend int testCircularBuffer();
 
 };
+
 
 #endif // CIRCULARBUFFER_H

@@ -157,8 +157,8 @@ private:
     InterruptController::Line* mInterrupt;
     Dma::Stream* mDmaTx;
     Dma::Stream* mDmaRx;
-    CircularBuffer mReadBuffer;
-    CircularBuffer mWriteBuffer;
+    CircularBuffer<char> mReadBuffer;
+    CircularBuffer<char> mWriteBuffer;
 
 };
 
