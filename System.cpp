@@ -264,20 +264,20 @@ uint32_t System::stackUsed()
     return &__stack_end - stack;
 }
 
-void System::postEvent(std::shared_ptr<Event> event)
+void System::postEvent(Event event)
 {
     mEventQueue.push(event);
 }
 
-std::shared_ptr<System::Event> System::waitForEvent()
+bool System::waitForEvent(Event &event)
 {
     while (mEventQueue.size() == 0)
     {
         __asm("wfi");
     }
-    std::shared_ptr<System::Event> event = mEventQueue.back();
+    event = mEventQueue.back();
     mEventQueue.pop();
-    return event;
+    return true;
 }
 
 System::System(BaseAddress base) :

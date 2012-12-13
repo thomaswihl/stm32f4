@@ -47,13 +47,16 @@ public:
     class Event
     {
     public:
-        enum class Component { Invalid, Serial };
+        typedef uint16_t Type;
+        enum class Component : uint16_t { Invalid, USART1, USART2, USART3, UART4, UART5, USART6 };
 
-        Event() : mComponent(Component::Invalid) { }
-        Event(Component component) : mComponent(component) { }
+        Event() : mComponent(Component::Invalid), mType(0) { }
+        Event(Component component, Type type) : mComponent(component), mType(type) { }
         Component component() { return mComponent; }
+        Type type() { return mType; }
     private:
         Component mComponent;
+        Type mType;
     };
 
     enum class TrapIndex
@@ -82,8 +85,8 @@ public:
     uint32_t stackFree();
     uint32_t stackUsed();
 
-    void postEvent(std::shared_ptr<Event> event);
-    std::shared_ptr<Event> waitForEvent();
+    void postEvent(Event event);
+    bool waitForEvent(Event& event);
 
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
@@ -226,7 +229,7 @@ private:
     static System* mSystem;
     static char* mHeapEnd;
 
-    std::queue<std::shared_ptr<Event>> mEventQueue;
+    std::queue<Event> mEventQueue;
     static unsigned int mSysTick;
 
     volatile SCB* mBase;

@@ -35,20 +35,9 @@ public:
     enum class StopBits { One, Half, Two, OneAndHalf };
     enum class HardwareFlowControl { None, Cts, Rts, CtsRts };
 
-    class Event : public System::Event
-    {
-    public:
-        enum class Type { ReceivedByte };
-        System::BaseAddress base() { return mBase; }
-        Type type() { return mType; }
-        Event(System::BaseAddress base, Type type) : System::Event(System::Event::Component::Serial), mBase(base), mType(type) { }
+    enum class EventType : System::Event::Type { ReceivedByte };
 
-    private:
-        System::BaseAddress mBase;
-        Type mType;
-    };
-
-    Serial(System& system, System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
+    Serial(System& system, System::BaseAddress base, System::Event::Component component, ClockControl* clockControl, ClockControl::Clock clock);
     virtual ~Serial();
 
     void setSpeed(uint32_t speed);
@@ -161,6 +150,7 @@ private:
 
     System& mSystem;
     volatile USART* mBase;
+    System::Event::Component mComponent;
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;

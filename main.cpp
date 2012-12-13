@@ -23,11 +23,11 @@
 
 StmSystem system;
 
-void handleSerialEvent(std::shared_ptr<Serial::Event> event)
+void handleSerialEvent(System::Event::Component component, Serial::EventType event)
 {
-    switch (event->type())
+    switch (event)
     {
-    case Serial::Event::Type::ReceivedByte:
+    case Serial::EventType::ReceivedByte:
         char c;
         system.mDebug.read(&c, 1);
         system.mDebug.write(&c, 1);
@@ -65,16 +65,19 @@ int main()
     system.mGpioD.set(Gpio::Pin::Pin12);
     std::printf("# ");
     std::fflush(stdout);
+    System::Event event;
     while (true)
     {
-        std::shared_ptr<System::Event> event = system.waitForEvent();
-        switch (event->component())
+        if (system.waitForEvent(event))
         {
-        case System::Event::Component::Invalid:
-            break;
-        case System::Event::Component::Serial:
-            handleSerialEvent(std::static_pointer_cast<Serial::Event>(event));
-            break;
+            switch (event.component())
+            {
+            case System::Event::Component::USART2:
+                handleSerialEvent(event.component(), static_cast<Serial::EventType>(event.type()));
+                break;
+            default:
+                break;
+            }
         }
     }
 

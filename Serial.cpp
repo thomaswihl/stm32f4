@@ -21,9 +21,10 @@
 #include <cassert>
 #include <cstdio>
 
-Serial::Serial(System &system, System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
+Serial::Serial(System &system, System::BaseAddress base, System::Event::Component component, ClockControl *clockControl, ClockControl::Clock clock) :
     mSystem(system),
     mBase(reinterpret_cast<volatile USART*>(base)),
+    mComponent(component),
     mClockControl(clockControl),
     mClock(clock),
     mSpeed(0),
@@ -168,7 +169,7 @@ void Serial::handle(InterruptController::Index index)
     if (mBase->SR.RXNE)
     {
         mReadBuffer.push(mBase->DR);
-        mSystem.postEvent(std::shared_ptr<System::Event>(new Event(reinterpret_cast<System::BaseAddress>(mBase), Event::Type::ReceivedByte)));
+        mSystem.postEvent(System::Event(mComponent, static_cast<System::Event::Type>(EventType::ReceivedByte)));
     }
     if (mBase->SR.TC)
     {
