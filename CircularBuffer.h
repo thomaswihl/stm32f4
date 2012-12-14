@@ -47,7 +47,7 @@ public:
     {
         if (free() == 0) return false;
         ++mUsed;
-        *const_cast<T*>(mWrite) = c;
+        *mWrite = c;
         ++mWrite;
         align(mWrite);
         return true;
@@ -57,7 +57,7 @@ public:
     {
         if (used() == 0) return false;
         --mUsed;
-        c = *const_cast<T*>(mRead);
+        c = *mRead;
         ++mRead;
         align(mRead);
         return true;
@@ -110,14 +110,14 @@ public:
 protected:
     unsigned int mSize;
     T* mBuffer;
-    volatile T* mWrite;
-    volatile T* mRead;
+    T* mWrite;
+    T* mRead;
     volatile unsigned int mUsed;
 
     unsigned int writePart(const T* data, unsigned int len)
     {
         unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mWrite), std::min(len, free()));
-        std::memcpy(const_cast<T*>(mWrite), data, maxLen * sizeof(T));
+        std::memcpy(mWrite, data, maxLen * sizeof(T));
         len -= maxLen;
         mWrite += maxLen;
         align(mWrite);
@@ -127,14 +127,14 @@ protected:
     unsigned int readPart(T *data, unsigned int len)
     {
         unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mRead), std::min(len, used()));
-        std::memcpy(data, const_cast<const T*>(mRead), maxLen * sizeof(T));
+        std::memcpy(data, mRead, maxLen * sizeof(T));
         len -= maxLen;
         mRead += maxLen;
         align(mRead);
         return maxLen;
     }
 
-    inline void align(volatile T*& ptr) { if (ptr >= (mBuffer + mSize)) ptr = mBuffer; }
+    inline void align(T*volatile& ptr) { if (ptr >= (mBuffer + mSize)) ptr = mBuffer; }
 
     friend int testCircularBuffer();
 
