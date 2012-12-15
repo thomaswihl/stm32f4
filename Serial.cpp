@@ -95,29 +95,40 @@ void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity 
 
 void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
 {
-    if (mDmaTx != 0)
-    {
-        mDmaTx->waitReady();
-        delete mDmaTx;
-    }
-    if (mDmaRx != 0)
-    {
-        mDmaRx->waitReady();
-        delete mDmaRx;
-    }
+    if (mDmaTx != nullptr) delete mDmaTx;
+    if (mDmaRx != nullptr) delete mDmaRx;
+    mBase->CR3.DMAT = 0;
+    mBase->CR3.DMAR = 0;
     mDmaTx = tx;
+    if (mDmaTx != nullptr)
+    {
+        mDmaTx->configure(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+        mDmaTx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
+        mBase->CR3.DMAT = 1;
+        mBase->CR1.TCIE = 0;
+        mDmaTx->setCallback(this);
+    }
     mDmaRx = rx;
+    if (mDmaRx != nullptr)
+    {
+        mDmaRx->configure(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+        mDmaRx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
+        mBase->CR3.DMAR = 1;
+        mBase->CR1.RXNEIE = 0;
+        mDmaRx->setCallback(this);
+    }
 }
 
 void Serial::configInterrupt(InterruptController::Line* interrupt)
 {
     if (mInterrupt != nullptr) delete mInterrupt;
     mBase->CR1.TCIE = 0;
-    mBase->CR1.RXNEIE = 1;
+    mBase->CR1.RXNEIE = 0;
     mInterrupt = interrupt;
     if (mInterrupt != nullptr)
     {
-        mInterrupt->setHandler(this);
+        mBase->CR1.RXNEIE = (mDmaRx == nullptr) ? 1 : 0;
+        mInterrupt->setCallback(this);
         mInterrupt->enable();
     }
 }
@@ -132,39 +143,28 @@ int Serial::read(char* data, int size)
     return mReadBuffer.read(data, size);
 }
 
-int Serial::write(const char *data, int size)
+unsigned int Serial::write(const char *data, unsigned int size)
 {
-    if (mDmaTx != 0)
-    {
-
-    }
-    else if (mInterrupt != 0)
-    {
-        if (!mBase->CR1.TCIE)
-        {
-            mWriteBuffer.write(data + 1, size - 1);
-            mBase->CR1.TCIE = 1;
-            mBase->DR = *data++;
-        }
-        else
-        {
-            mWriteBuffer.write(data, size);
-        }
-    }
-    else
-    {
-        for (int i = 0; i < size; ++i)
-        {
-            while (!mBase->SR.TC)
-            {
-            }
-            mBase->DR = *data++;
-        }
-    }
-    return size;
+    unsigned int written = mWriteBuffer.write(data, size);
+    triggerWrite();
+    return written;
 }
 
-void Serial::handle(InterruptController::Index index)
+bool Serial::pop(char &c)
+{
+    return mReadBuffer.pop(c);
+}
+
+bool Serial::push(char c)
+{
+    bool success = mWriteBuffer.push(c);
+    triggerWrite();
+    return success;
+}
+
+
+
+void Serial::interruptCallback(InterruptController::Index index)
 {
     if (mBase->SR.RXNE)
     {
@@ -174,17 +174,83 @@ void Serial::handle(InterruptController::Index index)
     if (mBase->SR.TC)
     {
         char c;
+        // check if there is another byte in the buffer and send it or dsiable the interrupt to signal that we are done
         if (mWriteBuffer.pop(c)) mBase->DR = c;
         else mBase->CR1.TCIE = 0;
     }
 }
 
-void Serial::clockPrepareChange(uint32_t newClock)
+void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock)
 {
+    if (reason == ClockControl::Callback::Reason::Changed && mSpeed != 0) setSpeed(mSpeed);
 }
 
-void Serial::clockChanged(uint32_t newClock)
+void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
 {
-    if (mSpeed != 0) setSpeed(mSpeed);
+//    configDma(nullptr, mDmaRx);
+//    mBase->CR3.DMAT = 0;
+//    mBase->SR.TC = 1;
+//    printf("DMA complete.\n");
+//    triggerWrite();
+//    return;
+    if (reason == Dma::Stream::Callback::Reason::TransferComplete)
+    {
+        mWriteBuffer.skip(mDmaTransferLength);
+        int timeout = 1000;
+        while (!mBase->SR.TC && timeout > 0)
+        {
+            --timeout;
+        }
+        triggerWrite();
+    }
+    else
+    {
+        configDma(nullptr, mDmaRx);
+        printf("DMA failed.\n");
+    }
+}
+
+void Serial::triggerWrite()
+{
+    if (mDmaTx != 0)
+    {
+        const char* source;
+        mDmaTransferLength = mWriteBuffer.getContBuffer(source);
+        if (mDmaTransferLength != 0)
+        {
+            if (mDmaTransferLength > 10) mDmaTransferLength = 10;
+            mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(source));
+            mDmaTx->setTransferCount(mDmaTransferLength);
+            mBase->SR.TC = 0;
+            mDmaTx->start();
+        }
+    }
+    else if (mInterrupt != 0)
+    {
+        // if we are not transmitting
+        if (!mBase->CR1.TCIE)
+        {
+            mBase->CR1.TCIE = 1;
+            char c;
+            // send first bye, to start transmission
+            if (mWriteBuffer.pop(c)) mBase->DR = c;
+        }
+    }
+    else
+    {
+        // we have to do it manually
+        // TODO: Maybe we could do that with a timer interrupt?
+        char c;
+        while (mWriteBuffer.pop(c))
+        {
+            int timeout = 10;
+            while (!mBase->SR.TC && timeout > 0)
+            {
+                mSystem.usleep(1000);
+                --timeout;
+            }
+            mBase->DR = c;
+        }
+    }
 }
 

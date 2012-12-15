@@ -34,12 +34,12 @@ public:
     void setPriotity(Index index, Priority priority);
     void trigger(Index index);
 
-    class Handler
+    class Callback
     {
     public:
-        Handler() { }
-        virtual ~Handler() { }
-        virtual void handle(Index index) = 0;
+        Callback() { }
+        virtual ~Callback() { }
+        virtual void interruptCallback(Index index) = 0;
     };
 
     class Line
@@ -47,7 +47,7 @@ public:
     public:
         Line(InterruptController& interruptController, Index index);
         ~Line();
-        void setHandler(Handler *handler);
+        void setCallback(Callback *handler);
         void enable();
         void disable();
     private:
@@ -67,10 +67,10 @@ private:
         uint8_t IPR[128];  //0x0300
         uint32_t __RESERVED1[32];  //0x0380
         uint32_t __RESERVED2[640];  //0x0400
-        uint16_t STIR;  //0x0e00
+        uint32_t STIR;  //0x0e00
     };
     volatile NVIC* mBase;
-    InterruptController::Handler** mHandler;
+    InterruptController::Callback** mHandler;
 };
 
 #endif // INTERRUPTCONTROLLER_H

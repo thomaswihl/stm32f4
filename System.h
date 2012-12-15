@@ -93,6 +93,8 @@ public:
 
     static inline void sysTick() { ++mSysTick; }
     static inline unsigned int ticks() { return mSysTick; }
+    virtual void usleep(unsigned int us) = 0;
+
 protected:
 
     System(BaseAddress base);

@@ -18,6 +18,9 @@
 
 #include "CommandInterpreter.h"
 
+#include <cstring>
+#include <algorithm>
+
 bool help(CommandInterpreter& ci, const char* line)
 {
     return true;
@@ -35,11 +38,94 @@ bool write(CommandInterpreter& ci, const char* line)
 const CommandInterpreter::Command CommandInterpreter::mCmd[] =
 {
     { "help", "command:s:o", "Shows help for all commands or the one given.", help },
-    { "read[bhw]", "address:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", read },
-    { "write[bhw]", "address:u value:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", write },
+    { "hint", nullptr, "Dummy command.", help },
+    { "read", "address:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", read },
+    { "write", "address:u value:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", write },
 };
 
-CommandInterpreter::CommandInterpreter()
+CommandInterpreter::CommandInterpreter(Serial *serial) :
+    mSerial(serial),
+    mLineLen(0)
+{
+    strcpy(mPrompt, "# ");
+}
+
+void CommandInterpreter::feed()
+{
+    char c;
+    while (mSerial->pop(c))
+    {
+        switch (c)
+        {
+        case '\t':
+            complete();
+            break;
+        case '\r':
+            mSerial->write("\r\n", 2);
+            execute();
+            mLineLen = 0;
+            printLine();
+            break;
+        default:
+            if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;
+            mSerial->push(c);
+        }
+    }
+}
+
+void CommandInterpreter::start()
+{
+    printLine();
+}
+
+void CommandInterpreter::printLine()
+{
+    mSerial->write("\r", 1);
+    mSerial->write(mPrompt, strlen(mPrompt));
+    mSerial->write(mLine, mLineLen);
+}
+
+void CommandInterpreter::complete()
+{
+    const Command* use = nullptr;
+    bool found = false;
+    Possibilities possible;
+    for (const Command& cmd : mCmd)
+    {
+        if (strncmp(mLine, cmd.mName, mLineLen) == 0)
+        {
+            if (!found)
+            {
+                use = &cmd;
+                found = true;
+            }
+            else
+            {
+                if (use != nullptr)
+                {
+                    possible.append(use->mName);
+                    use = nullptr;
+                }
+                possible.append(cmd.mName);
+            }
+        }
+    }
+    if (found && use != nullptr)
+    {
+        int useLen = strlen(use->mName);
+        strncpy(mLine + mLineLen, use->mName + mLineLen, useLen - mLineLen);
+        mLineLen = useLen;
+        mLine[mLineLen++] = ' ';
+        printLine();
+    }
+    else if (found)
+    {
+        std::printf("\n%s\n", possible.string());
+        printLine();
+    }
+}
+
+void CommandInterpreter::execute()
 {
 }
 

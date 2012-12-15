@@ -57,12 +57,9 @@ void SysTickControl::usleep(unsigned int us)
     }   while (current - start < us);
 }
 
-void SysTickControl::clockPrepareChange(uint32_t newClock)
+void SysTickControl::clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock)
 {
-    disable();
+    if (reason == ClockControl::Callback::Reason::AboutToChange) disable();
+    else enable();
 }
 
-void SysTickControl::clockChanged(uint32_t newClock)
-{
-    enable();
-}

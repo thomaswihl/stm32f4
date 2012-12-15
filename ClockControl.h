@@ -26,11 +26,11 @@
 class ClockControl
 {
 public:
-    class ChangeHandler
+    class Callback
     {
     public:
-        virtual void clockPrepareChange(uint32_t newClock) = 0;
-        virtual void clockChanged(uint32_t newClock) = 0;
+        enum Reason { AboutToChange, Changed };
+        virtual void clockCallback(Reason reason, uint32_t clock) = 0;
     };
     enum class Function
     {
@@ -48,8 +48,8 @@ public:
     ClockControl(System::BaseAddress base, uint32_t externalClock);
     ~ClockControl();
 
-    void addChangeHandler(ChangeHandler* changeHandler);
-    void removeChangeHandler(ChangeHandler* changeHandler);
+    void addChangeHandler(Callback* changeHandler);
+    void removeChangeHandler(Callback* changeHandler);
 
     bool setSystemClock(uint32_t clock);
     uint32_t clock(Clock clock);
@@ -471,9 +471,11 @@ private:
     };
     volatile RCC* mBase;
     uint32_t mExternalClock;
-    std::vector<ChangeHandler*> mChangeHandler;
+    std::vector<Callback*> mCallback;
 
     bool getPllConfig(uint32_t clock, uint32_t& div, uint32_t& mul);
+    void resetClock(bool notify);
+    void notify(Callback::Reason reason, uint32_t clock);
 
     friend void testClockControl();
 };

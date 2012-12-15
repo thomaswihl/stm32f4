@@ -24,7 +24,7 @@
 ClockControl::ClockControl(System::BaseAddress base, uint32_t externalClock) :
     mBase(reinterpret_cast<volatile RCC*>(base)),
     mExternalClock(externalClock),
-    mChangeHandler()
+    mCallback()
 {
     static_assert(sizeof(RCC) == 0x88, "Struct has wrong size, compiler problem.");
 }
@@ -33,18 +33,18 @@ ClockControl::~ClockControl()
 {
 }
 
-void ClockControl::addChangeHandler(ClockControl::ChangeHandler *changeHandler)
+void ClockControl::addChangeHandler(ClockControl::Callback *changeHandler)
 {
-    mChangeHandler.push_back(changeHandler);
+    mCallback.push_back(changeHandler);
 }
 
-void ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandler)
+void ClockControl::removeChangeHandler(ClockControl::Callback *changeHandler)
 {
-    for (auto i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
+    for (auto i = mCallback.begin(); i != mCallback.end(); ++i)
     {
         if (*i == changeHandler)
         {
-            mChangeHandler.erase(i);
+            mCallback.erase(i);
             return;
         }
     }
@@ -52,27 +52,7 @@ void ClockControl::removeChangeHandler(ClockControl::ChangeHandler *changeHandle
 
 void ClockControl::resetClock()
 {
-    for (ChangeHandler*& handler : mChangeHandler)
-    {
-        handler->clockPrepareChange(INTERNAL_CLOCK);
-    }
-    // enable internal clock
-    System::setRegister(&mBase->CR, 0x00000081);
-    // configure internal clock as clock source and wait till it is active
-    System::setRegister(&mBase->CFGR, 0x00000000);
-    while (mBase->CFGR.SWS != 0)
-    {
-    }
-    // reset pll config
-    System::setRegister(&mBase->PLLCFGR, 0x24003010);
-    // reset interrupts
-    System::setRegister(&mBase->CIR, 0x00000000);
-    // reset I2S pll
-    System::setRegister(&mBase->PLLI2SCFGR, 0x20003000);
-    for (ChangeHandler*& handler : mChangeHandler)
-    {
-        handler->clockChanged(INTERNAL_CLOCK);
-    }
+    resetClock(true);
 }
 
 void ClockControl::reset()
@@ -120,12 +100,10 @@ void ClockControl::disable(ClockControl::Function function)
 bool ClockControl::setSystemClock(uint32_t clock)
 {
     if (clock > 168000000) return false;
-    //for (auto i = mChangeHandler.begin(); i != mChangeHandler.end(); ++i)
-    for (ChangeHandler*& handler : mChangeHandler)
-    {
-        handler->clockPrepareChange(clock);
-    }
-    if (mBase->CR.HSEON) resetClock();
+
+    notify(Callback::Reason::AboutToChange, clock);
+
+    if (mBase->CR.HSEON) resetClock(false);
     // enable external oscillator
     mBase->CR.HSEON = 1;
 
@@ -170,10 +148,7 @@ bool ClockControl::setSystemClock(uint32_t clock)
     {
     }
 
-    for (ChangeHandler*& handler : mChangeHandler)
-    {
-        handler->clockChanged(clock);
-    }
+    notify(Callback::Reason::Changed, clock);
 
     return true;
 }
@@ -249,4 +224,28 @@ bool ClockControl::getPllConfig(uint32_t clock, uint32_t &div, uint32_t &mul)
     div = 63;
     mul = 192;
     return false;
+}
+
+void ClockControl::resetClock(bool notifyAll)
+{
+    if (notifyAll) notify(Callback::Reason::AboutToChange, INTERNAL_CLOCK);
+    // enable internal clock
+    System::setRegister(&mBase->CR, 0x00000081);
+    // configure internal clock as clock source and wait till it is active
+    System::setRegister(&mBase->CFGR, 0x00000000);
+    while (mBase->CFGR.SWS != 0)
+    {
+    }
+    // reset pll config
+    System::setRegister(&mBase->PLLCFGR, 0x24003010);
+    // reset interrupts
+    System::setRegister(&mBase->CIR, 0x00000000);
+    // reset I2S pll
+    System::setRegister(&mBase->PLLI2SCFGR, 0x20003000);
+    if (notifyAll) notify(Callback::Reason::Changed, INTERNAL_CLOCK);
+}
+
+void ClockControl::notify(ClockControl::Callback::Reason reason, uint32_t clock)
+{
+    for (Callback*& handler : mCallback) handler->clockCallback(reason, clock);
 }

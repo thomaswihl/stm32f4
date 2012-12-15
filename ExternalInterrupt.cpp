@@ -24,20 +24,20 @@ ExternalInterrupt::ExternalInterrupt(unsigned int base, std::size_t vectorSize) 
     mBase(reinterpret_cast<volatile EXTI*>(base))
 {
     static_assert(sizeof(EXTI) == 0x18, "Struct has wrong size, compiler problem.");
-    mHandler = new InterruptController::Handler*[vectorSize];
+    mCallback = new InterruptController::Callback*[vectorSize];
 }
 
 ExternalInterrupt::~ExternalInterrupt()
 {
 }
 
-void ExternalInterrupt::set(InterruptController::Index index, InterruptController::Handler *handler)
+void ExternalInterrupt::set(InterruptController::Index index, InterruptController::Callback *callback)
 {
-    mHandler[index] = handler;
+    mCallback[index] = callback;
 }
 
 
 void ExternalInterrupt::handle(InterruptController::Index index)
 {
-    if (mHandler[index] != 0) mHandler[index]->handle(index);
+    if (mCallback[index] != 0) mCallback[index]->interruptCallback(index);
 }

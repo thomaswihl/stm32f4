@@ -41,10 +41,10 @@ void __attribute__((naked)) Trap()
     __asm("bx r0");
 }
 
-void __attribute__((naked)) SysTick()
+void __attribute__((interrupt)) SysTick()
 {
     System::sysTick();
-    __asm("bx lr");
+    //__asm("bx lr");
 }
 
 void __attribute__((interrupt)) Isr()

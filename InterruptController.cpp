@@ -22,7 +22,7 @@ InterruptController::InterruptController(unsigned int base, std::size_t vectorSi
     mBase(reinterpret_cast<volatile NVIC*>(base))
 {
     static_assert(sizeof(NVIC) == 0xe04, "Struct has wrong size, compiler problem.");
-    mHandler = new Handler*[vectorSize];
+    mHandler = new Callback*[vectorSize];
 }
 
 InterruptController::~InterruptController()
@@ -31,7 +31,7 @@ InterruptController::~InterruptController()
 
 void InterruptController::handle(Index index)
 {
-    if (mHandler[index] != 0) mHandler[index]->handle(index);
+    if (mHandler[index] != 0) mHandler[index]->interruptCallback(index);
 }
 
 void InterruptController::setPriotity(InterruptController::Index index, InterruptController::Priority priority)
@@ -48,10 +48,10 @@ InterruptController::Line::Line(InterruptController &interruptController, Interr
 InterruptController::Line::~Line()
 {
     disable();
-    setHandler(0);
+    setCallback(0);
 }
 
-void InterruptController::Line::setHandler(InterruptController::Handler *handler)
+void InterruptController::Line::setCallback(InterruptController::Callback *handler)
 {
     mInterruptController.mHandler[mIndex] = handler;
 }

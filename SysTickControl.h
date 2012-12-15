@@ -22,7 +22,7 @@
 #include "System.h"
 #include "ClockControl.h"
 
-class SysTickControl : ClockControl::ChangeHandler
+class SysTickControl : ClockControl::Callback
 {
 public:
     SysTickControl(System::BaseAddress base, ClockControl* clock, unsigned int msInterval);
@@ -32,8 +32,7 @@ public:
     void usleep(unsigned int us);
 
 protected:
-    virtual void clockPrepareChange(uint32_t newClock);
-    virtual void clockChanged(uint32_t newClock);
+    virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
 
 private:
     struct STK

@@ -23,27 +23,14 @@
 
 
 StmSystem gSys;
-CommandInterpreter gCmd;
+CommandInterpreter gCmd(&gSys.mDebug);
 
 void handleSerialEvent(System::Event::Component component, Serial::EventType event)
 {
     switch (event)
     {
     case Serial::EventType::ReceivedByte:
-        char c;
-        gSys.mDebug.read(&c, 1);
-        gSys.mDebug.write(&c, 1);
-        //gCmd.append(c);
-        if (c == '\r')
-        {
-            const char* t = "\n# ";
-            gSys.mDebug.write(t, 3);
-        }
-        else if (c == 18)
-        {
-            gSys.mRcc.resetClock();
-            gSys.printInfo();
-        }
+        gCmd.feed();
         break;
     }
 }
@@ -59,7 +46,7 @@ int main()
     gSys.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
     gSys.mGpioD.set(Gpio::Pin::Pin12);
-    std::printf("# ");
+    gCmd.start();
     std::fflush(stdout);
     System::Event event;
     while (true)

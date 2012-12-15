@@ -19,6 +19,8 @@
 #ifndef COMMANDINTERPRETER_H
 #define COMMANDINTERPRETER_H
 
+#include "Serial.h"
+
 class CommandInterpreter
 {
 public:
@@ -33,9 +35,39 @@ public:
     private:
     };
 
-    CommandInterpreter();
+    CommandInterpreter(Serial* serial);
+    void feed();
+    void start();
 private:
+    enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16 };
+
+    class Possibilities
+    {
+    public:
+        Possibilities() : mLen(0) { }
+        void append(const char* string)
+        {
+            unsigned int stringLen = strlen(string);
+            strncpy(mString + mLen, string, std::min(sizeof(mString) - mLen, stringLen));
+            mLen += stringLen;
+            if (mLen < sizeof(mString)) mString[mLen++] = ' ';
+        }
+        const char* string() { return mString; }
+
+    private:
+        char mString[256];
+        unsigned int mLen;
+    };
+
+    Serial* mSerial;
     static const Command mCmd[];
+    char mLine[MAX_LINE_LEN];
+    unsigned int mLineLen;
+    char mPrompt[MAX_PROMPT_LEN];
+
+    void printLine();
+    void complete();
+    void execute();
 };
 
 #endif // COMMANDINTERPRETER_H

@@ -92,8 +92,9 @@ public:
     }
 
 
-    unsigned int getContBuffer(char*& data)
+    unsigned int getContBuffer(const char*& data)
     {
+        if (mUsed == 0) return 0;
         data = mRead;
         if (data < mWrite) return mWrite - data;
         return (mBuffer + mSize) - data;

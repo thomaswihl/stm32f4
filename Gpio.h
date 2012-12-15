@@ -93,18 +93,15 @@ private:
     struct GPIO
     {
         uint32_t MODER;
-        uint16_t OTYPER;
-        uint16_t __RESERVED0;
+        uint32_t OTYPER;
         uint32_t OSPEEDR;
         uint32_t PUPDR;
-        uint16_t IDR;
-        uint16_t __RESERVED1;
-        uint16_t ODR;
-        uint16_t __RESERVED2;
+        uint32_t IDR;
+        uint32_t ODR;
         struct __BSRR
         {
-            uint16_t BS;
-            uint16_t BR;
+            uint32_t BS : 16;
+            uint32_t BR : 16;
         }   BSRR;
         uint32_t LCKR;
         uint32_t AFRL;

@@ -29,7 +29,7 @@ public:
     ExternalInterrupt(unsigned int base, std::size_t vectorSize);
     ~ExternalInterrupt();
 
-    void set(InterruptController::Index index, InterruptController::Handler *handler);
+    void set(InterruptController::Index index, InterruptController::Callback *callback);
     void handle(InterruptController::Index index);
 private:
     struct EXTI
@@ -49,7 +49,7 @@ private:
     };
 
     volatile EXTI* mBase;
-    InterruptController::Handler** mHandler;
+    InterruptController::Callback** mCallback;
 
 };
 

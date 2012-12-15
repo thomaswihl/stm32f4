@@ -65,13 +65,15 @@ void StmSystem::init()
 {
     mRcc.enable(ClockControl::Function::Usart2);
     mRcc.enable(ClockControl::Function::GpioA);
+    mRcc.enable(ClockControl::Function::Dma1);
     mGpioA.configOutput(Gpio::Pin::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Low);
     mGpioA.configInput(Gpio::Pin::Pin3);
     mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::USART2);
     mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::USART2);
     mDebug.config(115200);
-    //mDebug.configDma(new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel4), 0);
-    mDebug.configInterrupt(new InterruptController::Line(mNvic, static_cast<InterruptController::Index>(InterruptIndex::USART2)));
+    mDebug.configDma(new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel4,
+                                     new InterruptController::Line(mNvic, InterruptIndex::DMA1_Stream6)), nullptr);
+    mDebug.configInterrupt(new InterruptController::Line(mNvic, InterruptIndex::USART2));
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
     mRcc.setSystemClock(168000000);

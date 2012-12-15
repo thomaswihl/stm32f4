@@ -39,19 +39,13 @@ void Flash::set(Flash::Feature feature, bool enable)
     }
 }
 
-void Flash::clockPrepareChange(uint32_t newClock)
+void Flash::clockCallback(Reason reason, uint32_t newClock)
 {
-    uint16_t ws = getWaitStates(newClock);
+    uint32_t ws = getWaitStates(newClock);
     if (mBase->ACR.LATENCY < ws) mBase->ACR.LATENCY = ws;
 }
 
-void Flash::clockChanged(uint32_t newClock)
-{
-    uint16_t ws = getWaitStates(newClock);
-    if (mBase->ACR.LATENCY > ws) mBase->ACR.LATENCY = ws;
-}
-
-uint16_t Flash::getWaitStates(uint32_t clock)
+uint32_t Flash::getWaitStates(uint32_t clock)
 {
     if (clock <= 30000000) return 0;
     if (clock <= 60000000) return 1;

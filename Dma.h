@@ -19,31 +19,14 @@
 #ifndef DMA_H
 #define DMA_H
 
+#include "System.h"
+#include "InterruptController.h"
+
 #include <cstdint>
 
 class Dma
 {
 public:
-    class Stream
-    {
-    public:
-        enum class StreamIndex { Stream0, Stream1, Stream2, Stream3, Stream4, Stream5, Stream6, Stream7 };
-        enum class ChannelIndex { Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7 };
-
-        Stream(Dma& dma, StreamIndex stream, ChannelIndex channel);
-        ~Stream();
-
-        void enable();
-        void disable();
-        void waitReady();
-
-    private:
-        Dma& mDma;
-        uint8_t mStream;
-        uint8_t mChannel;
-
-    };
-
     Dma(unsigned int base);
 
 private:
@@ -51,50 +34,51 @@ private:
 
     struct __STREAM
     {
-        struct __CR
-        {
-            uint32_t EN : 1;
-            uint32_t DMEIE : 1;
-            uint32_t TEIE : 1;
-            uint32_t HTIE : 1;
-            uint32_t TCIE : 1;
-            uint32_t PFCTRL : 1;
-            uint32_t DIR : 2;
-            uint32_t CIRC : 1;
-            uint32_t PINC : 1;
-            uint32_t MINC : 1;
-            uint32_t PSIZE : 2;
-            uint32_t MSIZE : 2;
-            uint32_t PINCOS : 1;
-            uint32_t PL : 2;
-            uint32_t DBM : 1;
-            uint32_t CT : 1;
-            uint32_t __RESERVED0 : 1;
-            uint32_t PBURST : 2;
-            uint32_t MBURST : 2;
-            uint32_t CHSEL : 3;
-            uint32_t __RESERVED1 : 4;
+        union __CR {
+            struct
+            {
+                uint32_t EN : 1;
+                uint32_t DMEIE : 1;
+                uint32_t TEIE : 1;
+                uint32_t HTIE : 1;
+                uint32_t TCIE : 1;
+                uint32_t PFCTRL : 1;
+                uint32_t DIR : 2;
+                uint32_t CIRC : 1;
+                uint32_t PINC : 1;
+                uint32_t MINC : 1;
+                uint32_t PSIZE : 2;
+                uint32_t MSIZE : 2;
+                uint32_t PINCOS : 1;
+                uint32_t PL : 2;
+                uint32_t DBM : 1;
+                uint32_t CT : 1;
+                uint32_t __RESERVED0 : 1;
+                uint32_t PBURST : 2;
+                uint32_t MBURST : 2;
+                uint32_t CHSEL : 3;
+                uint32_t __RESERVED1 : 4;
+            };
+            uint32_t CR;
         }   CR;
-        uint16_t NDTR;
-        uint16_t __RESERVED0;
+        uint32_t NDTR;
         uint32_t PAR;
         uint32_t M0AR;
         uint32_t M1AR;
         struct __FCR
         {
-            uint8_t FTH : 2;
-            uint8_t DMDIS : 1;
-            uint8_t FS : 3;
-            uint8_t __RESERVED0 : 1;
-            uint8_t FEIE : 1;
-            uint8_t __RESERVED1;
-            uint16_t __RESERVED2;
+            uint32_t FTH : 2;
+            uint32_t DMDIS : 1;
+            uint32_t FS : 3;
+            uint32_t __RESERVED0 : 1;
+            uint32_t FEIE : 1;
+            uint32_t __RESERVED1 : 24;
         }   FCR;
     };
     struct DMA
     {
-        uint16_t ISR[4];
-        uint16_t IFCR[4];
+        uint32_t ISR[2];
+        uint32_t IFCR[2];
         __STREAM STREAM[8];
     };
 
@@ -102,6 +86,63 @@ private:
 
     void clearInterrupt(uint8_t stream, uint8_t flag);
     bool checkInterrupt(uint8_t stream, uint8_t flag);
+    uint8_t getInterruptStatus(uint8_t stream);
+    void clearInterruptStatus(uint8_t stream, uint8_t bits);
+    unsigned int shiftFromIndex(uint32_t index);
+
+public:
+    class Stream : public InterruptController::Callback
+    {
+    public:
+        enum class StreamIndex { Stream0, Stream1, Stream2, Stream3, Stream4, Stream5, Stream6, Stream7 };
+        enum class ChannelIndex { Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7 };
+        enum class Direction { PeripheralToMemory, MemoryToPeripheral, MemoryToMemory };
+        enum class DataSize { Byte, HalfWord, Word };
+        enum class Priority { Low, Medium, High, VeryHigh };
+        enum class BurstLength { Single, Beats4, Beats8, Beats16 };
+        enum class End { Memory = 0, Peripheral = 1, MemoryToMemoryDestination = 0, MemoryToMemorySource = 1 };
+
+        class Callback
+        {
+        public:
+            enum class Reason { TransferComplete, TransferError };
+            Callback() { }
+            virtual ~Callback() { }
+            virtual void dmaCallback(Reason reason) = 0;
+        };
+
+        Stream(Dma& dma, StreamIndex stream, ChannelIndex channel, InterruptController::Line* interrupt);
+        ~Stream();
+
+        void start();
+        void waitReady();
+
+        void setBurstLength(End end, BurstLength burstLength);
+        void setPriority(Priority priority);
+        void setDataSize(End end, DataSize dataSize);
+        void setIncrement(End end, bool increment);
+        void setDirection(Direction direction);
+        void setAddress(End end, System::BaseAddress address);
+        void setCallback(Callback* callback);
+        void setTransferCount(uint16_t count);
+
+        void configure(Direction direction, bool peripheralIncrement, bool memoryIncrement, DataSize peripheralDataSize, DataSize memoryDataSize, BurstLength peripheralBurst, BurstLength memoryBurst);
+
+        virtual void interruptCallback(InterruptController::Index index);
+
+    private:
+        Dma& mDma;
+        uint8_t mStream;
+        uint8_t mChannel;
+        InterruptController::Line* mInterrupt;
+        Callback* mCallback;
+
+        System::BaseAddress mPeripheral;
+        System::BaseAddress mMemory;
+        uint16_t mCount;
+        Dma::__STREAM::__CR mConfiguration;
+    };
+
 };
 
 #endif // DMA_H
