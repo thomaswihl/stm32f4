@@ -20,6 +20,7 @@
 #define COMMANDINTERPRETER_H
 
 #include "Serial.h"
+#include "StmSystem.h"
 
 class CommandInterpreter
 {
@@ -35,7 +36,7 @@ public:
     private:
     };
 
-    CommandInterpreter(Serial* serial);
+    CommandInterpreter(StmSystem& system);
     void feed();
     void start();
 private:
@@ -58,8 +59,7 @@ private:
         char mString[256];
         unsigned int mLen;
     };
-
-    Serial* mSerial;
+    StmSystem& mSystem;
     static const Command mCmd[];
     char mLine[MAX_LINE_LEN];
     unsigned int mLineLen;

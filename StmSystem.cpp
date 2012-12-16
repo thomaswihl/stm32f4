@@ -63,6 +63,7 @@ void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
 
 void StmSystem::init()
 {
+    mRcc.setSystemClock(168000000);
     mRcc.enable(ClockControl::Function::Usart2);
     mRcc.enable(ClockControl::Function::GpioA);
     mRcc.enable(ClockControl::Function::Dma1);
@@ -76,7 +77,6 @@ void StmSystem::init()
     mDebug.configInterrupt(new InterruptController::Line(mNvic, InterruptIndex::USART2));
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
-    mRcc.setSystemClock(168000000);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 
@@ -92,11 +92,11 @@ int StmSystem::debugWrite(const char *msg, int len)
 
 void StmSystem::printInfo()
 {
-    std::printf("\nSystem clock is %gMHz, AHB clock is %gMHz, APB1 is %gMHz, APB2 is %gMHz\n",
-                mRcc.clock(ClockControl::Clock::System) / 1000000.0f,
-                mRcc.clock(ClockControl::Clock::AHB) / 1000000.0f,
-                mRcc.clock(ClockControl::Clock::APB1) / 1000000.0f,
-                mRcc.clock(ClockControl::Clock::APB2) / 1000000.0f);
-    std::printf("RAM  : %gk free, %gk used.\n", memFree() / 1024.0f, memUsed() / 1024.0f);
-    std::printf("STACK: %gk free, %gk used.\n", stackFree() / 1024.0f, stackUsed() / 1024.0f);
+    std::printf("\nSystem clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz\n",
+                mRcc.clock(ClockControl::Clock::System) / 1000000,
+                mRcc.clock(ClockControl::Clock::AHB) / 1000000,
+                mRcc.clock(ClockControl::Clock::APB1) / 1000000,
+                mRcc.clock(ClockControl::Clock::APB2) / 1000000);
+    std::printf("RAM  : %luk free, %luk used.\n", memFree() / 1024, memUsed() / 1024);
+    std::printf("STACK: %luk free, %luk used.\n", stackFree() / 1024, stackUsed() / 1024);
 }

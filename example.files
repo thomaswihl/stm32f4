@@ -21,7 +21,6 @@ InterruptController.cpp
 Dma.h
 Dma.cpp
 CircularBuffer.h
-CircularBuffer.cpp
 SysTickControl.h
 SysTickControl.cpp
 FpuControl.h

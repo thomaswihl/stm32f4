@@ -23,7 +23,7 @@
 
 
 StmSystem gSys;
-CommandInterpreter gCmd(&gSys.mDebug);
+CommandInterpreter gCmd(gSys);
 
 void handleSerialEvent(System::Event::Component component, Serial::EventType event)
 {

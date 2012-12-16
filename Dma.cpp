@@ -27,13 +27,13 @@ Dma::Dma(unsigned int base) :
 void Dma::clearInterrupt(uint8_t stream, uint8_t flag)
 {
     uint32_t index = static_cast<uint32_t>(stream);
-    mBase->IFCR[index / 2] = (1 << flag) << shiftFromIndex(index);
+    mBase->IFCR[index / 4] = flag << shiftFromIndex(index);
 }
 
 bool Dma::checkInterrupt(uint8_t stream, uint8_t flag)
 {
     uint32_t index = static_cast<uint32_t>(stream);
-    return (mBase->ISR[index / 2] & ((1 << flag) << shiftFromIndex(index))) != 0;
+    return (mBase->ISR[index / 4] & (flag << shiftFromIndex(index))) != 0;
 }
 
 uint8_t Dma::getInterruptStatus(uint8_t stream)
@@ -45,7 +45,7 @@ uint8_t Dma::getInterruptStatus(uint8_t stream)
 void Dma::clearInterruptStatus(uint8_t stream, uint8_t bits)
 {
     uint32_t index = static_cast<uint32_t>(stream);
-    mBase->ISR[index / 2] = (bits & 0x3f) << shiftFromIndex(index);
+    mBase->IFCR[index / 4] = (bits & 0x3f) << shiftFromIndex(index);
 }
 
 unsigned int Dma::shiftFromIndex(uint32_t index)
@@ -67,7 +67,7 @@ Dma::Stream::Stream(Dma &dma, Dma::Stream::StreamIndex stream, Dma::Stream::Chan
     mConfiguration.TEIE = 1;
     mConfiguration.DMEIE = 1;
     // This should always be on as HW sets it to zero if MemoryToMemory is active
-    mConfiguration.PFCTRL = 1;
+    //mConfiguration.PFCTRL = 1;
     if (mInterrupt != nullptr)
     {
         mInterrupt->setCallback(this);
@@ -86,21 +86,17 @@ void Dma::Stream::start()
     mDma.mBase->STREAM[mStream].M0AR = mMemory;
     mDma.mBase->STREAM[mStream].PAR = mPeripheral;
     mDma.mBase->STREAM[mStream].NDTR = mCount;
+    //mDma.mBase->STREAM[mStream].FCR.DMDIS = 1;
     mDma.mBase->STREAM[mStream].CR.CR = mConfiguration.CR;
     mDma.mBase->STREAM[mStream].CR.EN = 1;
 }
 
 void Dma::Stream::waitReady()
 {
-    if (!mDma.mBase->STREAM[mStream].CR.EN) return;
-    while (!mDma.checkInterrupt(mStream, Dma::TransferComplete) &&
-           !mDma.checkInterrupt(mStream, Dma::TransferError) &&
-           !mDma.checkInterrupt(mStream, Dma::DirectModeError) &&
-           !mDma.checkInterrupt(mStream, Dma::FifoError))
+    while (mDma.mBase->STREAM[mStream].CR.EN)
     {
 
     }
-    mDma.mBase->STREAM[mStream].CR.EN = 0;
 }
 
 void Dma::Stream::setBurstLength(Dma::Stream::End end, Dma::Stream::BurstLength burstLength)
@@ -158,16 +154,11 @@ void Dma::Stream::configure(Dma::Stream::Direction direction, bool peripheralInc
 
 void Dma::Stream::interruptCallback(InterruptController::Index index)
 {
+    uint8_t status = mDma.getInterruptStatus(mStream);
+    mDma.clearInterruptStatus(mStream, status);
     if (mCallback != nullptr)
     {
-        uint8_t status = mDma.getInterruptStatus(mStream);
-        Callback::Reason reason = Callback::Reason::TransferComplete;
-        if (status != (1 << Dma::InterruptFlag::TransferComplete))
-        {
-            reason = Callback::Reason::TransferError;
-        }
-        mDma.clearInterruptStatus(mStream, status);
-        mCallback->dmaCallback(reason);
+        mCallback->dmaCallback(static_cast<InterruptFlag>(status));
     }
 }
 

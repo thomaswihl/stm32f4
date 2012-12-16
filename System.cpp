@@ -289,7 +289,7 @@ System::System(BaseAddress base) :
     mBase->SHCSR.USGFAULTENA = 1;
     mBase->SHCSR.BUSFAULTENA = 1;
     mBase->SHCSR.MEMFAULTENA = 1;
-    mBase->CCR.UNALIGNTRP = 1;
+    //mBase->CCR.UNALIGNTRP = 1;
     mBase->CCR.DIV0TRP = 1;
 }
 

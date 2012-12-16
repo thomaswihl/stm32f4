@@ -43,8 +43,8 @@ const CommandInterpreter::Command CommandInterpreter::mCmd[] =
     { "write", "address:u value:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", write },
 };
 
-CommandInterpreter::CommandInterpreter(Serial *serial) :
-    mSerial(serial),
+CommandInterpreter::CommandInterpreter(StmSystem& system) :
+    mSystem(system),
     mLineLen(0)
 {
     strcpy(mPrompt, "# ");
@@ -53,7 +53,7 @@ CommandInterpreter::CommandInterpreter(Serial *serial) :
 void CommandInterpreter::feed()
 {
     char c;
-    while (mSerial->pop(c))
+    while (mSystem.mDebug.pop(c))
     {
         switch (c)
         {
@@ -61,14 +61,28 @@ void CommandInterpreter::feed()
             complete();
             break;
         case '\r':
-            mSerial->write("\r\n", 2);
+            mSystem.mDebug.write("\r\n", 2);
             execute();
             mLineLen = 0;
             printLine();
             break;
+        case 8:
+            if (mLineLen > 0)
+            {
+                --mLineLen;
+                mSystem.mDebug.push(c);
+                mSystem.mDebug.push(' ');
+                mSystem.mDebug.push(c);
+            }
+            break;
+        case 18:    // Ctrl+R
+            mSystem.mRcc.resetClock();
+            mSystem.printInfo();
+            break;
         default:
             if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;
-            mSerial->push(c);
+            mSystem.mDebug.push(c);
+            break;
         }
     }
 }
@@ -80,9 +94,9 @@ void CommandInterpreter::start()
 
 void CommandInterpreter::printLine()
 {
-    mSerial->write("\r", 1);
-    mSerial->write(mPrompt, strlen(mPrompt));
-    mSerial->write(mLine, mLineLen);
+    mSystem.mDebug.write("\r                                                                                ", 1);
+    mSystem.mDebug.write(mPrompt, strlen(mPrompt));
+    mSystem.mDebug.write(mLine, mLineLen);
 }
 
 void CommandInterpreter::complete()

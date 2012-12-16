@@ -105,7 +105,6 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
         mDmaTx->configure(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaTx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mBase->CR3.DMAT = 1;
-        mBase->CR1.TCIE = 0;
         mDmaTx->setCallback(this);
     }
     mDmaRx = rx;
@@ -114,7 +113,6 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
         mDmaRx->configure(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaRx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mBase->CR3.DMAR = 1;
-        mBase->CR1.RXNEIE = 0;
         mDmaRx->setCallback(this);
     }
 }
@@ -173,10 +171,21 @@ void Serial::interruptCallback(InterruptController::Index index)
     }
     if (mBase->SR.TC)
     {
-        char c;
-        // check if there is another byte in the buffer and send it or dsiable the interrupt to signal that we are done
-        if (mWriteBuffer.pop(c)) mBase->DR = c;
-        else mBase->CR1.TCIE = 0;
+        if (mDmaTx != nullptr)
+        {
+            mWriteBuffer.skip(mDmaTransferLength);
+            mDmaTransferLength = 0;
+            mBase->CR1.TCIE = 0;
+            mBase->SR.TC = 0;
+            triggerWrite();
+        }
+        else
+        {
+            char c;
+            // check if there is another byte in the buffer and send it or dsiable the interrupt to signal that we are done
+            if (mWriteBuffer.pop(c)) mBase->DR = c;
+            else mBase->CR1.TCIE = 0;
+        }
     }
 }
 
@@ -185,23 +194,16 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
     if (reason == ClockControl::Callback::Reason::Changed && mSpeed != 0) setSpeed(mSpeed);
 }
 
-void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
+void Serial::dmaCallback(Dma::InterruptFlag reason)
 {
-//    configDma(nullptr, mDmaRx);
-//    mBase->CR3.DMAT = 0;
-//    mBase->SR.TC = 1;
-//    printf("DMA complete.\n");
-//    triggerWrite();
-//    return;
-    if (reason == Dma::Stream::Callback::Reason::TransferComplete)
+    if (reason & Dma::TransferComplete)
     {
-        mWriteBuffer.skip(mDmaTransferLength);
-        int timeout = 1000;
-        while (!mBase->SR.TC && timeout > 0)
+        if (mInterrupt == nullptr)
         {
-            --timeout;
+            mWriteBuffer.skip(mDmaTransferLength);
+            waitTransmitComplete();
+            triggerWrite();
         }
-        triggerWrite();
     }
     else
     {
@@ -214,15 +216,18 @@ void Serial::triggerWrite()
 {
     if (mDmaTx != 0)
     {
-        const char* source;
-        mDmaTransferLength = mWriteBuffer.getContBuffer(source);
-        if (mDmaTransferLength != 0)
+        if (mDmaTransferLength == 0)
         {
-            if (mDmaTransferLength > 10) mDmaTransferLength = 10;
-            mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(source));
-            mDmaTx->setTransferCount(mDmaTransferLength);
-            mBase->SR.TC = 0;
-            mDmaTx->start();
+            const char* source;
+            mDmaTransferLength = mWriteBuffer.getContBuffer(source);
+            if (mDmaTransferLength != 0)
+            {
+                mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(source));
+                mDmaTx->setTransferCount(mDmaTransferLength);
+                mBase->SR.TC = 0;
+                if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
+                mDmaTx->start();
+            }
         }
     }
     else if (mInterrupt != 0)
@@ -243,14 +248,18 @@ void Serial::triggerWrite()
         char c;
         while (mWriteBuffer.pop(c))
         {
-            int timeout = 10;
-            while (!mBase->SR.TC && timeout > 0)
-            {
-                mSystem.usleep(1000);
-                --timeout;
-            }
+            waitTransmitComplete();
             mBase->DR = c;
         }
+    }
+}
+
+void Serial::waitTransmitComplete()
+{
+    int timeout = 100000;
+    while (!mBase->SR.TC && timeout > 0)
+    {
+        --timeout;
     }
 }
 

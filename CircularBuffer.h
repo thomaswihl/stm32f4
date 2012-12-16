@@ -104,6 +104,7 @@ public:
     {
         len = std::min(len, used());
         mRead += len;
+        mUsed -= len;
         if (mRead >= (mBuffer + mSize)) mRead -= mSize;
         return len;
     }

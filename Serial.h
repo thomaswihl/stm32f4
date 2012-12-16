@@ -60,7 +60,7 @@ public:
 protected:
     virtual void interruptCallback(InterruptController::Index index);
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
-    virtual void dmaCallback(Dma::Stream::Callback::Reason reason);
+    virtual void dmaCallback(Dma::InterruptFlag reason);
 
 private:
     struct USART
@@ -161,6 +161,7 @@ private:
     unsigned int mDmaTransferLength;
 
     void triggerWrite();
+    void waitTransmitComplete();
 
 };
 

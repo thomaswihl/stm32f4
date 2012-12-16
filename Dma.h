@@ -27,10 +27,10 @@
 class Dma
 {
 public:
+    enum InterruptFlag { FifoError = 1, DirectModeError = 4, TransferError = 8, HalfTransfer = 16, TransferComplete = 32 };
     Dma(unsigned int base);
 
 private:
-    enum InterruptFlag { FifoError = 0, DirectModeError = 2, TransferError = 3, HalfTransfer = 4, TransferComplete = 5 };
 
     struct __STREAM
     {
@@ -105,10 +105,9 @@ public:
         class Callback
         {
         public:
-            enum class Reason { TransferComplete, TransferError };
             Callback() { }
             virtual ~Callback() { }
-            virtual void dmaCallback(Reason reason) = 0;
+            virtual void dmaCallback(InterruptFlag reason) = 0;
         };
 
         Stream(Dma& dma, StreamIndex stream, ChannelIndex channel, InterruptController::Line* interrupt);
