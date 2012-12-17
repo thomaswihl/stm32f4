@@ -59,6 +59,9 @@ void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
     mDebug.configDma(nullptr, nullptr);
     mDebug.configInterrupt(nullptr);
     System::handleTrap(index, stackPointer);
+    // wait for last byte to be written
+    for (int i = 0; i < 10000; ++i);
+    mRcc.resetClock();
 }
 
 void StmSystem::init()
@@ -77,7 +80,7 @@ void StmSystem::init()
     mDebug.configInterrupt(new InterruptController::Line(mNvic, InterruptIndex::USART2));
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
-    mFpu.enable(FpuControl::AccessPrivileges::Full);
+    //mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 
 int StmSystem::debugRead(char *msg, int len)

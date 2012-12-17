@@ -31,7 +31,7 @@ public:
         return true;
     }
     virtual unsigned int aliases(const char **&alias) const;
-    virtual const char* helpText() const { return "Access memory."; }
+    virtual const char* helpText() const { return "Read from memory (byte | halfword | word)."; }
 private:
     static const char* NAME[];
 };
@@ -45,7 +45,7 @@ public:
         return true;
     }
     virtual unsigned int aliases(const char **&alias) const;
-    virtual const char* helpText() const { return "Access memory."; }
+    virtual const char* helpText() const { return "Write to memory (byte | halfword | word)."; }
 private:
     static const char* NAME[];
 };

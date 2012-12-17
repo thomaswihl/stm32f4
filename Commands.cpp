@@ -8,9 +8,15 @@ const char* CmdWrite::NAME[] = { "write", "wb", "wh", "ww" };
 
 bool CmdHelp::execute(CommandInterpreter &interpreter, int argc, const char *argv[])
 {
-    for (auto i = interpreter.begin(); i != interpreter.end(); ++i)
+    for (auto cmd = interpreter.begin(); cmd != interpreter.end(); ++cmd)
     {
-        printf("%10s %s\n", i->get()->helpText(), i->get()->helpText());
+        if (argc != 2 || cmd->get()->startsWith(argv[1], strlen(argv[1])) != nullptr)
+        {
+            const char** alias;
+            unsigned int count = cmd->get()->aliases(alias);
+            for (unsigned int i = 0; i < count; ++i) printf("%s %c ", alias[i], (i < (count -1)) ? '|' : ' ' );
+            printf("\n  %s\n", cmd->get()->helpText());
+        }
     }
     return true;
 }

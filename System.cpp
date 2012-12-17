@@ -38,15 +38,21 @@ void __attribute__((naked)) Trap()
     // save the sp and lr (containing return info)
     __asm("mov r0, sp");
     __asm("push {r0, lr}");
-    register unsigned int* stackPointer asm("sp");
-    System::instance()->handleTrap(stackPointer + 2);
-    // replace the previous pc with the new one, as it doesn't make sense to return to the faulty instruction.
-    // We have to mask the lowest bit (indicating thumb code)
-    stackPointer[8] = reinterpret_cast<unsigned int>(&_exit) & 0xfffffffe;
+    __asm("add.w r0, r0, #8");
+    __asm("bl Trap2");
     __asm("pop {r0, lr}");
     __asm("mov sp, r0");
-    // return from fault handler
+    while (true) ;
+    // return from fault handler (doesn't work for whatever reason)
     __asm("bx lr");
+}
+
+void Trap2(unsigned int* stackPointer)
+{
+    System::instance()->handleTrap(stackPointer);
+    // replace the previous pc with the new one, as it doesn't make sense to return to the faulty instruction.
+    // We have to mask the lowest bit (indicating thumb code)
+    stackPointer[8] = reinterpret_cast<unsigned int>(&_exit);
 }
 
 void __attribute__((interrupt)) SysTick()
@@ -182,7 +188,7 @@ void* _sbrk(unsigned int incr)
 
 void _exit(int v)
 {
-    _write(1, "EXIT\n", 5);
+    printf("EXIT(%i)\n", v);
     while (true)
     {
         __asm("wfi");
@@ -370,12 +376,12 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
         "R0", "R1", "R2", "R3", "R12", "LR", "PC", "xPSR"
     };
 
-    printf("Stack:\n");
+    printf("Stack (0x%08x):\n", reinterpret_cast<unsigned int>(stackPointer));
 
     int i = 0;
     for (const char*& str : REGISTER_NAME)
     {
-        printf("  %4s = %08x (%u)\n", str, stackPointer[i], stackPointer[i]);
+        printf("  %4s = 0x%08x (%u)\n", str, stackPointer[i], stackPointer[i]);
         ++i;
     }
 }

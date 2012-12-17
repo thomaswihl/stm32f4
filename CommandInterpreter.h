@@ -50,32 +50,39 @@ public:
     void add(std::shared_ptr<Command> cmd);
     void start();
 private:
-    enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16 };
+    enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
+    enum class State { Input, Debug };
 
     class Possibilities
     {
     public:
-        Possibilities() : mLen(0) { }
+        Possibilities() : mLen(0), mCount(0) { }
         void append(const char* string)
         {
             unsigned int stringLen = strlen(string);
-            strncpy(mString + mLen, string, std::min(sizeof(mString) - mLen, stringLen));
+            strncpy(mString + mLen, string, std::min(sizeof(mString) - 1 - mLen, stringLen));
             mLen += stringLen;
-            if (mLen < sizeof(mString)) mString[mLen++] = ' ';
+            if (mLen < sizeof(mString) - 1) mString[mLen++] = ' ';
+            mString[mLen] = 0;
+            ++mCount;
         }
         const char* string() { return mString; }
+        unsigned int count() { return mCount; }
 
     private:
         char mString[256];
         unsigned int mLen;
+        unsigned int mCount;
     };
     StmSystem& mSystem;
     std::vector<std::shared_ptr<Command>> mCmd;
     char mLine[MAX_LINE_LEN];
     unsigned int mLineLen;
     char mPrompt[MAX_PROMPT_LEN];
+    State mState;
 
     void printLine();
+    Command* findCommand(const char* name, unsigned int len, Possibilities& possible);
     void complete();
     void execute();
 };
