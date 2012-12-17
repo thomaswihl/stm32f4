@@ -18,19 +18,21 @@
 
 #include "StmSystem.h"
 #include "CommandInterpreter.h"
+#include "Commands.h"
 
 #include <cstdio>
+#include <memory>
 
 
 StmSystem gSys;
-CommandInterpreter gCmd(gSys);
+CommandInterpreter gInterpreter(gSys);
 
 void handleSerialEvent(System::Event::Component component, Serial::EventType event)
 {
     switch (event)
     {
     case Serial::EventType::ReceivedByte:
-        gCmd.feed();
+        gInterpreter.feed();
         break;
     }
 }
@@ -46,7 +48,11 @@ int main()
     gSys.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
     gSys.mGpioD.set(Gpio::Pin::Pin12);
-    gCmd.start();
+    gInterpreter.add(std::shared_ptr<CommandInterpreter::Command>(new CmdHelp()));
+    gInterpreter.add(std::shared_ptr<CommandInterpreter::Command>(new CmdRead()));
+    gInterpreter.add(std::shared_ptr<CommandInterpreter::Command>(new CmdWrite()));
+    gInterpreter.start();
+
     std::fflush(stdout);
     System::Event event;
     while (true)

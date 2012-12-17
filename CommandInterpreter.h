@@ -22,22 +22,32 @@
 #include "Serial.h"
 #include "StmSystem.h"
 
+#include <vector>
+#include <memory>
+
 class CommandInterpreter
 {
 public:
     struct Command
     {
     public:
-        const char* mName;
-        const char* mParam;
-        const char* mHelp;
-        bool (*execute)(CommandInterpreter&, const char*);
+        Command() { }
 
-    private:
+        const char* startsWith(const char* string, unsigned int len) const;
+
+        virtual bool execute(CommandInterpreter& interpreter, int argc, const char* argv[]) = 0;
+        virtual unsigned int aliases(const char**& alias) const = 0;
+        virtual const char* helpText() const = 0;
     };
+
+    typedef std::vector<std::shared_ptr<Command>>::iterator iterator;
+    typedef std::vector<std::shared_ptr<Command>>::const_iterator const_iterator;
+    iterator begin() { return mCmd.begin(); }
+    iterator end() { return mCmd.end(); }
 
     CommandInterpreter(StmSystem& system);
     void feed();
+    void add(std::shared_ptr<Command> cmd);
     void start();
 private:
     enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16 };
@@ -60,7 +70,7 @@ private:
         unsigned int mLen;
     };
     StmSystem& mSystem;
-    static const Command mCmd[];
+    std::vector<std::shared_ptr<Command>> mCmd;
     char mLine[MAX_LINE_LEN];
     unsigned int mLineLen;
     char mPrompt[MAX_PROMPT_LEN];

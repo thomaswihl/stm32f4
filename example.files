@@ -27,3 +27,5 @@ FpuControl.h
 FpuControl.cpp
 CommandInterpreter.h
 CommandInterpreter.cpp
+Commands.h
+Commands.cpp

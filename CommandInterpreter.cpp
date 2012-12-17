@@ -21,28 +21,6 @@
 #include <cstring>
 #include <algorithm>
 
-bool help(CommandInterpreter& ci, const char* line)
-{
-    return true;
-}
-
-bool read(CommandInterpreter& ci, const char* line)
-{
-    return true;
-}
-bool write(CommandInterpreter& ci, const char* line)
-{
-    return true;
-}
-
-const CommandInterpreter::Command CommandInterpreter::mCmd[] =
-{
-    { "help", "command:s:o", "Shows help for all commands or the one given.", help },
-    { "hint", nullptr, "Dummy command.", help },
-    { "read", "address:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", read },
-    { "write", "address:u value:u length:u:o", "Read memory of LENGTH [bytes|halfwords|words] from ADDRESS .", write },
-};
-
 CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mSystem(system),
     mLineLen(0)
@@ -87,6 +65,11 @@ void CommandInterpreter::feed()
     }
 }
 
+void CommandInterpreter::add(std::shared_ptr<Command> cmd)
+{
+    mCmd.push_back(cmd);
+}
+
 void CommandInterpreter::start()
 {
     printLine();
@@ -94,40 +77,41 @@ void CommandInterpreter::start()
 
 void CommandInterpreter::printLine()
 {
-    mSystem.mDebug.write("\r                                                                                ", 1);
+    mSystem.mDebug.push('\r');
     mSystem.mDebug.write(mPrompt, strlen(mPrompt));
     mSystem.mDebug.write(mLine, mLineLen);
 }
 
 void CommandInterpreter::complete()
 {
-    const Command* use = nullptr;
+    const char* useName = nullptr;
     bool found = false;
     Possibilities possible;
-    for (const Command& cmd : mCmd)
+    for (const std::shared_ptr<Command>& cmd : mCmd)
     {
-        if (strncmp(mLine, cmd.mName, mLineLen) == 0)
+        const char* name = cmd->startsWith(mLine, mLineLen);
+        if (name != nullptr)
         {
             if (!found)
             {
-                use = &cmd;
+                useName = name;
                 found = true;
             }
             else
             {
-                if (use != nullptr)
+                if (useName != nullptr)
                 {
-                    possible.append(use->mName);
-                    use = nullptr;
+                    possible.append(useName);
+                    useName = nullptr;
                 }
-                possible.append(cmd.mName);
+                possible.append(name);
             }
         }
     }
-    if (found && use != nullptr)
+    if (found && useName != nullptr)
     {
-        int useLen = strlen(use->mName);
-        strncpy(mLine + mLineLen, use->mName + mLineLen, useLen - mLineLen);
+        int useLen = strlen(useName);
+        strncpy(mLine + mLineLen, useName + mLineLen, useLen - mLineLen);
         mLineLen = useLen;
         mLine[mLineLen++] = ' ';
         printLine();
@@ -143,4 +127,15 @@ void CommandInterpreter::execute()
 {
 }
 
+
+const char *CommandInterpreter::Command::startsWith(const char *string, unsigned int len) const
+{
+    const char** alias;
+    unsigned int count = aliases(alias);
+    for (unsigned int i = 0; i < count; ++i)
+    {
+        if (strncmp(alias[i], string, len) == 0) return alias[i];
+    }
+    return nullptr;
+}
 
