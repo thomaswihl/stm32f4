@@ -102,16 +102,18 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
     mDmaTx = tx;
     if (mDmaTx != nullptr)
     {
-        mDmaTx->configure(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+        mDmaTx->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Beats4);
         mDmaTx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
+        mDmaTx->configFifo(Dma::Stream::FifoThreshold::Quater);
         mBase->CR3.DMAT = 1;
         mDmaTx->setCallback(this);
     }
     mDmaRx = rx;
     if (mDmaRx != nullptr)
     {
-        mDmaRx->configure(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+        mDmaRx->config(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Beats4);
         mDmaRx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
+        mDmaTx->configFifo(Dma::Stream::FifoThreshold::Quater);
         mBase->CR3.DMAR = 1;
         mDmaRx->setCallback(this);
     }
@@ -194,12 +196,14 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
     if (reason == ClockControl::Callback::Reason::Changed && mSpeed != 0) setSpeed(mSpeed);
 }
 
-void Serial::dmaCallback(Dma::InterruptFlag reason)
+void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
 {
-    if (reason & Dma::TransferComplete)
+    if (reason == Dma::Stream::Callback::Reason::TransferComplete)
     {
+        // If we have an interrupt controller it will signal a TC as soon as the last transfer is complete.
         if (mInterrupt == nullptr)
         {
+            // Else we have to wait for it to finish before we can start the next.
             mWriteBuffer.skip(mDmaTransferLength);
             waitTransmitComplete();
             triggerWrite();
@@ -207,8 +211,9 @@ void Serial::dmaCallback(Dma::InterruptFlag reason)
     }
     else
     {
+        // Ooops something went wrong (probably our configuration, anyway, disable DMA.
         configDma(nullptr, mDmaRx);
-        printf("DMA failed.\n");
+        mSystem.printError("Serial", "DMA write failed");
     }
 }
 

@@ -65,14 +65,18 @@ private:
         uint32_t PAR;
         uint32_t M0AR;
         uint32_t M1AR;
-        struct __FCR
+        union __FCR
         {
-            uint32_t FTH : 2;
-            uint32_t DMDIS : 1;
-            uint32_t FS : 3;
-            uint32_t __RESERVED0 : 1;
-            uint32_t FEIE : 1;
-            uint32_t __RESERVED1 : 24;
+            struct
+            {
+                uint32_t FTH : 2;
+                uint32_t DMDIS : 1;
+                uint32_t FS : 3;
+                uint32_t __RESERVED0 : 1;
+                uint32_t FEIE : 1;
+                uint32_t __RESERVED1 : 24;
+            };
+            uint32_t FCR;
         }   FCR;
     };
     struct DMA
@@ -100,14 +104,17 @@ public:
         enum class DataSize { Byte, HalfWord, Word };
         enum class Priority { Low, Medium, High, VeryHigh };
         enum class BurstLength { Single, Beats4, Beats8, Beats16 };
-        enum class End { Memory = 0, Peripheral = 1, MemoryToMemoryDestination = 0, MemoryToMemorySource = 1 };
+        enum class FlowControl { Dma, Sdio };
+        enum class FifoThreshold { Quater = 0, Half = 1, ThreeQuater = 2, Full = 3, Disable = 4 };
+        enum class End { Memory = 0, Peripheral = 1, MemoryToMemoryDestination = 0, MemoryToMemorySource = 1, Memory0 = 0, Memory1 = 2 };
 
         class Callback
         {
         public:
+            enum class Reason { TransferComplete, TransferError, FifoError, DirectModeError };
             Callback() { }
             virtual ~Callback() { }
-            virtual void dmaCallback(InterruptFlag reason) = 0;
+            virtual void dmaCallback(Reason reason) = 0;
         };
 
         Stream(Dma& dma, StreamIndex stream, ChannelIndex channel, InterruptController::Line* interrupt);
@@ -124,8 +131,10 @@ public:
         void setAddress(End end, System::BaseAddress address);
         void setCallback(Callback* callback);
         void setTransferCount(uint16_t count);
+        void setFlowControl(FlowControl flowControl);
 
-        void configure(Direction direction, bool peripheralIncrement, bool memoryIncrement, DataSize peripheralDataSize, DataSize memoryDataSize, BurstLength peripheralBurst, BurstLength memoryBurst);
+        void config(Direction direction, bool peripheralIncrement, bool memoryIncrement, DataSize peripheralDataSize, DataSize memoryDataSize, BurstLength peripheralBurst, BurstLength memoryBurst);
+        void configFifo(FifoThreshold threshold);
 
         virtual void interruptCallback(InterruptController::Index index);
 
@@ -137,9 +146,11 @@ public:
         Callback* mCallback;
 
         System::BaseAddress mPeripheral;
-        System::BaseAddress mMemory;
+        System::BaseAddress mMemory0;
+        System::BaseAddress mMemory1;
         uint16_t mCount;
-        Dma::__STREAM::__CR mConfiguration;
+        Dma::__STREAM::__CR mStreamConfig;
+        Dma::__STREAM::__FCR mFifoConfig;
     };
 
 };

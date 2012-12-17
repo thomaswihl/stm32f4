@@ -76,8 +76,12 @@ public:
     virtual void handleTrap(TrapIndex index, unsigned int *stackPointer);
     inline void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
     inline void handleInterrupt() { handleInterrupt(mBase->ICSR.VECTACTIVE - 16); }
+
     virtual int debugWrite(const char* msg, int len) = 0;
     virtual int debugRead(char* msg, int len) = 0;
+    void printWarning(const char* component, const char* message);
+    void printError(const char* component, const char* message);
+
     static inline System* instance() { return mSystem; }
     static char* increaseHeap(unsigned int incr);
     uint32_t memFree();

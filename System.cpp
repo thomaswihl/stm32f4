@@ -35,16 +35,23 @@ extern "C"
 
 void __attribute__((naked)) Trap()
 {
+    // save the sp and lr (containing return info)
+    __asm("mov r0, sp");
+    __asm("push {r0, lr}");
     register unsigned int* stackPointer asm("sp");
-    System::instance()->handleTrap(stackPointer);
-    __asm("ldr r0, =_exit");
-    __asm("bx r0");
+    System::instance()->handleTrap(stackPointer + 2);
+    // replace the previous pc with the new one, as it doesn't make sense to return to the faulty instruction.
+    // We have to mask the lowest bit (indicating thumb code)
+    stackPointer[8] = reinterpret_cast<unsigned int>(&_exit) & 0xfffffffe;
+    __asm("pop {r0, lr}");
+    __asm("mov sp, r0");
+    // return from fault handler
+    __asm("bx lr");
 }
 
 void __attribute__((interrupt)) SysTick()
 {
     System::sysTick();
-    //__asm("bx lr");
 }
 
 void __attribute__((interrupt)) Isr()
@@ -322,8 +329,8 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
     };
     static_assert(sizeof(TRAP_NAME) / sizeof(TRAP_NAME[0]) == 16, "Not enough trap names defined, should be 16.");
     int intIndex = static_cast<int>(index);
-    if (intIndex < 16 && TRAP_NAME[intIndex] != nullptr) printf("TRAP: %s\n", TRAP_NAME[intIndex]);
-    else printf("TRAP: %i\n", intIndex);
+    if (intIndex < 16 && TRAP_NAME[intIndex] != nullptr) printf("\n\nTRAP: %s\n", TRAP_NAME[intIndex]);
+    else printf("\n\nTRAP: %i\n", intIndex);
     switch (index)
     {
     case TrapIndex::HardFault:
@@ -371,4 +378,14 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
         printf("  %4s = %08x (%u)\n", str, stackPointer[i], stackPointer[i]);
         ++i;
     }
+}
+
+void System::printWarning(const char *component, const char *message)
+{
+    printf("\nWARNING in %s: %s\n", component, message);
+}
+
+void System::printError(const char *component, const char *message)
+{
+    printf("\nERROR in %s: %s\n", component, message);
 }

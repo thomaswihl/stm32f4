@@ -60,7 +60,7 @@ public:
 protected:
     virtual void interruptCallback(InterruptController::Index index);
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
-    virtual void dmaCallback(Dma::InterruptFlag reason);
+    virtual void dmaCallback(Dma::Stream::Callback::Reason reason);
 
 private:
     struct USART

@@ -59,15 +59,21 @@ Dma::Stream::Stream(Dma &dma, Dma::Stream::StreamIndex stream, Dma::Stream::Chan
     mDma(dma),
     mStream(static_cast<uint8_t>(stream)),
     mChannel(static_cast<uint8_t>(channel)),
-    mInterrupt(interrupt)
+    mInterrupt(interrupt),
+    mCallback(nullptr),
+    mPeripheral(0),
+    mMemory0(0),
+    mMemory1(0),
+    mCount(0)
 {
-    mConfiguration.CR = 0;
-    mConfiguration.CHSEL = mChannel;
-    mConfiguration.TCIE = 1;
-    mConfiguration.TEIE = 1;
-    mConfiguration.DMEIE = 1;
-    // This should always be on as HW sets it to zero if MemoryToMemory is active
-    //mConfiguration.PFCTRL = 1;
+    mStreamConfig.CR = 0;
+    mStreamConfig.CHSEL = mChannel;
+    mStreamConfig.TCIE = 1;
+    mStreamConfig.TEIE = 1;
+    mStreamConfig.DMEIE = 1;
+    mFifoConfig.FCR = 0;
+    mFifoConfig.FTH = static_cast<uint32_t>(FifoThreshold::Half);
+
     if (mInterrupt != nullptr)
     {
         mInterrupt->setCallback(this);
@@ -83,11 +89,12 @@ Dma::Stream::~Stream()
 void Dma::Stream::start()
 {
     waitReady();
-    mDma.mBase->STREAM[mStream].M0AR = mMemory;
+    mDma.mBase->STREAM[mStream].M0AR = mMemory0;
+    mDma.mBase->STREAM[mStream].M1AR = mMemory1;
     mDma.mBase->STREAM[mStream].PAR = mPeripheral;
     mDma.mBase->STREAM[mStream].NDTR = mCount;
-    //mDma.mBase->STREAM[mStream].FCR.DMDIS = 1;
-    mDma.mBase->STREAM[mStream].CR.CR = mConfiguration.CR;
+    mDma.mBase->STREAM[mStream].FCR.FCR = mFifoConfig.FCR;
+    mDma.mBase->STREAM[mStream].CR.CR = mStreamConfig.CR;
     mDma.mBase->STREAM[mStream].CR.EN = 1;
 }
 
@@ -101,35 +108,36 @@ void Dma::Stream::waitReady()
 
 void Dma::Stream::setBurstLength(Dma::Stream::End end, Dma::Stream::BurstLength burstLength)
 {
-    if (end == End::Memory) mConfiguration.MBURST = static_cast<uint32_t>(burstLength);
-    else mConfiguration.PBURST = static_cast<uint32_t>(burstLength);
+    if (end == End::Memory) mStreamConfig.MBURST = static_cast<uint32_t>(burstLength);
+    else mStreamConfig.PBURST = static_cast<uint32_t>(burstLength);
 }
 
 void Dma::Stream::setPriority(Dma::Stream::Priority priority)
 {
-    mConfiguration.PL = static_cast<uint32_t>(priority);
+    mStreamConfig.PL = static_cast<uint32_t>(priority);
 }
 
 void Dma::Stream::setDataSize(Dma::Stream::End end, Dma::Stream::DataSize dataSize)
 {
-    if (end == End::Memory) mConfiguration.MSIZE = static_cast<uint32_t>(dataSize);
-    else mConfiguration.PSIZE = static_cast<uint32_t>(dataSize);
+    if (end == End::Memory) mStreamConfig.MSIZE = static_cast<uint32_t>(dataSize);
+    else mStreamConfig.PSIZE = static_cast<uint32_t>(dataSize);
 }
 
 void Dma::Stream::setIncrement(Dma::Stream::End end, bool increment)
 {
-    if (end == End::Memory) mConfiguration.MINC = increment ? 1 : 0;
-    else mConfiguration.PINC = increment ? 1 : 0;
+    if (end == End::Memory) mStreamConfig.MINC = increment ? 1 : 0;
+    else mStreamConfig.PINC = increment ? 1 : 0;
 }
 
 void Dma::Stream::setDirection(Dma::Stream::Direction direction)
 {
-     mConfiguration.DIR = static_cast<uint32_t>(direction);
+     mStreamConfig.DIR = static_cast<uint32_t>(direction);
 }
 
 void Dma::Stream::setAddress(Dma::Stream::End end, System::BaseAddress address)
 {
-    if (end == End::Memory) mMemory = address;
+    if (end == End::Memory0) mMemory0 = address;
+    else if (end == End::Memory1) mMemory1 = address;
     else mPeripheral = address;
 }
 
@@ -138,7 +146,7 @@ void Dma::Stream::setCallback(Dma::Stream::Callback *callback)
     mCallback = callback;
 }
 
-void Dma::Stream::configure(Dma::Stream::Direction direction, bool peripheralIncrement, bool memoryIncrement, Dma::Stream::DataSize peripheralDataSize, Dma::Stream::DataSize memoryDataSize, Dma::Stream::BurstLength peripheralBurst, Dma::Stream::BurstLength memoryBurst)
+void Dma::Stream::config(Dma::Stream::Direction direction, bool peripheralIncrement, bool memoryIncrement, Dma::Stream::DataSize peripheralDataSize, Dma::Stream::DataSize memoryDataSize, Dma::Stream::BurstLength peripheralBurst, Dma::Stream::BurstLength memoryBurst)
 {
     setBurstLength(End::Memory, memoryBurst);
     setBurstLength(End::Peripheral, peripheralBurst);
@@ -154,11 +162,29 @@ void Dma::Stream::configure(Dma::Stream::Direction direction, bool peripheralInc
 
 void Dma::Stream::interruptCallback(InterruptController::Index index)
 {
+    // get and clear interrupt flags
     uint8_t status = mDma.getInterruptStatus(mStream);
     mDma.clearInterruptStatus(mStream, status);
     if (mCallback != nullptr)
     {
-        mCallback->dmaCallback(static_cast<InterruptFlag>(status));
+        Callback::Reason reason = Callback::Reason::TransferComplete;
+        // someone cares about our result so lets find it
+        bool fifoError = (status & FifoError) != 0;
+        bool directModeError = (status & DirectModeError) != 0;
+        bool transferError = (status & TransferError) != 0;
+
+        // This can only happen in peripheral to memory transfer with no memory increase.
+        // It means that 1 transfer didn't happen and there will be 2 successive transfers
+        if (directModeError) reason = Callback::Reason::DirectModeError;
+
+        // In direct transfer FIFO error signals an over/underrun and isn't serios, so we can ignore it.
+        // In FIFO mode this is fatal (as no data has been transmitted) and caused by wrong configuration of FIFO.
+        if (fifoError && !mDma.mBase->STREAM[mStream].FCR.DMDIS) reason = Callback::Reason::FifoError;
+
+        // A bus errror triggers this as well as a write to memory register during a transfer, pretty fatal.
+        if (transferError) reason = Callback::Reason::DirectModeError;
+
+        mCallback->dmaCallback(reason);
     }
 }
 
@@ -168,3 +194,21 @@ void Dma::Stream::setTransferCount(uint16_t count)
     mCount = count;
 }
 
+void Dma::Stream::setFlowControl(Dma::Stream::FlowControl flowControl)
+{
+    mStreamConfig.PFCTRL = (flowControl == FlowControl::Dma) ? 0 : 1;
+}
+
+
+void Dma::Stream::configFifo(Dma::Stream::FifoThreshold threshold)
+{
+    if (threshold == FifoThreshold::Disable)
+    {
+        mFifoConfig.DMDIS = 0;
+    }
+    else
+    {
+        mFifoConfig.DMDIS = 1;
+        mFifoConfig.FTH = static_cast<uint32_t>(threshold);
+    }
+}
