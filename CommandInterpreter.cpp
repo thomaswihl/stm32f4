@@ -19,6 +19,7 @@
 #include "CommandInterpreter.h"
 
 #include <cstring>
+#include <cstdlib>
 #include <algorithm>
 
 CommandInterpreter::CommandInterpreter(StmSystem& system) :
@@ -119,13 +120,16 @@ void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool s
     unsigned int count = cmd->argumentCount() - 1;
     for (unsigned int i = 0; i <= count; ++i)
     {
+        const char* pos = strchr(cmd->argument(i), ':');
+        if (pos == nullptr) pos = cmd->argument(i);
+        else ++pos;
         if (summary)
         {
-            printf("%s ", cmd->argument(i));
+            printf("%s ", pos);
         }
         else
         {
-            printf("%10s: %s%s", cmd->argument(i), "o", "s");
+            printf("%10s: %s%s", pos, "o", "s");
         }
     }
 }
@@ -133,11 +137,59 @@ void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool s
 void CommandInterpreter::printAliases(CommandInterpreter::Command *cmd)
 {
     unsigned int count = cmd->aliasCount() - 1;
+    if (count > 1) printf("[");
     for (unsigned int i = 0; i <= count; ++i)
     {
         printf("%s", cmd->alias(i));
-        if (i < count) printf(" | ");
+        if (i < count) printf("|");
     }
+    if (count > 1) printf("]");
+}
+
+bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
+{
+    const char* string = argument.name;
+    argument.name = strchr(string, ':');
+    if (argument.name == nullptr)
+    {
+        argument.name = string;
+        argument.optional = false;
+        argument.type = Argument::Type::String;
+        return true;
+    }
+    argument.optional = false;
+    argument.type = Argument::Type::Unknown;
+    char* end;
+    for (; string < argument.name; ++string)
+    {
+        switch (*string)
+        {
+        case 's':
+            if (argument.type != Argument::Type::Unknown) return false;
+            argument.value.u = strtoul(argument.value.s, &end, 0);
+            if (*end != 0) return false;
+            argument.type = Argument::Type::String;
+            break;
+        case 'i':
+            if (argument.type != Argument::Type::Unknown) return false;
+            argument.type = Argument::Type::Int;
+            argument.value.i = strtol(argument.value.s, &end, 0);
+            if (*end != 0) return false;
+            break;
+        case 'u':
+            if (argument.type != Argument::Type::Unknown) return false;
+            argument.type = Argument::Type::UnsignedInt;
+            break;
+        case 'o':
+            argument.optional = true;
+            break;
+        default:
+            return false;
+        }
+    }
+    if (argument.type == Argument::Type::Unknown) return false;
+    ++argument.name;
+    return true;
 }
 
 void CommandInterpreter::printLine()
@@ -184,9 +236,9 @@ void CommandInterpreter::complete()
 
 void CommandInterpreter::execute()
 {
-    static Argument* argv[MAX_ARG_LEN];
-    argv[0]->value.s = mLine;
-    argv[0]->type = 's';
+    static Argument argv[MAX_ARG_LEN];
+    argv[0].value.s = mLine;
+    argv[0].type = Argument::Type::String;
     unsigned int argc = 1;
     Possibilities possible;
     Command* cmd = findCommand(mLine, mLineLen, possible);
@@ -196,29 +248,60 @@ void CommandInterpreter::execute()
         printf("Unknown command: %s, try help.\n", mLine);
         return;
     }
-    unsigned int maxArgc = cmd->argumentCount();
-    unsigned int minArgc = 0;
+    unsigned int maxArgc = std::min(static_cast<unsigned int>(MAX_ARG_LEN), cmd->argumentCount() + 1);
+    unsigned int minArgc = 1;
+    bool failed = false;
+    // first we split our line int seperate strings (by replacing whitespace with binary 0)
+    char split = ' ';
+    int argStart = 0, prevArgStart = 0;
     for (unsigned int i = 0; i < mLineLen; ++i)
     {
-        if (mLine[i] == ' ')
+        prevArgStart = argStart;
+        if (mLine[i] == split)
         {
             mLine[i] = 0;
-            argv[argc]->value.s = mLine + i + 1;
-            argv[argc]->type = 's';
-            ++argc;
-            if (argc > maxArgc)
+            split = ' ';
+            ++argStart;
+        }
+        else if (split == ' ' && (mLine[i] == '"' || mLine[i] == '\''))
+        {
+            mLine[i] = 0;
+            split = mLine[i];
+            ++argStart;
+        }
+        if (argStart > 0 && argStart == prevArgStart)
+        {
+            if (argc >= maxArgc) failed = true;
+            if (!failed)
             {
-                printUsage(cmd);
-                return;
+                argv[argc].value.s = mLine + i;
+                argv[argc].type = Argument::Type::String;
             }
+            ++argc;
         }
     }
-    if (argc < minArgc)
+    // If everything is fine so far we parse our arguments and check if they are valid.
+    if (!failed)
     {
+        for (unsigned int i = 1; i < argc; ++i)
+        {
+            if (!parseArgument(argv[argc]))
+            {
+                failed = true;
+                break;
+            }
+            if (!argv[argc].optional) ++minArgc;
+        }
+    }
+    // If we fond a problem print a usage message.
+    if (failed || argc < minArgc)
+    {
+        if (argc > maxArgc || argc < minArgc) printf("Wrong argument count (%i != [%i, %i]).\n", argc - 1, minArgc - 1, maxArgc - 1);
         printUsage(cmd);
         return;
     }
-    if (cmd != nullptr) cmd->execute(*this, argc, const_cast<const Argument**>(argv));
+    // Everything is fine, execute it.
+    if (cmd != nullptr) cmd->execute(*this, argc, reinterpret_cast<const Argument**>(&argv));
 }
 
 

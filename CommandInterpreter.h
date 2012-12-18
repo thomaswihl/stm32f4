@@ -30,13 +30,16 @@ class CommandInterpreter
 public:
     struct Argument
     {
+        enum class Type { Unknown, String, UnsignedInt, Int };
         union __value
         {
             unsigned int u;
             int i;
             char const * s;
         }   value;
-        char type;
+        Type type;
+        bool optional;
+        const char* name;
     };
     struct Command
     {
@@ -73,6 +76,7 @@ public:
     void printUsage(Command* cmd);
     void printArguments(Command* cmd, bool summary);
     void printAliases(Command* cmd);
+    bool parseArgument(Argument& argument);
 private:
     enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
     enum class State { Input, Debug };

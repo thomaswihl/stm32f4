@@ -17,7 +17,6 @@ CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(
 
 bool CmdHelp::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv[])
 {
-    if (argc > 2) return false;
     char const * argCmd = nullptr;
     unsigned int argCmdLen = 0;
     if (argc == 2)
@@ -35,7 +34,7 @@ bool CmdHelp::execute(CommandInterpreter &interpreter, int argc, const CommandIn
             interpreter.printArguments(cmd, true);
             printf("\n");
             interpreter.printArguments(cmd, false);
-            printf("\n  %s\n", cmd->helpText());
+            printf("  %s\n", cmd->helpText());
         }
     }
     return true;
@@ -47,7 +46,22 @@ CmdRead::CmdRead() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(
 
 bool CmdRead::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv[])
 {
-    return false;
+    unsigned int count = 1;
+    if (argc == 3) count = argv[2]->value.u;
+    switch (argv[0]->value.s[1])
+    {
+    case 'b':
+        dump<uint8_t>(argv[1]->value.u, count);
+        break;
+    case 'h':
+        dump<uint16_t>(argv[1]->value.u, count);
+        break;
+    case 'w':
+    case 'e':
+        dump<uint32_t>(argv[1]->value.u, count);
+        break;
+    }
+    return true;
 }
 
 CmdWrite::CmdWrite() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
