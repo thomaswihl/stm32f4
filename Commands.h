@@ -13,41 +13,34 @@ struct Command
 class CmdHelp : public CommandInterpreter::Command
 {
 public:
-    CmdHelp() : Command() { }
-    virtual bool execute(CommandInterpreter& interpreter, int argc, const char* argv[]);
-    virtual unsigned int aliases(const char **&alias) const;
+    CmdHelp();
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv[]);
     virtual const char* helpText() const { return "Shows help for all commands, or the one given."; }
 private:
-    static const char* NAME[];
-
+    static char const * const NAME[];
+    static char const * const ARGV[];
 };
 
 class CmdRead : public CommandInterpreter::Command
 {
 public:
-    CmdRead() : Command() { }
-    virtual bool execute(CommandInterpreter& interpreter, int argc, const char* argv[])
-    {
-        return true;
-    }
-    virtual unsigned int aliases(const char **&alias) const;
+    CmdRead();
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv[]);
     virtual const char* helpText() const { return "Read from memory (byte | halfword | word)."; }
 private:
-    static const char* NAME[];
+    static char const * const NAME[];
+    static char const * const ARGV[];
 };
 
 class CmdWrite : public CommandInterpreter::Command
 {
 public:
-    CmdWrite() : Command() { }
-    virtual bool execute(CommandInterpreter& interpreter, int argc, const char* argv[])
-    {
-        return true;
-    }
-    virtual unsigned int aliases(const char **&alias) const;
+    CmdWrite();
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv[]);
     virtual const char* helpText() const { return "Write to memory (byte | halfword | word)."; }
 private:
-    static const char* NAME[];
+    static char const * const NAME[];
+    static char const * const ARGV[];
 };
 
 #endif // COMMANDS_H

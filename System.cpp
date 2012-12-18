@@ -248,7 +248,6 @@ char* System::increaseHeap(unsigned int incr)
         _write(1, "ERROR: Heap full!\n", 18);
         abort();
     }
-    memset(prevHeapEnd, 0, incr);
     mHeapEnd += incr;
     return prevHeapEnd;
 }
@@ -265,15 +264,13 @@ uint32_t System::memUsed()
 
 uint32_t System::stackFree()
 {
-    register char* stack __asm("r0");
-    __asm volatile("mov r0, sp");
+    register char* stack __asm("sp");
     return stack - &__stack_start;
 }
 
 uint32_t System::stackUsed()
 {
     register char* stack __asm("sp");
-    //__asm volatile("mov r0, sp");
     return &__stack_end - stack;
 }
 

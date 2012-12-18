@@ -48,9 +48,9 @@ int main()
     gSys.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
     gSys.mGpioD.set(Gpio::Pin::Pin12);
-    gInterpreter.add(std::shared_ptr<CommandInterpreter::Command>(new CmdHelp()));
-    gInterpreter.add(std::shared_ptr<CommandInterpreter::Command>(new CmdRead()));
-    gInterpreter.add(std::shared_ptr<CommandInterpreter::Command>(new CmdWrite()));
+    gInterpreter.add(new CmdHelp());
+    gInterpreter.add(new CmdRead());
+    gInterpreter.add(new CmdWrite());
     gInterpreter.start();
 
     std::fflush(stdout);

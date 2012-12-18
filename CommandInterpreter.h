@@ -23,32 +23,56 @@
 #include "StmSystem.h"
 
 #include <vector>
-#include <memory>
+
 
 class CommandInterpreter
 {
 public:
+    struct Argument
+    {
+        union __value
+        {
+            unsigned int u;
+            int i;
+            char const * s;
+        }   value;
+        char type;
+    };
     struct Command
     {
     public:
-        Command() { }
+        Command(char const *const * alias, unsigned int aliasCount, char const *const * argument, unsigned int argumentCount) : mAlias(alias), mAliasCount(aliasCount), mArgument(argument), mArgumentCount(argumentCount) { }
 
         const char* startsWith(const char* string, unsigned int len) const;
+        char const *const alias(unsigned int i) { return (i < mAliasCount) ? mAlias[i] : nullptr; }
+        unsigned int aliasCount() { return mAliasCount; }
+        char const *const argument(unsigned int i) { return (i < mArgumentCount) ? mArgument[i] : nullptr; }
+        unsigned int argumentCount() { return mArgumentCount; }
 
-        virtual bool execute(CommandInterpreter& interpreter, int argc, const char* argv[]) = 0;
-        virtual unsigned int aliases(const char**& alias) const = 0;
+        virtual bool execute(CommandInterpreter& interpreter, int argc, const Argument* argv[]) = 0;
         virtual const char* helpText() const = 0;
+
+    protected:
+        char const *const * mAlias;
+        unsigned int mAliasCount;
+        char const *const * mArgument;
+        unsigned int mArgumentCount;
     };
 
-    typedef std::vector<std::shared_ptr<Command>>::iterator iterator;
-    typedef std::vector<std::shared_ptr<Command>>::const_iterator const_iterator;
+    typedef std::vector<Command*>::iterator iterator;
+    typedef std::vector<Command*>::const_iterator const_iterator;
     iterator begin() { return mCmd.begin(); }
     iterator end() { return mCmd.end(); }
 
     CommandInterpreter(StmSystem& system);
+    ~CommandInterpreter();
+
     void feed();
-    void add(std::shared_ptr<Command> cmd);
+    void add(Command *cmd);
     void start();
+    void printUsage(Command* cmd);
+    void printArguments(Command* cmd, bool summary);
+    void printAliases(Command* cmd);
 private:
     enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
     enum class State { Input, Debug };
@@ -75,7 +99,7 @@ private:
         unsigned int mCount;
     };
     StmSystem& mSystem;
-    std::vector<std::shared_ptr<Command>> mCmd;
+    std::vector<Command*> mCmd;
     char mLine[MAX_LINE_LEN];
     unsigned int mLineLen;
     char mPrompt[MAX_PROMPT_LEN];

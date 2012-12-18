@@ -29,6 +29,11 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     strcpy(mPrompt, "# ");
 }
 
+CommandInterpreter::~CommandInterpreter()
+{
+    for (auto cmd : mCmd) delete cmd;
+}
+
 void CommandInterpreter::feed()
 {
     char c;
@@ -90,7 +95,7 @@ void CommandInterpreter::feed()
     }
 }
 
-void CommandInterpreter::add(std::shared_ptr<Command> cmd)
+void CommandInterpreter::add(Command* cmd)
 {
     mCmd.push_back(cmd);
 }
@@ -98,6 +103,41 @@ void CommandInterpreter::add(std::shared_ptr<Command> cmd)
 void CommandInterpreter::start()
 {
     printLine();
+}
+
+void CommandInterpreter::printUsage(CommandInterpreter::Command *cmd)
+{
+    printf("Usage: ");
+    printAliases(cmd);
+    printf(" ");
+    printArguments(cmd, true);
+    printf("\n");
+}
+
+void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool summary)
+{
+    unsigned int count = cmd->argumentCount() - 1;
+    for (unsigned int i = 0; i <= count; ++i)
+    {
+        if (summary)
+        {
+            printf("%s ", cmd->argument(i));
+        }
+        else
+        {
+            printf("%10s: %s%s", cmd->argument(i), "o", "s");
+        }
+    }
+}
+
+void CommandInterpreter::printAliases(CommandInterpreter::Command *cmd)
+{
+    unsigned int count = cmd->aliasCount() - 1;
+    for (unsigned int i = 0; i <= count; ++i)
+    {
+        printf("%s", cmd->alias(i));
+        if (i < count) printf(" | ");
+    }
 }
 
 void CommandInterpreter::printLine()
@@ -110,13 +150,13 @@ void CommandInterpreter::printLine()
 CommandInterpreter::Command *CommandInterpreter::findCommand(const char *name, unsigned int len, CommandInterpreter::Possibilities &possible)
 {
     Command* cmdFound;
-    for (const std::shared_ptr<Command>& cmd : mCmd)
+    for (Command*& cmd : mCmd)
     {
         const char* n = cmd->startsWith(name, len);
         if (n != nullptr)
         {
             possible.append(n);
-            if (possible.count() == 1) cmdFound = cmd.get();
+            if (possible.count() == 1) cmdFound = cmd;
         }
     }
     if (possible.count() == 1) return cmdFound;
@@ -144,31 +184,50 @@ void CommandInterpreter::complete()
 
 void CommandInterpreter::execute()
 {
-    static const char* argv[MAX_ARG_LEN];
-    argv[0] = mLine;
+    static Argument* argv[MAX_ARG_LEN];
+    argv[0]->value.s = mLine;
+    argv[0]->type = 's';
     unsigned int argc = 1;
+    Possibilities possible;
+    Command* cmd = findCommand(mLine, mLineLen, possible);
+    if (cmd == nullptr)
+    {
+        mLine[mLineLen] = 0;
+        printf("Unknown command: %s, try help.\n", mLine);
+        return;
+    }
+    unsigned int maxArgc = cmd->argumentCount();
+    unsigned int minArgc = 0;
     for (unsigned int i = 0; i < mLineLen; ++i)
     {
         if (mLine[i] == ' ')
         {
             mLine[i] = 0;
-            argv[argc++] = mLine + i + 1;
+            argv[argc]->value.s = mLine + i + 1;
+            argv[argc]->type = 's';
+            ++argc;
+            if (argc > maxArgc)
+            {
+                printUsage(cmd);
+                return;
+            }
         }
     }
-    Possibilities possible;
-    Command* cmd = findCommand(mLine, mLineLen, possible);
-    if (cmd != nullptr) cmd->execute(*this, argc, argv);
+    if (argc < minArgc)
+    {
+        printUsage(cmd);
+        return;
+    }
+    if (cmd != nullptr) cmd->execute(*this, argc, const_cast<const Argument**>(argv));
 }
 
 
 const char *CommandInterpreter::Command::startsWith(const char *string, unsigned int len) const
 {
-    const char** alias;
-    unsigned int count = aliases(alias);
-    if (len == 0) return alias[0];
-    for (unsigned int i = 0; i < count; ++i)
+    if (len == 0) return mAlias[0];
+    for (unsigned int i = 0; i < mAliasCount; ++i)
     {
-        if (strncmp(alias[i], string, len) == 0) return alias[i];
+        if (strncmp(mAlias[i], string, len) == 0) return mAlias[i];
     }
     return nullptr;
 }
