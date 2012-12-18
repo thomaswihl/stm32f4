@@ -25,6 +25,10 @@ CPPFLAGS = -fno-rtti -fno-exceptions
 #LDFLAGS = -lstdc++
 
 CSRC   = $(wildcard *.c)
+ifeq (,$(findstring version.c,$(CSRC)))
+CSRC  += version.c
+endif
+
 CPPSRC = $(wildcard *.cpp)
 SSRC   = $(wildcard *.S)
 OBJ    = $(CSRC:.c=.o) $(CPPSRC:.cpp=.o) $(SSRC:.S=.o)
