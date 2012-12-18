@@ -42,6 +42,7 @@ public:
 
     inline unsigned int used() { return mUsed; }
     inline unsigned int free() { return mSize - mUsed; }
+    inline unsigned int size() { return mSize; }
 
     bool push(T c)
     {

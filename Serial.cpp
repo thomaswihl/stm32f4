@@ -145,9 +145,17 @@ int Serial::read(char* data, int size)
 
 unsigned int Serial::write(const char *data, unsigned int size)
 {
-    unsigned int written = mWriteBuffer.write(data, size);
-    triggerWrite();
-    return written;
+    unsigned int total = 0;
+    if (size > mWriteBuffer.size()) size = mWriteBuffer.size();
+    do
+    {
+        unsigned int written = mWriteBuffer.write(data, size);
+        size -= written;
+        data += written;
+        total += written;
+        triggerWrite();
+    }   while (size > 0);
+    return total;
 }
 
 bool Serial::pop(char &c)

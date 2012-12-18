@@ -52,7 +52,7 @@ public:
         char const *const argument(unsigned int i) { return (i < mArgumentCount) ? mArgument[i] : nullptr; }
         unsigned int argumentCount() { return mArgumentCount; }
 
-        virtual bool execute(CommandInterpreter& interpreter, int argc, const Argument* argv[]) = 0;
+        virtual bool execute(CommandInterpreter& interpreter, int argc, const Argument* argv) = 0;
         virtual const char* helpText() const = 0;
 
     protected:

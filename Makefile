@@ -36,7 +36,17 @@ INCLUDE_FILES = $(wildcard *.h)
 
 all: proj
 
-proj: 	$(TARGET).elf
+proj: version.c $(TARGET).elf
+
+.PHONY: version.c
+version.c:
+	echo "#ifndef VERSION_H\n#define VERSION_H\n" > version.c
+	echo -n 'const char* const BUILD_DATE = "' >> version.c
+	date | tr -d "\n" >> version.c
+	echo '";' >> version.c
+	echo -n 'const char* const GIT_VERSION = "' >> version.c
+	git branch --abbrev=100 -v | tr -d "\n" >> version.c
+	echo "\";\n\n#endif" >> version.c
 
 $(TARGET).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET).elf $(OBJ) $(LDFLAGS)

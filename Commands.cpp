@@ -4,6 +4,9 @@
 char const * const CmdHelp::NAME[] = { "help", "?" };
 char const * const CmdHelp::ARGV[] = { "os:command" };
 
+char const * const CmdInfo::NAME[] = { "info" };
+char const * const CmdInfo::ARGV[] = { };
+
 char const * const CmdRead::NAME[] = { "read", "rb", "rh", "rw" };
 char const * const CmdRead::ARGV[] = { "u:address", "ou:count" };
 
@@ -15,14 +18,14 @@ CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(
 {
 }
 
-bool CmdHelp::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv[])
+bool CmdHelp::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
     char const * argCmd = nullptr;
     unsigned int argCmdLen = 0;
     if (argc == 2)
     {
-        argCmd = argv[1]->value.s;
-        argCmdLen = strlen(argv[1]->value.s);
+        argCmd = argv[1].value.s;
+        argCmdLen = strlen(argv[1].value.s);
     }
     for (auto i : interpreter)
     {
@@ -34,7 +37,7 @@ bool CmdHelp::execute(CommandInterpreter &interpreter, int argc, const CommandIn
             interpreter.printArguments(cmd, true);
             printf("\n");
             interpreter.printArguments(cmd, false);
-            printf("  %s\n", cmd->helpText());
+            printf("  %s\n\n", cmd->helpText());
         }
     }
     return true;
@@ -44,21 +47,21 @@ CmdRead::CmdRead() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(
 {
 }
 
-bool CmdRead::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv[])
+bool CmdRead::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
     unsigned int count = 1;
-    if (argc == 3) count = argv[2]->value.u;
-    switch (argv[0]->value.s[1])
+    if (argc == 3) count = argv[2].value.u;
+    switch (argv[0].value.s[1])
     {
     case 'b':
-        dump<uint8_t>(argv[1]->value.u, count);
+        dump<uint8_t>(reinterpret_cast<uint8_t*>(argv[1].value.u), count);
         break;
     case 'h':
-        dump<uint16_t>(argv[1]->value.u, count);
+        dump<uint16_t>(reinterpret_cast<uint16_t*>(argv[1].value.u), count);
         break;
     case 'w':
     case 'e':
-        dump<uint32_t>(argv[1]->value.u, count);
+        dump<uint32_t>(reinterpret_cast<uint32_t*>(argv[1].value.u), count);
         break;
     }
     return true;
@@ -68,8 +71,18 @@ CmdWrite::CmdWrite() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeo
 {
 }
 
-bool CmdWrite::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv[])
+bool CmdWrite::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
     return false;
 }
 
+
+CmdInfo::CmdInfo(StmSystem &system) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSystem(system)
+{
+}
+
+bool CmdInfo::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    mSystem.printInfo();
+    return true;
+}

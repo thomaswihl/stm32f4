@@ -17,6 +17,7 @@
  */
 
 #include "StmSystem.h"
+#include "version.h"
 
 #include <cstdio>
 
@@ -95,11 +96,13 @@ int StmSystem::debugWrite(const char *msg, int len)
 
 void StmSystem::printInfo()
 {
-    std::printf("\nSystem clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz\n",
+    std::printf("System clock is %luMHz, AHB clock is %luMHz, APB1 is %luMHz, APB2 is %luMHz\n",
                 mRcc.clock(ClockControl::Clock::System) / 1000000,
                 mRcc.clock(ClockControl::Clock::AHB) / 1000000,
                 mRcc.clock(ClockControl::Clock::APB1) / 1000000,
                 mRcc.clock(ClockControl::Clock::APB2) / 1000000);
     std::printf("RAM  : %luk free, %luk used.\n", memFree() / 1024, memUsed() / 1024);
     std::printf("STACK: %luk free, %luk used.\n", stackFree() / 1024, stackUsed() / 1024);
+    std::printf("BUILD: %s\n", GIT_VERSION);
+    std::printf("DATE : %s\n", BUILD_DATE);
 }

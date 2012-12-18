@@ -117,19 +117,28 @@ void CommandInterpreter::printUsage(CommandInterpreter::Command *cmd)
 
 void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool summary)
 {
+    Argument arg;
     unsigned int count = cmd->argumentCount() - 1;
     for (unsigned int i = 0; i <= count; ++i)
     {
-        const char* pos = strchr(cmd->argument(i), ':');
-        if (pos == nullptr) pos = cmd->argument(i);
-        else ++pos;
+        arg.name = cmd->argument(i);
+        arg.value.s = nullptr;
+        parseArgument(arg);
         if (summary)
         {
-            printf("%s ", pos);
+            if (!arg.optional) printf("%s ", arg.name);
+            else printf("<%s> ", arg.name);
         }
         else
         {
-            printf("%10s: %s%s", pos, "o", "s");
+            printf("%10s: %s", arg.name, arg.optional ? "optional " : "");
+            switch (arg.type)
+            {
+            case Argument::Type::String: printf("string\n"); break;
+            case Argument::Type::Int: printf("int\n"); break;
+            case Argument::Type::UnsignedInt: printf("unsigned int\n"); break;
+            case Argument::Type::Unknown: printf("unknown\n"); break;
+            }
         }
     }
 }
@@ -137,13 +146,13 @@ void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool s
 void CommandInterpreter::printAliases(CommandInterpreter::Command *cmd)
 {
     unsigned int count = cmd->aliasCount() - 1;
-    if (count > 1) printf("[");
+    if (count > 0) printf("[");
     for (unsigned int i = 0; i <= count; ++i)
     {
         printf("%s", cmd->alias(i));
         if (i < count) printf("|");
     }
-    if (count > 1) printf("]");
+    if (count > 0) printf("]");
 }
 
 bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
@@ -164,21 +173,27 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
     {
         switch (*string)
         {
-        case 's':
+        case 'u':
             if (argument.type != Argument::Type::Unknown) return false;
-            argument.value.u = strtoul(argument.value.s, &end, 0);
-            if (*end != 0) return false;
-            argument.type = Argument::Type::String;
+            if (argument.value.s != nullptr)
+            {
+                argument.value.u = strtoul(argument.value.s, &end, 0);
+                if (*end != 0) return false;
+            }
+            argument.type = Argument::Type::UnsignedInt;
             break;
         case 'i':
             if (argument.type != Argument::Type::Unknown) return false;
+            if (argument.value.s != nullptr)
+            {
+                argument.value.i = strtol(argument.value.s, &end, 0);
+                if (*end != 0) return false;
+            }
             argument.type = Argument::Type::Int;
-            argument.value.i = strtol(argument.value.s, &end, 0);
-            if (*end != 0) return false;
             break;
-        case 'u':
+        case 's':
             if (argument.type != Argument::Type::Unknown) return false;
-            argument.type = Argument::Type::UnsignedInt;
+            argument.type = Argument::Type::String;
             break;
         case 'o':
             argument.optional = true;
@@ -240,17 +255,6 @@ void CommandInterpreter::execute()
     argv[0].value.s = mLine;
     argv[0].type = Argument::Type::String;
     unsigned int argc = 1;
-    Possibilities possible;
-    Command* cmd = findCommand(mLine, mLineLen, possible);
-    if (cmd == nullptr)
-    {
-        mLine[mLineLen] = 0;
-        printf("Unknown command: %s, try help.\n", mLine);
-        return;
-    }
-    unsigned int maxArgc = std::min(static_cast<unsigned int>(MAX_ARG_LEN), cmd->argumentCount() + 1);
-    unsigned int minArgc = 1;
-    bool failed = false;
     // first we split our line int seperate strings (by replacing whitespace with binary 0)
     char split = ' ';
     int argStart = 0, prevArgStart = 0;
@@ -271,37 +275,45 @@ void CommandInterpreter::execute()
         }
         if (argStart > 0 && argStart == prevArgStart)
         {
-            if (argc >= maxArgc) failed = true;
-            if (!failed)
-            {
-                argv[argc].value.s = mLine + i;
-                argv[argc].type = Argument::Type::String;
-            }
+            argv[argc].value.s = mLine + i;
+            argv[argc].type = Argument::Type::String;
             ++argc;
+            argStart = 0;
         }
     }
-    // If everything is fine so far we parse our arguments and check if they are valid.
-    if (!failed)
+    if (argv[0].value.s[0] == 0) return;
+    Possibilities possible;
+    Command* cmd = findCommand(argv[0].value.s, strlen(argv[0].value.s), possible);
+    if (cmd == nullptr)
     {
-        for (unsigned int i = 1; i < argc; ++i)
+        printf("Unknown command: %s, try help.\n", argv[0].value.s);
+        return;
+    }
+    unsigned int maxArgc = std::min(static_cast<unsigned int>(MAX_ARG_LEN), cmd->argumentCount() + 1);
+    unsigned int minArgc = 1;
+    bool failed = false;
+    // If everything is fine so far we parse our arguments and check if they are valid.
+    for (unsigned int i = 1; i < argc; ++i)
+    {
+        argv[i].name = cmd->argument(i - 1);
+        //printf("Parsing %s/%s: ", argv[i].name, argv[i].value.s);
+        if (!parseArgument(argv[i]))
         {
-            if (!parseArgument(argv[argc]))
-            {
-                failed = true;
-                break;
-            }
-            if (!argv[argc].optional) ++minArgc;
+            failed = true;
+            break;
         }
+        //printf("%u\n", argv[i].value.u);
+        if (!argv[i].optional) ++minArgc;
     }
     // If we fond a problem print a usage message.
-    if (failed || argc < minArgc)
+    if (failed || argc < minArgc || argc > maxArgc)
     {
         if (argc > maxArgc || argc < minArgc) printf("Wrong argument count (%i != [%i, %i]).\n", argc - 1, minArgc - 1, maxArgc - 1);
         printUsage(cmd);
         return;
     }
     // Everything is fine, execute it.
-    if (cmd != nullptr) cmd->execute(*this, argc, reinterpret_cast<const Argument**>(&argv));
+    if (cmd != nullptr) cmd->execute(*this, argc, argv);
 }
 
 

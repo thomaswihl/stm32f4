@@ -39,6 +39,7 @@ void handleSerialEvent(System::Event::Component component, Serial::EventType eve
 
 int main()
 {
+    gSys.mDebug.write("\nRESET\n", 7);
     gSys.printInfo();
     gSys.mRcc.enable(ClockControl::Function::GpioD);
 
@@ -49,6 +50,7 @@ int main()
 
     gSys.mGpioD.set(Gpio::Pin::Pin12);
     gInterpreter.add(new CmdHelp());
+    gInterpreter.add(new CmdInfo(gSys));
     gInterpreter.add(new CmdRead());
     gInterpreter.add(new CmdWrite());
     gInterpreter.start();
