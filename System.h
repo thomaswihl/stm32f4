@@ -48,7 +48,7 @@ public:
     {
     public:
         typedef uint16_t Type;
-        enum class Component : uint16_t { Invalid, USART1, USART2, USART3, UART4, UART5, USART6 };
+        enum class Component : uint16_t { Invalid, USART1, USART2, USART3, UART4, UART5, USART6, SPI1, SPI2, SPI3 };
 
         Event() : mComponent(Component::Invalid), mType(0) { }
         Event(Component component, Type type) : mComponent(component), mType(type) { }
@@ -95,9 +95,12 @@ public:
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
 
-    static inline void sysTick() { ++mSysTick; }
-    static inline unsigned int ticks() { return mSysTick; }
+    static inline void sysTick() { ++mTicks; }
+    static inline unsigned int ticks() { return mTicks; }
     virtual void usleep(unsigned int us) = 0;
+    virtual uint64_t ns() = 0;
+    void updateBogoMips();
+    uint32_t bogoMips() { return mBogoMips; }
 
 protected:
 
@@ -235,9 +238,10 @@ private:
     static System* mSystem;
     static char* mHeapEnd;
 
-    static unsigned int mSysTick;
+    static unsigned int mTicks;
 
     volatile SCB* mBase;
+    uint32_t mBogoMips;
     CircularBuffer<Event> mEventQueue;
 };
 

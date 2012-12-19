@@ -47,7 +47,7 @@ void Serial::setSpeed(uint32_t speed)
 {
     uint32_t clock = mClockControl->clock(mClock);
     uint32_t accuracy = 8 * (2 - mBase->CR1.OVER8);
-    uint32_t divider = clock / speed;
+    uint32_t divider = (clock + speed / 2) / speed;
     mBase->BRR.DIV_MANTISSA = divider / accuracy;
     mBase->BRR.DIV_FRACTION = divider % accuracy;
     mSpeed = speed;
@@ -146,7 +146,6 @@ int Serial::read(char* data, int size)
 unsigned int Serial::write(const char *data, unsigned int size)
 {
     unsigned int total = 0;
-    if (size > mWriteBuffer.size()) size = mWriteBuffer.size();
     do
     {
         unsigned int written = mWriteBuffer.write(data, size);

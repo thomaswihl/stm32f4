@@ -14,7 +14,7 @@ OBJCOPY = $(TOOLCHAIN)/arm-none-eabi-objcopy
 OBJDUMP = $(TOOLCHAIN)/arm-none-eabi-objdump
 GDB     = $(TOOLCHAIN)/arm-none-eabi-gdb
 
-CFLAGS  = -g -O0 -Wall -Tstm32f407vg.ld
+CFLAGS  = -g -O2 -Wall -Tstm32f407vg.ld
 CFLAGS += -mthumb -mcpu=cortex-m4
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -Wl,-Map,$(TARGET).map
@@ -44,13 +44,18 @@ proj: version.c $(TARGET).elf
 
 .PHONY: version.c
 version.c:
-	echo "#ifndef VERSION_H\n#define VERSION_H\n" > version.c
+	echo > version.c
+	echo "#ifndef VERSION_H" >> version.c
+	echo "#define VERSION_H" >> version.c
+	echo >> version.c
 	echo -n 'const char* const BUILD_DATE = "' >> version.c
 	date | tr -d "\n" >> version.c
-	echo '";' >> version.c
+	echo "\";" >> version.c
 	echo -n 'const char* const GIT_VERSION = "' >> version.c
 	git branch --abbrev=100 -v | tr -d "\n" >> version.c
-	echo "\";\n\n#endif" >> version.c
+	echo "\";" >> version.c
+	echo >> version.c
+	echo "#endif" >> version.c
 
 $(TARGET).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET).elf $(OBJ) $(LDFLAGS)

@@ -29,6 +29,7 @@
 #include "Flash.h"
 #include "SysTickControl.h"
 #include "FpuControl.h"
+#include "Spi.h"
 
 class StmSystem : public System
 {
@@ -58,6 +59,9 @@ public:
             UART4 = 0x40004c00,
             UART5 = 0x40005000,
             USART6 = 0x40011400,
+            SPI1 = 0x40013000,
+            SPI2 = 0x40003800,
+            SPI3 = 0x40003c00,
             STK = 0xe000e010,
             FPU = 0xe000ed88,
             SCB = 0xe000ed00,
@@ -168,13 +172,16 @@ public:
     SysTickControl mSysTick;
     Dma mDma1;
     Dma mDma2;
-    Serial mUsart1;
+//    Serial mUsart1;
     Serial mUsart2;
-    Serial mUsart3;
-    Serial mUart4;
-    Serial mUart5;
-    Serial mUsart6;
+//    Serial mUsart3;
+//    Serial mUart4;
+//    Serial mUart5;
+//    Serial mUsart6;
     Serial& mDebug;
+    Spi mSpi1;
+//    Spi mSpi2;
+//    Spi mSpi3;
     Flash mFlash;
     FpuControl mFpu;
 
@@ -187,6 +194,7 @@ public:
 
     void printInfo();
     virtual void usleep(unsigned int us) { mSysTick.usleep(us); }
+    virtual uint64_t ns() { return mSysTick.ns(); }
 protected:
     virtual int debugRead(char *msg, int len);
     virtual int debugWrite(const char *msg, int len);

@@ -216,7 +216,7 @@ void CommandInterpreter::printLine()
 
 CommandInterpreter::Command *CommandInterpreter::findCommand(const char *name, unsigned int len, CommandInterpreter::Possibilities &possible)
 {
-    Command* cmdFound;
+    Command* cmdFound = nullptr;
     for (Command*& cmd : mCmd)
     {
         const char* n = cmd->startsWith(name, len);

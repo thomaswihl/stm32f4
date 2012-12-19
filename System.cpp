@@ -234,7 +234,7 @@ void __throw_length_error(const char*)
 
 System* System::mSystem;
 char* System::mHeapEnd;
-unsigned int System::mSysTick = 0;
+unsigned int System::mTicks = 0;
 
 char* System::increaseHeap(unsigned int incr)
 {
@@ -288,8 +288,20 @@ bool System::waitForEvent(Event &event)
     return mEventQueue.pop(event);
 }
 
+void System::updateBogoMips()
+{
+    uint64_t start = ns();
+    for (unsigned int i = 1000000; i != 0; --i)
+    {
+        __asm("");
+    }
+    uint64_t end = ns();
+    mBogoMips = static_cast<uint32_t>((end - start) / 1000000000);
+}
+
 System::System(BaseAddress base) :
     mBase(reinterpret_cast<volatile SCB*>(base)),
+    mBogoMips(0),
     mEventQueue(16)
 {
     static_assert(sizeof(SCB) == 0x40, "Struct has wrong size, compiler problem.");

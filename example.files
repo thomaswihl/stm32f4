@@ -30,3 +30,7 @@ CommandInterpreter.cpp
 Commands.h
 Commands.cpp
 version.h
+Spi.h
+Spi.cpp
+hw/lis302dl.h
+hw/lis302dl.cpp

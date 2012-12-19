@@ -29,7 +29,7 @@ public:
 
     enum class Pin { Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, Pin8, Pin9, Pin10, Pin11, Pin12, Pin13, Pin14, Pin15 };
     enum class OutputType { PushPull = 0, OpenDrain = 1 };
-    enum class Speed { Low = 0, Medium = 1, Fast = 2, High = 3 };
+    enum class Speed { Low = 0, Medium = 1, Fast = 2, High = 3 }; // Low = 2MHz, Medium = 25MHz, Fast = 50MHz, High = 100MHz (on 30pF), 80MHz (on 15pF)
     enum class Pull { None = 0, Up = 1, Down = 2 };
     enum class AltFunc
     {

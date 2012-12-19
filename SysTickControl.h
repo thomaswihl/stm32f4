@@ -30,6 +30,7 @@ public:
     void disable();
 
     void usleep(unsigned int us);
+    uint64_t ns();
 
 protected:
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
@@ -59,6 +60,7 @@ private:
     volatile STK* mBase;
     ClockControl* mClock;
     unsigned int mInterval;
+    unsigned int mSingleCountTime;
 };
 
 #endif // SYSTICKCONTROL_H
