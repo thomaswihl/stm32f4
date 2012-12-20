@@ -75,22 +75,29 @@ void Serial::setHardwareFlowControl(Serial::HardwareFlowControl hardwareFlow)
     mBase->CR3.RTSE = hardwareFlow == HardwareFlowControl::Rts || hardwareFlow == HardwareFlowControl::CtsRts;
 }
 
-void Serial::enable(bool enable)
+void Serial::enable()
 {
-    mBase->CR1.UE = enable;
-    mBase->CR1.TE = enable;
-    mBase->CR1.RE = enable;
+    mBase->CR1.UE = 1;
+    mBase->CR1.TE = 1;
+    mBase->CR1.RE = 1;
+}
+
+void Serial::disable()
+{
+    mBase->CR1.UE = 0;
+    mBase->CR1.TE = 0;
+    mBase->CR1.RE = 0;
 }
 
 void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity parity, Serial::StopBits stopBits, HardwareFlowControl hardwareFlow)
 {
-    enable(false);
+    disable();
     setSpeed(speed);
     setWordLength(dataBits);
     setParity(parity);
     setStopBits(stopBits);
     setHardwareFlowControl(hardwareFlow);
-    enable(true);
+    enable();
 }
 
 void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)

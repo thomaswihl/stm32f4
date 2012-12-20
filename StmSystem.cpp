@@ -87,8 +87,6 @@ void StmSystem::init()
     mGpioA.configInput(Gpio::Pin::Pin3);
     mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::USART2);
 
-    mSpi1.setSpeed(10000000);
-
     // MISO
     mGpioA.configInput(Gpio::Pin::Pin6);
     mGpioA.setAlternate(Gpio::Pin::Pin6, Gpio::AltFunc::SPI1);

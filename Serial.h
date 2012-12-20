@@ -45,7 +45,8 @@ public:
     void setParity(Parity parity);
     void setStopBits(StopBits stopBits);
     void setHardwareFlowControl(HardwareFlowControl hardwareFlow);
-    void enable(bool enable);
+    void enable();
+    void disable();
 
     void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
     void configDma(Dma::Stream* tx, Dma::Stream* rx);

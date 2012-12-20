@@ -8,8 +8,23 @@ class Spi
 {
 public:
     Spi(System::BaseAddress base, System::Event::Component component, ClockControl* clockControl, ClockControl::Clock clock);
+    enum class MasterSlave { Master = 1, Slave = 0 };
+    enum class ClockPolarity { LowWhenIdle = 0, HighWhenIdle = 1 };
+    // Selects the transition for data capture
+    enum class ClockPhase { FirstTransition = 0, SecondTransition = 1 };
+    enum class DataWidth { Eight = 0, Sixteen = 1 };
+    enum class Endianess { MsbFirst = 0, LsbFirst = 0 };
 
     uint32_t setSpeed(uint32_t maxSpeed);
+    void setMasterSlave(MasterSlave masterSlave);
+    void setClock(ClockPolarity clockPolarity, ClockPhase clockPhase);
+    void setDataWidth(DataWidth dataWidth);
+    void setEndianess(Endianess endianess);
+
+    void config(MasterSlave masterSlave, ClockPolarity clockPolarity, ClockPhase clockPhase, DataWidth dataWidth, Endianess endianess);
+
+    void enable();
+    void disable();
 
 private:
     struct SPI
