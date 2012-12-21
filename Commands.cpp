@@ -7,6 +7,9 @@ char const * const CmdHelp::ARGV[] = { "os:command" };
 char const * const CmdInfo::NAME[] = { "info" };
 char const * const CmdInfo::ARGV[] = { };
 
+char const * const CmdFunc::NAME[] = { "func" };
+char const * const CmdFunc::ARGV[] = { "s:function" };
+
 char const * const CmdRead::NAME[] = { "read", "rb", "rh", "rw" };
 char const * const CmdRead::ARGV[] = { "u:address", "ou:count" };
 
@@ -84,5 +87,20 @@ CmdInfo::CmdInfo(StmSystem &system) : Command(NAME, sizeof(NAME) / sizeof(NAME[0
 bool CmdInfo::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
     mSystem.printInfo();
+    return true;
+}
+
+
+CmdFunc::CmdFunc(StmSystem &system) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSystem(system)
+{
+}
+
+bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    if (strcmp("ns", argv[1].value.s) == 0)
+    {
+        uint64_t ns = mSystem.ns();
+        printf("%llu\n", ns);
+    }
     return true;
 }

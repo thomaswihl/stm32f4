@@ -36,6 +36,18 @@ private:
     StmSystem& mSystem;
 };
 
+class CmdFunc : public CommandInterpreter::Command
+{
+public:
+    CmdFunc(StmSystem& system);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Execute a function and show the result."; }
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    StmSystem& mSystem;
+};
+
 class CmdRead : public CommandInterpreter::Command
 {
 public:

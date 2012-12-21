@@ -291,12 +291,12 @@ bool System::waitForEvent(Event &event)
 void System::updateBogoMips()
 {
     uint64_t start = ns();
-    for (unsigned int i = 1000000; i != 0; --i)
+    for (unsigned int i = 100000; i != 0; --i)
     {
         __asm("");
     }
     uint64_t end = ns();
-    mBogoMips = static_cast<uint32_t>((end - start) / 1000000000);
+    mBogoMips = 100000000000000ul / (end - start);
 }
 
 System::System(BaseAddress base) :

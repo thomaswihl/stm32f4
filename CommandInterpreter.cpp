@@ -70,8 +70,10 @@ void CommandInterpreter::feed()
                 printLine();
                 break;
             case 18:    // Ctrl+R
+                printf("\nResetting clock\n");
                 mSystem.mRcc.resetClock();
                 mSystem.printInfo();
+                printLine();
                 break;
             default:
                 if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;

@@ -123,7 +123,7 @@ void StmSystem::printInfo()
                 mRcc.clock(ClockControl::Clock::AHB) / 1000000,
                 mRcc.clock(ClockControl::Clock::APB1) / 1000000,
                 mRcc.clock(ClockControl::Clock::APB2) / 1000000);
-    std::printf("BOGOMIPS: %lu\n", bogoMips());
+    std::printf("BOGOMIPS: %lu.%lu\n", bogoMips() / 1000000, bogoMips() % 1000000);
     std::printf("RAM     : %luk free, %luk used.\n", memFree() / 1024, memUsed() / 1024);
     std::printf("STACK   : %luk free, %luk used.\n", stackFree() / 1024, stackUsed() / 1024);
     std::printf("BUILD   : %s\n", GIT_VERSION);

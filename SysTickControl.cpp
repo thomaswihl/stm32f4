@@ -32,7 +32,7 @@ SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock, un
 void SysTickControl::enable()
 {
     uint32_t clock = mClock->clock(ClockControl::Clock::AHB) / 8000;
-    mSingleCountTime = 1000000000 / clock;
+    mSingleCountTime = 1000000 / clock;
     clock *= mInterval;
     mBase->CTRL.CLKSOURCE = 0;
     mBase->RELOAD = clock - 1;
@@ -59,14 +59,17 @@ void SysTickControl::usleep(unsigned int us)
 
 uint64_t SysTickControl::ns()
 {
-    uint64_t val;
+    uint32_t ticks;
+    uint32_t count;
     do
     {
         mBase->CTRL.COUNTFLAG = 0;
-        val = mBase->RELOAD - mBase->VAL;
-        val *= mSingleCountTime;
-        val += System::ticks() * mInterval * static_cast<uint64_t>(1000000);
+        count = mBase->VAL;
+        ticks = System::ticks();
     }   while (mBase->CTRL.COUNTFLAG);
+    uint64_t val = mBase->RELOAD - count;
+    val *= mSingleCountTime;
+    val += ticks * mInterval * static_cast<uint64_t>(1000000);
     return val;
 }
 
