@@ -179,7 +179,7 @@ public:
 //    Serial mUart5;
 //    Serial mUsart6;
     Serial& mDebug;
-    Spi mSpi1;
+    Spi<char> mSpi1;
 //    Spi mSpi2;
 //    Spi mSpi3;
     Flash mFlash;
@@ -196,8 +196,8 @@ public:
     virtual void usleep(unsigned int us) { mSysTick.usleep(us); }
     virtual uint64_t ns() { return mSysTick.ns(); }
 protected:
-    virtual int debugRead(char *msg, int len);
-    virtual int debugWrite(const char *msg, int len);
+    virtual void debugRead(char *msg, unsigned int len);
+    virtual void debugWrite(const char *msg, unsigned int len);
 
 private:
     void init();

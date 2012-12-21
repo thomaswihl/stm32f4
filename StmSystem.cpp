@@ -38,16 +38,16 @@ StmSystem::StmSystem() :
     mSysTick(BaseAddress::STK, &mRcc, 100),
     mDma1(BaseAddress::DMA1),
     mDma2(BaseAddress::DMA2),
-//    mUsart1(*this, BaseAddress::USART1, System::Event::Component::USART1, &mRcc, ClockControl::Clock::APB2),
-    mUsart2(*this, BaseAddress::USART2, System::Event::Component::USART2, &mRcc, ClockControl::Clock::APB1),
-//    mUsart3(*this, BaseAddress::USART3, System::Event::Component::USART3, &mRcc, ClockControl::Clock::APB1),
-//    mUart4(*this, BaseAddress::UART4, System::Event::Component::UART4, &mRcc, ClockControl::Clock::APB1),
-//    mUart5(*this, BaseAddress::UART5, System::Event::Component::UART5, &mRcc, ClockControl::Clock::APB1),
-//    mUsart6(*this, BaseAddress::USART6, System::Event::Component::USART6, &mRcc, ClockControl::Clock::APB2),
+//    mUsart1(*this, BaseAddress::USART1, &mRcc, ClockControl::Clock::APB2),
+    mUsart2(*this, BaseAddress::USART2, &mRcc, ClockControl::Clock::APB1),
+//    mUsart3(*this, BaseAddress::USART3, &mRcc, ClockControl::Clock::APB1),
+//    mUart4(*this, BaseAddress::UART4, &mRcc, ClockControl::Clock::APB1),
+//    mUart5(*this, BaseAddress::UART5, &mRcc, ClockControl::Clock::APB1),
+//    mUsart6(*this, BaseAddress::USART6, &mRcc, ClockControl::Clock::APB2),
     mDebug(mUsart2),
-    mSpi1(BaseAddress::SPI1, System::Event::Component::SPI1, &mRcc, ClockControl::Clock::APB2),
-//    mSpi2(BaseAddress::SPI2, System::Event::Component::SPI2, &mRcc, ClockControl::Clock::APB1),
-//    mSpi3(BaseAddress::SPI3, System::Event::Component::SPI3, &mRcc, ClockControl::Clock::APB1),
+    mSpi1(*this, BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
+//    mSpi2(*this, BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
+//    mSpi3(*this, BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
     mFlash(BaseAddress::FLASH, mRcc),
     mFpu(BaseAddress::FPU)
 {
@@ -105,14 +105,14 @@ void StmSystem::init()
     //mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 
-int StmSystem::debugRead(char *msg, int len)
+void StmSystem::debugRead(char *msg, unsigned int len)
 {
-    return mDebug.read(msg, len);
+    mDebug.read(msg, len);
 }
 
-int StmSystem::debugWrite(const char *msg, int len)
+void StmSystem::debugWrite(const char *msg, unsigned int len)
 {
-    return mDebug.write(msg, len);
+    mDebug.write(msg, len);
 }
 
 void StmSystem::printInfo()

@@ -21,15 +21,12 @@
 #include <cassert>
 #include <cstdio>
 
-Serial::Serial(System &system, System::BaseAddress base, System::Event::Component component, ClockControl *clockControl, ClockControl::Clock clock) :
-    mSystem(system),
+Serial::Serial(System &system, System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
+    Stream<char>(system),
     mBase(reinterpret_cast<volatile USART*>(base)),
-    mComponent(component),
     mClockControl(clockControl),
     mClock(clock),
-    mSpeed(0),
-    mReadBuffer(READ_BUFFER_SIZE),
-    mWriteBuffer(WRITE_BUFFER_SIZE)
+    mSpeed(0)
 {
     static_assert(sizeof(USART) == 0x1c, "Struct has wrong size, compiler problem.");
     clockControl->addChangeHandler(this);
@@ -75,14 +72,14 @@ void Serial::setHardwareFlowControl(Serial::HardwareFlowControl hardwareFlow)
     mBase->CR3.RTSE = hardwareFlow == HardwareFlowControl::Rts || hardwareFlow == HardwareFlowControl::CtsRts;
 }
 
-void Serial::enable()
+void Serial::enable(Device::Part part)
 {
     mBase->CR1.UE = 1;
     mBase->CR1.TE = 1;
     mBase->CR1.RE = 1;
 }
 
-void Serial::disable()
+void Serial::disable(Device::Part part)
 {
     mBase->CR1.UE = 0;
     mBase->CR1.TE = 0;
@@ -91,13 +88,13 @@ void Serial::disable()
 
 void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity parity, Serial::StopBits stopBits, HardwareFlowControl hardwareFlow)
 {
-    disable();
+    disable(Device::Part::All);
     setSpeed(speed);
     setWordLength(dataBits);
     setParity(parity);
     setStopBits(stopBits);
     setHardwareFlowControl(hardwareFlow);
-    enable();
+    enable(Device::Part::All);
 }
 
 void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
@@ -140,66 +137,49 @@ void Serial::configInterrupt(InterruptController::Line* interrupt)
     }
 }
 
-int Serial::read(char* data, int size)
+void Serial::read(char* data, unsigned int count)
 {
-    while (mReadBuffer.used() == 0)
-    {
-        __asm("wfi");
-    }
-
-    return mReadBuffer.read(data, size);
+    readPrepare(data, count);
 }
 
-unsigned int Serial::write(const char *data, unsigned int size)
+void Serial::read(char *data, unsigned int count, System::Event *callback)
 {
-    unsigned int total = 0;
-    do
-    {
-        unsigned int written = mWriteBuffer.write(data, size);
-        size -= written;
-        data += written;
-        total += written;
-        triggerWrite();
-    }   while (size > 0);
-    return total;
+    readPrepare(data, count, callback);
 }
 
-bool Serial::pop(char &c)
+void Serial::write(const char *data, unsigned int count)
 {
-    return mReadBuffer.pop(c);
-}
-
-bool Serial::push(char c)
-{
-    bool success = mWriteBuffer.push(c);
+    writePrepare(data, count);
     triggerWrite();
-    return success;
+    while (mWriteCount != 0) ;
 }
 
-
+void Serial::write(const char *data, unsigned int count, System::Event *callback)
+{
+    writePrepare(data, count, callback);
+    triggerWrite();
+}
 
 void Serial::interruptCallback(InterruptController::Index index)
 {
     if (mBase->SR.RXNE)
     {
-        mReadBuffer.push(mBase->DR);
-        mSystem.postEvent(System::Event(mComponent, static_cast<System::Event::Type>(EventType::ReceivedByte)));
+        if (Stream<char>::read(static_cast<char>(mBase->DR))) Stream<char>::readFinished();
+        //mSystem.postEvent(System::Event(mComponent, static_cast<System::Event::Type>(EventType::ReceivedByte)));
     }
     if (mBase->SR.TC)
     {
         if (mDmaTx != nullptr)
         {
-            mWriteBuffer.skip(mDmaTransferLength);
-            mDmaTransferLength = 0;
             mBase->CR1.TCIE = 0;
             mBase->SR.TC = 0;
-            triggerWrite();
+            Stream<char>::writeFinished();
         }
         else
         {
             char c;
             // check if there is another byte in the buffer and send it or dsiable the interrupt to signal that we are done
-            if (mWriteBuffer.pop(c)) mBase->DR = c;
+            if (Stream<char>::write(c)) mBase->DR = c;
             else mBase->CR1.TCIE = 0;
         }
     }
@@ -218,9 +198,8 @@ void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
         if (mInterrupt == nullptr)
         {
             // Else we have to wait for it to finish before we can start the next.
-            mWriteBuffer.skip(mDmaTransferLength);
             waitTransmitComplete();
-            triggerWrite();
+            Stream<char>::writeFinished();
         }
     }
     else
@@ -235,37 +214,25 @@ void Serial::triggerWrite()
 {
     if (mDmaTx != 0)
     {
-        if (mDmaTransferLength == 0)
-        {
-            const char* source;
-            mDmaTransferLength = mWriteBuffer.getContBuffer(source);
-            if (mDmaTransferLength != 0)
-            {
-                mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(source));
-                mDmaTx->setTransferCount(mDmaTransferLength);
-                mBase->SR.TC = 0;
-                if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
-                mDmaTx->start();
-            }
-        }
+        mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mWriteData));
+        mDmaTx->setTransferCount(mWriteCount);
+        mBase->SR.TC = 0;
+        if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
+        mDmaTx->start();
     }
     else if (mInterrupt != 0)
     {
-        // if we are not transmitting
-        if (!mBase->CR1.TCIE)
-        {
-            mBase->CR1.TCIE = 1;
-            char c;
-            // send first bye, to start transmission
-            if (mWriteBuffer.pop(c)) mBase->DR = c;
-        }
+        mBase->CR1.TCIE = 1;
+        // send first bye, to start transmission
+        char c;
+        if (Stream<char>::write(c)) mBase->DR = c;
+        else mBase->CR1.TCIE = 0;
     }
     else
     {
         // we have to do it manually
-        // TODO: Maybe we could do that with a timer interrupt?
         char c;
-        while (mWriteBuffer.pop(c))
+        while (Stream<char>::write(c))
         {
             waitTransmitComplete();
             mBase->DR = c;

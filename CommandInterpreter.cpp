@@ -38,7 +38,7 @@ CommandInterpreter::~CommandInterpreter()
 void CommandInterpreter::feed()
 {
     char c;
-    while (mSystem.mDebug.pop(c))
+    while (false)
     {
         if (mState == State::Input)
         {
@@ -58,9 +58,8 @@ void CommandInterpreter::feed()
                 if (mLineLen > 0)
                 {
                     --mLineLen;
-                    mSystem.mDebug.push(8);
-                    mSystem.mDebug.push(' ');
-                    mSystem.mDebug.push(8);
+                    static const char* BACKSPACE = "\x08 \x08";
+                    mSystem.mDebug.write(BACKSPACE, 3);
                 }
                 break;
             case 4:     // Ctrl+D
@@ -77,7 +76,7 @@ void CommandInterpreter::feed()
                 break;
             default:
                 if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;
-                mSystem.mDebug.push(c);
+                mSystem.mDebug.write(&c, 1);
                 break;
             }
         }
@@ -211,7 +210,7 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
 
 void CommandInterpreter::printLine()
 {
-    mSystem.mDebug.push('\r');
+    mSystem.mDebug.write("\r", 1);
     mSystem.mDebug.write(mPrompt, strlen(mPrompt));
     mSystem.mDebug.write(mLine, mLineLen);
 }

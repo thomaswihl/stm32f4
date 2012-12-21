@@ -27,16 +27,6 @@
 StmSystem gSys;
 CommandInterpreter gInterpreter(gSys);
 
-void handleSerialEvent(System::Event::Component component, Serial::EventType event)
-{
-    switch (event)
-    {
-    case Serial::EventType::ReceivedByte:
-        gInterpreter.feed();
-        break;
-    }
-}
-
 int main()
 {
     printf("\n\n\nRESET\n");
@@ -56,21 +46,13 @@ int main()
     gInterpreter.add(new CmdWrite());
     gInterpreter.start();
 
-    std::fflush(stdout);
-    System::Event event;
+    System::Event* event;
     while (true)
     {
-        if (gSys.waitForEvent(event))
+        if (gSys.waitForEvent(event) && event != nullptr)
         {
             gSys.mGpioD.reset(Gpio::Pin::Pin12);
-            switch (event.component())
-            {
-            case System::Event::Component::USART2:
-                handleSerialEvent(event.component(), static_cast<Serial::EventType>(event.type()));
-                break;
-            default:
-                break;
-            }
+            event->eventCallback(event->success());
             gSys.mGpioD.set(Gpio::Pin::Pin12);
         }
     }

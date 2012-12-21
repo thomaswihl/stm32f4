@@ -47,16 +47,12 @@ public:
     class Event
     {
     public:
-        typedef uint16_t Type;
-        enum class Component : uint16_t { Invalid, USART1, USART2, USART3, UART4, UART5, USART6, SPI1, SPI2, SPI3 };
-
-        Event() : mComponent(Component::Invalid), mType(0) { }
-        Event(Component component, Type type) : mComponent(component), mType(type) { }
-        Component component() { return mComponent; }
-        Type type() { return mType; }
+        Event() { }
+        virtual void eventCallback(bool success) = 0;
+        virtual void setResult(bool success) { mSuccess = success; }
+        virtual bool success() { return mSuccess; }
     private:
-        Component mComponent;
-        Type mType;
+        bool mSuccess;
     };
 
     enum class TrapIndex
@@ -77,8 +73,8 @@ public:
     inline void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
     inline void handleInterrupt() { handleInterrupt(mBase->ICSR.VECTACTIVE - 16); }
 
-    virtual int debugWrite(const char* msg, int len) = 0;
-    virtual int debugRead(char* msg, int len) = 0;
+    virtual void debugRead(char *msg, unsigned int len) = 0;
+    virtual void debugWrite(const char *msg, unsigned int len) = 0;
     void printWarning(const char* component, const char* message);
     void printError(const char* component, const char* message);
 
@@ -89,8 +85,8 @@ public:
     uint32_t stackFree();
     uint32_t stackUsed();
 
-    void postEvent(Event event);
-    bool waitForEvent(Event& event);
+    void postEvent(Event* event);
+    bool waitForEvent(Event*& event);
 
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
@@ -242,7 +238,7 @@ private:
 
     volatile SCB* mBase;
     uint32_t mBogoMips;
-    CircularBuffer<Event> mEventQueue;
+    CircularBuffer<Event*> mEventQueue;
 };
 
 #endif

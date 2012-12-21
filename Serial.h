@@ -24,10 +24,11 @@
 #include "InterruptController.h"
 #include "Dma.h"
 #include "CircularBuffer.h"
+#include "Stream.h"
 
 #include <queue>
 
-class Serial : public InterruptController::Callback, public ClockControl::Callback, public Dma::Stream::Callback
+class Serial : public InterruptController::Callback, public ClockControl::Callback, public Dma::Stream::Callback, public Stream<char>
 {
 public:
     enum class WordLength { Eight, Nine };
@@ -35,9 +36,7 @@ public:
     enum class StopBits { One, Half, Two, OneAndHalf };
     enum class HardwareFlowControl { None, Cts, Rts, CtsRts };
 
-    enum class EventType : System::Event::Type { ReceivedByte };
-
-    Serial(System& system, System::BaseAddress base, System::Event::Component component, ClockControl* clockControl, ClockControl::Clock clock);
+    Serial(System& system, System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
     virtual ~Serial();
 
     void setSpeed(uint32_t speed);
@@ -45,18 +44,18 @@ public:
     void setParity(Parity parity);
     void setStopBits(StopBits stopBits);
     void setHardwareFlowControl(HardwareFlowControl hardwareFlow);
-    void enable();
-    void disable();
 
     void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
     void configDma(Dma::Stream* tx, Dma::Stream* rx);
     void configInterrupt(InterruptController::Line* interrupt);
 
-    int read(char* data, int size);
-    unsigned int write(const char* data, unsigned int size);
+    virtual void read(char* data, unsigned int count);
+    virtual void read(char* data, unsigned int count, System::Event* callback);
+    virtual void write(const char* data, unsigned int count);
+    virtual void write(const char* data, unsigned int count, System::Event* callback);
 
-    bool pop(char& c);
-    bool push(char c);
+    virtual void enable(Device::Part part);
+    virtual void disable(Device::Part part);
 
 protected:
     virtual void interruptCallback(InterruptController::Index index);
@@ -148,17 +147,13 @@ private:
 
     enum { READ_BUFFER_SIZE = 256, WRITE_BUFFER_SIZE = 256 };
 
-    System& mSystem;
     volatile USART* mBase;
-    System::Event::Component mComponent;
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
     InterruptController::Line* mInterrupt;
     Dma::Stream* mDmaTx;
     Dma::Stream* mDmaRx;
-    CircularBuffer<char> mReadBuffer;
-    CircularBuffer<char> mWriteBuffer;
     unsigned int mDmaTransferLength;
 
     void triggerWrite();

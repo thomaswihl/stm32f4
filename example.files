@@ -34,3 +34,6 @@ Spi.h
 Spi.cpp
 hw/lis302dl.h
 hw/lis302dl.cpp
+Stream.h
+Stream.cpp
+CircularBuffer.cpp

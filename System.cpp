@@ -144,7 +144,7 @@ int _close(int file)
 int _read(int file, char *ptr, int len)
 {
     System::instance()->debugRead(ptr, len);
-    return 0;
+    return len;
 }
 
 int _getpid(void)
@@ -161,7 +161,8 @@ int _kill(int pid, int sig)
 
 int _write(int file, const char *ptr, int len)
 {
-    return System::instance()->debugWrite(ptr, len);
+    System::instance()->debugWrite(ptr, len);
+    return len;
 }
 
 int _fstat(int file, struct stat *st)
@@ -274,12 +275,12 @@ uint32_t System::stackUsed()
     return &__stack_end - stack;
 }
 
-void System::postEvent(Event event)
+void System::postEvent(Event *event)
 {
     mEventQueue.push(event);
 }
 
-bool System::waitForEvent(Event &event)
+bool System::waitForEvent(Event *&event)
 {
     while (mEventQueue.used() == 0)
     {
@@ -404,3 +405,4 @@ void System::printError(const char *component, const char *message)
 {
     printf("\nERROR in %s: %s\n", component, message);
 }
+
