@@ -54,12 +54,12 @@ protected:
     virtual void readPrepare(T* data, unsigned int count);
     virtual void readPrepare(T* data, unsigned int count, System::Event* callback);
     virtual bool read(T data);
-    virtual void readFinished();
+    virtual void readFinished(bool success);
 
     virtual void writePrepare(const T* data, unsigned int count);
     virtual void writePrepare(const T* data, unsigned int count, System::Event* callback);
     virtual bool write(T& data);
-    virtual void writeFinished();
+    virtual void writeFinished(bool success);
 
 private:
 };

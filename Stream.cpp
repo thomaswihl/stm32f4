@@ -58,10 +58,13 @@ bool Stream<T>::read(T data)
 }
 
 template<typename T>
-void Stream<T>::readFinished()
+void Stream<T>::readFinished(bool success)
 {
+    mReadCount = 0;
+    mReadData = 0;
     if (mReadCallback != nullptr)
     {
+        mReadCallback->setResult(success);
         mSystem.postEvent(mReadCallback);
         mReadCallback = nullptr;
     }
@@ -94,10 +97,13 @@ bool Stream<T>::write(T &data)
 }
 
 template<typename T>
-void Stream<T>::writeFinished()
+void Stream<T>::writeFinished(bool success)
 {
+    mWriteCount = 0;
+    mWriteData = 0;
     if (mWriteCallback != nullptr)
     {
+        mWriteCallback->setResult(success);
         mSystem.postEvent(mWriteCallback);
         mWriteCallback = nullptr;
     }

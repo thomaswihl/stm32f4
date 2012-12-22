@@ -25,7 +25,7 @@
 #include <vector>
 
 
-class CommandInterpreter
+class CommandInterpreter : public System::Event
 {
 public:
     struct Argument
@@ -70,13 +70,15 @@ public:
     CommandInterpreter(StmSystem& system);
     ~CommandInterpreter();
 
-    void feed();
+    void feed(char c);
     void add(Command *cmd);
     void start();
     void printUsage(Command* cmd);
     void printArguments(Command* cmd, bool summary);
     void printAliases(Command* cmd);
     bool parseArgument(Argument& argument);
+protected:
+    virtual void eventCallback(bool success);
 private:
     enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
     enum class State { Input, Debug };
@@ -108,6 +110,7 @@ private:
     unsigned int mLineLen;
     char mPrompt[MAX_PROMPT_LEN];
     State mState;
+    char mReadChar;
 
     void printLine();
     Command* findCommand(const char* name, unsigned int len, Possibilities& possible);

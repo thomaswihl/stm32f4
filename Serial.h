@@ -157,7 +157,9 @@ private:
     unsigned int mDmaTransferLength;
 
     void triggerWrite();
+    void triggerRead();
     void waitTransmitComplete();
+    void waitReceiveNotEmpty();
 
 };
 

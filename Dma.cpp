@@ -100,9 +100,10 @@ void Dma::Stream::start()
 
 void Dma::Stream::waitReady()
 {
-    while (mDma.mBase->STREAM[mStream].CR.EN)
+    if (mDma.mBase->STREAM[mStream].CR.EN)
     {
-
+        System::instance()->usleep(100000);
+        mDma.mBase->STREAM[mStream].CR.EN = 0;
     }
 }
 

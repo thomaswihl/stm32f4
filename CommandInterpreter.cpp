@@ -35,64 +35,60 @@ CommandInterpreter::~CommandInterpreter()
     for (auto cmd : mCmd) delete cmd;
 }
 
-void CommandInterpreter::feed()
+void CommandInterpreter::feed(char c)
 {
-    char c;
-    while (false)
+    if (mState == State::Input)
     {
-        if (mState == State::Input)
+        switch (c)
         {
-            switch (c)
+        case '\t':
+            complete();
+            break;
+        case '\r':
+            mSystem.mDebug.write("\r\n", 2);
+            execute();
+            mLineLen = 0;
+            printLine();
+            break;
+        case 8:
+        case 127:
+            if (mLineLen > 0)
             {
-            case '\t':
-                complete();
-                break;
-            case '\r':
-                mSystem.mDebug.write("\r\n", 2);
-                execute();
-                mLineLen = 0;
-                printLine();
-                break;
-            case 8:
-            case 127:
-                if (mLineLen > 0)
-                {
-                    --mLineLen;
-                    static const char* BACKSPACE = "\x08 \x08";
-                    mSystem.mDebug.write(BACKSPACE, 3);
-                }
-                break;
-            case 4:     // Ctrl+D
-                mState = State::Debug;
-                printf("\nEntering DEBUG mode\n");
-                mLineLen = 0;
-                printLine();
-                break;
-            case 18:    // Ctrl+R
-                printf("\nResetting clock\n");
-                mSystem.mRcc.resetClock();
-                mSystem.printInfo();
-                printLine();
-                break;
-            default:
-                if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;
-                mSystem.mDebug.write(&c, 1);
-                break;
+                --mLineLen;
+                static const char* BACKSPACE = "\x08 \x08";
+                mSystem.mDebug.write(BACKSPACE, 3);
             }
+            break;
+        case 4:     // Ctrl+D
+            mState = State::Debug;
+            printf("\nEntering DEBUG mode\n");
+            mLineLen = 0;
+            printLine();
+            break;
+        case 18:    // Ctrl+R
+            printf("\nResetting clock\n");
+            mSystem.mRcc.resetClock();
+            mSystem.printInfo();
+            printLine();
+            break;
+        default:
+            if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;
+            mSystem.mDebug.write(&c, 1);
+            break;
         }
-        else if (mState == State::Debug)
+    }
+    else if (mState == State::Debug)
+    {
+        if (c != 4)
         {
-            if (c != 4)
-            {
-                printf("received 0x%02x (%u), press Ctrl+D to exit debug mode.\n", c, c);
-                printLine();
-            }
-            else
-            {
-                printf("\nLeaving DEBUG mode\n");
-                mState = State::Input;
-                printLine();
-            }
+            printf("received 0x%02x (%u), press Ctrl+D to exit debug mode.\n", c, c);
+            printLine();
+        }
+        else
+        {
+            printf("\nLeaving DEBUG mode\n");
+            mState = State::Input;
+            printLine();
         }
     }
 }
@@ -104,6 +100,7 @@ void CommandInterpreter::add(Command* cmd)
 
 void CommandInterpreter::start()
 {
+    mSystem.mDebug.read(&mReadChar, 1, this);
     printLine();
 }
 
@@ -206,6 +203,12 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
     if (argument.type == Argument::Type::Unknown) return false;
     ++argument.name;
     return true;
+}
+
+void CommandInterpreter::eventCallback(bool success)
+{
+    if (success) feed(mReadChar);
+    mSystem.mDebug.read(&mReadChar, 1, this);
 }
 
 void CommandInterpreter::printLine()

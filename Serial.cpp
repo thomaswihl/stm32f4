@@ -140,11 +140,14 @@ void Serial::configInterrupt(InterruptController::Line* interrupt)
 void Serial::read(char* data, unsigned int count)
 {
     readPrepare(data, count);
+    triggerRead();
+    while (mReadCount != 0) ;
 }
 
 void Serial::read(char *data, unsigned int count, System::Event *callback)
 {
     readPrepare(data, count, callback);
+    triggerRead();
 }
 
 void Serial::write(const char *data, unsigned int count)
@@ -164,8 +167,7 @@ void Serial::interruptCallback(InterruptController::Index index)
 {
     if (mBase->SR.RXNE)
     {
-        if (Stream<char>::read(static_cast<char>(mBase->DR))) Stream<char>::readFinished();
-        //mSystem.postEvent(System::Event(mComponent, static_cast<System::Event::Type>(EventType::ReceivedByte)));
+        if (Stream<char>::read(static_cast<char>(mBase->DR))) Stream<char>::readFinished(true);
     }
     if (mBase->SR.TC)
     {
@@ -173,7 +175,7 @@ void Serial::interruptCallback(InterruptController::Index index)
         {
             mBase->CR1.TCIE = 0;
             mBase->SR.TC = 0;
-            Stream<char>::writeFinished();
+            Stream<char>::writeFinished(true);
         }
         else
         {
@@ -199,7 +201,7 @@ void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
         {
             // Else we have to wait for it to finish before we can start the next.
             waitTransmitComplete();
-            Stream<char>::writeFinished();
+            Stream<char>::writeFinished(true);
         }
     }
     else
@@ -237,6 +239,32 @@ void Serial::triggerWrite()
             waitTransmitComplete();
             mBase->DR = c;
         }
+        Stream<char>::writeFinished(true);
+    }
+}
+
+void Serial::triggerRead()
+{
+    if (mDmaRx != 0)
+    {
+        mDmaRx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mReadData));
+        mDmaRx->setTransferCount(mReadCount);
+//        mBase->SR.TC = 0;
+//        if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
+//        mDmaTx->start();
+    }
+    else if (mInterrupt != 0)
+    {
+        mBase->CR1.RXNEIE = 1;
+    }
+    else
+    {
+        // we have to do it manually
+        do
+        {
+            waitReceiveNotEmpty();
+        }   while (Stream<char>::read(static_cast<char>(mBase->DR)));
+        Stream<char>::readFinished(true);
     }
 }
 
@@ -246,6 +274,13 @@ void Serial::waitTransmitComplete()
     while (!mBase->SR.TC && timeout > 0)
     {
         --timeout;
+    }
+}
+
+void Serial::waitReceiveNotEmpty()
+{
+    while (!mBase->SR.RXNE)
+    {
     }
 }
 
