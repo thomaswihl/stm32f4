@@ -16,6 +16,9 @@ char const * const CmdRead::ARGV[] = { "u:address", "ou:count" };
 char const * const CmdWrite::NAME[] = { "write", "wb", "wh", "ww" };
 char const * const CmdWrite::ARGV[] = { "u:address", "u:data" };
 
+char const * const CmdLis::NAME[] = { "lis" };
+char const * const CmdLis::ARGV[] = { };
+
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -102,5 +105,15 @@ bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandIn
         uint64_t ns = mSystem.ns();
         printf("%llu\n", ns);
     }
+    return true;
+}
+
+
+CmdLis::CmdLis(LIS302DL &lis) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mLis(lis)
+{
+}
+
+bool CmdLis::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
     return true;
 }

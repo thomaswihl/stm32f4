@@ -3,6 +3,7 @@
 
 #include "CommandInterpreter.h"
 #include "StmSystem.h"
+#include "hw/lis302dl.h"
 
 #include <cstdio>
 
@@ -87,5 +88,18 @@ private:
     static char const * const NAME[];
     static char const * const ARGV[];
 };
+
+class CmdLis : public CommandInterpreter::Command
+{
+public:
+    CmdLis(LIS302DL& lis);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Shows system information."; }
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    LIS302DL& mLis;
+};
+
 
 #endif // COMMANDS_H

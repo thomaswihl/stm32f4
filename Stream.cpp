@@ -32,29 +32,33 @@ Stream<T>::Stream(System &system) :
 }
 
 template<typename T>
-void Stream<T>::readPrepare(T *data, unsigned int count)
+bool Stream<T>::readPrepare(T *data, unsigned int count)
 {
-    while (mReadCount != 0) ;
+    if (mReadCount != 0 || count == 0) return false;
     mReadData = data;
     mReadCount = count;
+    return true;
 }
 
 template<typename T>
-void Stream<T>::readPrepare(T *data, unsigned int count, System::Event *callback)
+bool Stream<T>::readPrepare(T *data, unsigned int count, System::Event *callback)
 {
+    if (mReadCount != 0 || count == 0) return false;
     readPrepare(data, count);
     mReadCallback = callback;
+    return true;
 }
 
 template<typename T>
 bool Stream<T>::read(T data)
 {
-    if (mReadCount != 0)
+    if (mReadCount != 0 && mReadData != 0)
     {
         *mReadData++ = data;
         --mReadCount;
+        return true;
     }
-    return mReadCount == 0;
+    return false;
 }
 
 template<typename T>
@@ -71,29 +75,33 @@ void Stream<T>::readFinished(bool success)
 }
 
 template<typename T>
-void Stream<T>::writePrepare(const T *data, unsigned int count)
+bool Stream<T>::writePrepare(const T *data, unsigned int count)
 {
-    while (mWriteCount != 0) ;
+    if (mWriteCount != 0 || count == 0) return false;
     mWriteData = data;
     mWriteCount = count;
+    return true;
 }
 
 template<typename T>
-void Stream<T>::writePrepare(const T *data, unsigned int count, System::Event *callback)
+bool Stream<T>::writePrepare(const T *data, unsigned int count, System::Event *callback)
 {
+    if (mWriteCount != 0 || count == 0) return false;
     writePrepare(data, count);
     mWriteCallback = callback;
+    return true;
 }
 
 template<typename T>
 bool Stream<T>::write(T &data)
 {
-    if (mWriteCount != 0)
+    if (mWriteCount != 0 && mWriteData != 0)
     {
         data = *mWriteData++;
         --mWriteCount;
+        return true;
     }
-    return mWriteCount == 0;
+    return false;
 }
 
 template<typename T>
@@ -114,11 +122,6 @@ template class Stream<uint16_t>;
 
 
 template<typename T>
-void BufferedStream<T>::read(T *data, unsigned int count, System::Event *callback)
-{
-}
-
-template<typename T>
 void BufferedStream<T>::read(T *data, unsigned int count)
 {
     while (mReadBuffer.used() == 0)
@@ -127,6 +130,21 @@ void BufferedStream<T>::read(T *data, unsigned int count)
     }
 
     mReadBuffer.read(data, count);
+}
+
+template<typename T>
+void BufferedStream<T>::read(T *data, unsigned int count, System::Event *callback)
+{
+}
+
+template<typename T>
+void BufferedStream<T>::write(const T *data, unsigned int count)
+{
+}
+
+template<typename T>
+void BufferedStream<T>::write(const T *data, unsigned int count, System::Event *callback)
+{
 }
 
 

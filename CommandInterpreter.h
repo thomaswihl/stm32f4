@@ -70,7 +70,7 @@ public:
     CommandInterpreter(StmSystem& system);
     ~CommandInterpreter();
 
-    void feed(char c);
+    void feed();
     void add(Command *cmd);
     void start();
     void printUsage(Command* cmd);

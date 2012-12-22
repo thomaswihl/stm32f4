@@ -1,16 +1,16 @@
 #ifndef LIS302DL_H
 #define LIS302DL_H
 
-#include "Spi.h"
+#include "../Spi.h"
 
 class LIS302DL
 {
 public:
-    LIS302DL(Spi& spi);
+    LIS302DL(Spi<char>& spi);
 
     void enable();
 protected:
-    Spi& mSpi;
+    Spi<char>& mSpi;
     enum class InterruptConfig
     {
         Gnd = 0x00,

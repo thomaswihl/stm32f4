@@ -160,6 +160,8 @@ private:
     void triggerRead();
     void waitTransmitComplete();
     void waitReceiveNotEmpty();
+    void simpleRead();
+    void simpleWrite();
 
 };
 

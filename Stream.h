@@ -51,13 +51,13 @@ protected:
     unsigned int mWriteCount;
     System::Event* mWriteCallback;
 
-    virtual void readPrepare(T* data, unsigned int count);
-    virtual void readPrepare(T* data, unsigned int count, System::Event* callback);
+    virtual bool readPrepare(T* data, unsigned int count);
+    virtual bool readPrepare(T* data, unsigned int count, System::Event* callback);
     virtual bool read(T data);
     virtual void readFinished(bool success);
 
-    virtual void writePrepare(const T* data, unsigned int count);
-    virtual void writePrepare(const T* data, unsigned int count, System::Event* callback);
+    virtual bool writePrepare(const T* data, unsigned int count);
+    virtual bool writePrepare(const T* data, unsigned int count, System::Event* callback);
     virtual bool write(T& data);
     virtual void writeFinished(bool success);
 
@@ -79,7 +79,7 @@ public:
     virtual void read(T* data, unsigned int count);
     virtual void read(T* data, unsigned int count, System::Event* callback);
 
-    virtual void write(const T* data, unsigned int count) = 0;
+    virtual void write(const T* data, unsigned int count);
     virtual void write(const T* data, unsigned int count, System::Event* callback);
 protected:
     void finished(bool read, bool success);

@@ -106,7 +106,7 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
     mDmaTx = tx;
     if (mDmaTx != nullptr)
     {
-        mDmaTx->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Beats4);
+        mDmaTx->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaTx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mDmaTx->configFifo(Dma::Stream::FifoThreshold::Quater);
         mBase->CR3.DMAT = 1;
@@ -115,7 +115,7 @@ void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
     mDmaRx = rx;
     if (mDmaRx != nullptr)
     {
-        mDmaRx->config(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Beats4);
+        mDmaRx->config(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaRx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mDmaTx->configFifo(Dma::Stream::FifoThreshold::Quater);
         mBase->CR3.DMAR = 1;
@@ -131,7 +131,6 @@ void Serial::configInterrupt(InterruptController::Line* interrupt)
     mInterrupt = interrupt;
     if (mInterrupt != nullptr)
     {
-        mBase->CR1.RXNEIE = (mDmaRx == nullptr) ? 1 : 0;
         mInterrupt->setCallback(this);
         mInterrupt->enable();
     }
@@ -139,35 +138,43 @@ void Serial::configInterrupt(InterruptController::Line* interrupt)
 
 void Serial::read(char* data, unsigned int count)
 {
-    readPrepare(data, count);
-    triggerRead();
-    while (mReadCount != 0) ;
+    if (readPrepare(data, count))
+    {
+        simpleRead();
+    }
 }
 
 void Serial::read(char *data, unsigned int count, System::Event *callback)
 {
-    readPrepare(data, count, callback);
-    triggerRead();
+    if (readPrepare(data, count, callback))
+    {
+        triggerRead();
+    }
 }
 
 void Serial::write(const char *data, unsigned int count)
 {
-    writePrepare(data, count);
-    triggerWrite();
-    while (mWriteCount != 0) ;
+    if (writePrepare(data, count))
+    {
+        simpleWrite();
+    }
 }
 
 void Serial::write(const char *data, unsigned int count, System::Event *callback)
 {
-    writePrepare(data, count, callback);
-    triggerWrite();
+    if (writePrepare(data, count, callback))
+    {
+        triggerWrite();
+    }
 }
 
 void Serial::interruptCallback(InterruptController::Index index)
 {
     if (mBase->SR.RXNE)
     {
+        // check if we need to read another byte, if not dsiable the interrupt
         if (Stream<char>::read(static_cast<char>(mBase->DR))) Stream<char>::readFinished(true);
+        else mBase->CR1.RXNEIE = 0;
     }
     if (mBase->SR.TC)
     {
@@ -179,8 +186,8 @@ void Serial::interruptCallback(InterruptController::Index index)
         }
         else
         {
+            // check if we need to write another byte, if not dsiable the interrupt
             char c;
-            // check if there is another byte in the buffer and send it or dsiable the interrupt to signal that we are done
             if (Stream<char>::write(c)) mBase->DR = c;
             else mBase->CR1.TCIE = 0;
         }
@@ -208,7 +215,7 @@ void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
     {
         // Ooops something went wrong (probably our configuration, anyway, disable DMA.
         configDma(nullptr, mDmaRx);
-        mSystem.printError("Serial", "DMA write failed");
+        Stream<char>::writeFinished(false);
     }
 }
 
@@ -233,13 +240,7 @@ void Serial::triggerWrite()
     else
     {
         // we have to do it manually
-        char c;
-        while (Stream<char>::write(c))
-        {
-            waitTransmitComplete();
-            mBase->DR = c;
-        }
-        Stream<char>::writeFinished(true);
+        simpleWrite();
     }
 }
 
@@ -249,9 +250,7 @@ void Serial::triggerRead()
     {
         mDmaRx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mReadData));
         mDmaRx->setTransferCount(mReadCount);
-//        mBase->SR.TC = 0;
-//        if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
-//        mDmaTx->start();
+        mDmaRx->start();
     }
     else if (mInterrupt != 0)
     {
@@ -260,11 +259,7 @@ void Serial::triggerRead()
     else
     {
         // we have to do it manually
-        do
-        {
-            waitReceiveNotEmpty();
-        }   while (Stream<char>::read(static_cast<char>(mBase->DR)));
-        Stream<char>::readFinished(true);
+        simpleRead();
     }
 }
 
@@ -282,5 +277,25 @@ void Serial::waitReceiveNotEmpty()
     while (!mBase->SR.RXNE)
     {
     }
+}
+
+void Serial::simpleRead()
+{
+    do
+    {
+        waitReceiveNotEmpty();
+    }   while (Stream<char>::read(static_cast<char>(mBase->DR)));
+    Stream<char>::readFinished(true);
+}
+
+void Serial::simpleWrite()
+{
+    char c;
+    while (Stream<char>::write(c))
+    {
+        waitTransmitComplete();
+        mBase->DR = c;
+    }
+    Stream<char>::writeFinished(true);
 }
 

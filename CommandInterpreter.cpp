@@ -35,11 +35,11 @@ CommandInterpreter::~CommandInterpreter()
     for (auto cmd : mCmd) delete cmd;
 }
 
-void CommandInterpreter::feed(char c)
+void CommandInterpreter::feed()
 {
     if (mState == State::Input)
     {
-        switch (c)
+        switch (mReadChar)
         {
         case '\t':
             complete();
@@ -72,16 +72,16 @@ void CommandInterpreter::feed(char c)
             printLine();
             break;
         default:
-            if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = c;
-            mSystem.mDebug.write(&c, 1);
+            if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = mReadChar;
+            mSystem.mDebug.write(&mReadChar, 1);
             break;
         }
     }
     else if (mState == State::Debug)
     {
-        if (c != 4)
+        if (mReadChar != 4)
         {
-            printf("received 0x%02x (%u), press Ctrl+D to exit debug mode.\n", c, c);
+            printf("received 0x%02x (%u), press Ctrl+D to exit debug mode.\n", mReadChar, mReadChar);
             printLine();
         }
         else
@@ -115,6 +115,7 @@ void CommandInterpreter::printUsage(CommandInterpreter::Command *cmd)
 
 void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool summary)
 {
+    if (cmd->argumentCount() == 0) return;
     Argument arg;
     unsigned int count = cmd->argumentCount() - 1;
     for (unsigned int i = 0; i <= count; ++i)
@@ -207,7 +208,7 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
 
 void CommandInterpreter::eventCallback(bool success)
 {
-    if (success) feed(mReadChar);
+    if (success) feed();
     mSystem.mDebug.read(&mReadChar, 1, this);
 }
 
@@ -256,6 +257,7 @@ void CommandInterpreter::complete()
 void CommandInterpreter::execute()
 {
     static Argument argv[MAX_ARG_LEN];
+    mLine[mLineLen] = 0;
     argv[0].value.s = mLine;
     argv[0].type = Argument::Type::String;
     unsigned int argc = 1;

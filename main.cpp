@@ -19,16 +19,19 @@
 #include "StmSystem.h"
 #include "CommandInterpreter.h"
 #include "Commands.h"
+#include "hw/lis302dl.h"
 
 #include <cstdio>
 #include <memory>
 
 
 StmSystem gSys;
-CommandInterpreter gInterpreter(gSys);
 
 int main()
 {
+    LIS302DL lis(gSys.mSpi1);
+    CommandInterpreter interpreter(gSys);
+
     printf("\n\n\nRESET\n");
     gSys.printInfo();
     gSys.mRcc.enable(ClockControl::Function::GpioD);
@@ -39,12 +42,13 @@ int main()
     gSys.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
 
     gSys.mGpioD.set(Gpio::Pin::Pin12);
-    gInterpreter.add(new CmdHelp());
-    gInterpreter.add(new CmdInfo(gSys));
-    gInterpreter.add(new CmdFunc(gSys));
-    gInterpreter.add(new CmdRead());
-    gInterpreter.add(new CmdWrite());
-    gInterpreter.start();
+    interpreter.add(new CmdHelp());
+    interpreter.add(new CmdInfo(gSys));
+    interpreter.add(new CmdFunc(gSys));
+    interpreter.add(new CmdRead());
+    interpreter.add(new CmdWrite());
+    interpreter.add(new CmdLis(lis));
+    interpreter.start();
 
     System::Event* event;
     while (true)

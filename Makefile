@@ -14,7 +14,7 @@ OBJCOPY = $(TOOLCHAIN)/arm-none-eabi-objcopy
 OBJDUMP = $(TOOLCHAIN)/arm-none-eabi-objdump
 GDB     = $(TOOLCHAIN)/arm-none-eabi-gdb
 
-CFLAGS  = -g -O0 -Wall -Tstm32f407vg.ld
+CFLAGS  = -g -O2 -Wall -Tstm32f407vg.ld
 CFLAGS += -mthumb -mcpu=cortex-m4
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -Wl,-Map,$(TARGET).map
@@ -24,14 +24,16 @@ CPPFLAGS = -fno-rtti -fno-exceptions
 
 #LDFLAGS = -lstdc++
 
-CSRC   = $(wildcard *.c)
-ifeq (,$(findstring version.c,$(CSRC)))
-CSRC  += version.c
-endif
+VERSION_FILE = version.cpp
 
-CPPSRC = $(wildcard *.cpp)
-SSRC   = $(wildcard *.S)
-OBJ    = $(CSRC:.c=.o) $(CPPSRC:.cpp=.o) $(SSRC:.S=.o)
+
+SRC  = $(wildcard *.cpp)
+SRC += $(wildcard hw/*.cpp)
+# make sure we have the version file included (in case of a clean build it doesn't exist right now)
+ifeq (,$(findstring $(VERSION_FILE),$(SRC)))
+  SRC  += $(VERSION_FILE)
+endif
+OBJ    = $(SRC:.cpp=.o)
 
 INCLUDE_FILES = $(wildcard *.h)
 
@@ -40,22 +42,20 @@ INCLUDE_FILES = $(wildcard *.h)
 
 all: proj
 
-proj: version.c $(TARGET).elf
+proj: $(VERSION_FILE) $(TARGET).elf
 
-.PHONY: version.c
-version.c:
-	echo > version.c
-	echo "#ifndef VERSION_H" >> version.c
-	echo "#define VERSION_H" >> version.c
-	echo >> version.c
-	echo -n 'const char* const BUILD_DATE = "' >> version.c
-	date | tr -d "\n" >> version.c
-	echo "\";" >> version.c
-	echo -n 'const char* const GIT_VERSION = "' >> version.c
-	git branch --abbrev=100 -v | tr -d "\n" >> version.c
-	echo "\";" >> version.c
-	echo >> version.c
-	echo "#endif" >> version.c
+.PHONY: $(VERSION_FILE)
+$(VERSION_FILE):
+	echo > $@
+	echo '#include "version.h"' >> $@
+	echo >> $@
+	echo -n 'const char* const BUILD_DATE = "' >> $@
+	date | tr -d "\n" >> $@
+	echo "\";" >> $@
+	echo -n 'const char* const GIT_VERSION = "' >> $@
+	git branch --abbrev=100 -v | tr -d "\n" >> $@
+	echo "\";" >> $@
+	echo >> $@
 
 $(TARGET).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET).elf $(OBJ) $(LDFLAGS)
@@ -77,6 +77,7 @@ clean:
 	rm -f $(TARGET).elf
 	rm -f $(TARGET).bin
 	rm -f elf-dump
+	rm -f $(VERSION_FILE)
 
 .PHONY: flash
 flash:
