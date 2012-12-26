@@ -4,9 +4,11 @@
 #include "System.h"
 #include "ClockControl.h"
 #include "Stream.h"
+#include "Dma.h"
+#include "Gpio.h"
 
 template<typename T>
-class Spi : public Stream<T>
+class Spi : public System::Event::Callback, public InterruptController::Callback, public ClockControl::Callback, public Stream<T>
 {
 public:
     Spi(System& system, System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
@@ -22,6 +24,7 @@ public:
     void setEndianess(Endianess endianess);
 
     void config(MasterSlave masterSlave, ClockPolarity clockPolarity, ClockPhase clockPhase, Endianess endianess);
+    void configChipSelect(Gpio::Pin* chipSelect, bool activeLow);
 
     virtual void read(T* data, unsigned int count);
     virtual void read(T* data, unsigned int count, System::Event* callback);
@@ -30,6 +33,11 @@ public:
 
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);
+
+protected:
+    virtual void interruptCallback(InterruptController::Index index);
+    virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
+    virtual void eventCallback(System::Event *event);
 
 private:
     struct SPI
@@ -65,7 +73,7 @@ private:
             uint16_t __RESERVED1 : 8;
         }   CR2;
         uint16_t __RESERVED1;
-        struct __SR2
+        struct __SR
         {
             uint16_t RXNE : 1;
             uint16_t TXE : 1;
@@ -77,7 +85,7 @@ private:
             uint16_t BSY : 1;
             uint16_t FRE : 1;
             uint16_t __RESERVED1 : 7;
-        }   SR2;
+        }   SR;
         uint16_t __RESERVED2;
         uint16_t DR;
         uint16_t __RESERVED3;
@@ -114,6 +122,24 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
+    Dma::Stream::Event mDmaTxComplete;
+    Dma::Stream::Event mDmaRxComplete;
+    InterruptController::Line* mInterrupt;
+    Dma::Stream* mDmaTx;
+    Dma::Stream* mDmaRx;
+    Gpio::Pin* mChipSelect;
+    bool mActiveLow;
+
+    void select();
+    void deselect();
+
+    void triggerWrite();
+    void triggerRead();
+    void waitTransmitComplete();
+    void waitReceiveNotEmpty();
+    void simpleRead();
+    void simpleWrite();
+
 };
 
 extern template class Spi<char>;

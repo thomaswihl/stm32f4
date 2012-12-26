@@ -9,6 +9,9 @@ public:
     LIS302DL(Spi<char>& spi);
 
     void enable();
+    uint8_t x();
+    uint8_t y();
+    uint8_t z();
 protected:
     Spi<char>& mSpi;
     enum class InterruptConfig
@@ -87,7 +90,16 @@ protected:
         ClickWindow = 0x3f,
     };
 
-    void set(Register register, uint8_t value);
+    enum Protocol
+    {
+        WRITE = 0x00,
+        READ = 0x80,
+        ADDR_INCR = 0x40,
+        ADDR_CONST = 0x00,
+    };
+
+    void set(Register reg, uint8_t value);
+    uint8_t get(Register reg);
 };
 
 #endif // LIS302DL_H

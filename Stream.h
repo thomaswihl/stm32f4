@@ -25,7 +25,7 @@
 class Device
 {
 public:
-    enum class Part { Read, Write, All };
+    enum Part { Read = 1, Write = 2, All = 3 };
 
     virtual void enable(Part part) = 0;
     virtual void disable(Part part) = 0;

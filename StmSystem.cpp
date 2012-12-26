@@ -77,28 +77,20 @@ void StmSystem::init()
 
     mDebug.config(115200);
     mDebug.configDma(new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel4,
-                                     new InterruptController::Line(mNvic, InterruptIndex::DMA1_Stream6)), nullptr);
+                                     new InterruptController::Line(mNvic, InterruptIndex::DMA1_Stream6)),
+                     nullptr
+//                     new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream5, Dma::Stream::ChannelIndex::Channel4,
+//                                                          new InterruptController::Line(mNvic, InterruptIndex::DMA1_Stream5))
+                     );
     mDebug.configInterrupt(new InterruptController::Line(mNvic, InterruptIndex::USART2));
+    mDebug.enable(Device::All);
 
     // USART2 TX
-    mGpioA.configOutput(Gpio::Pin::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioA.setAlternate(Gpio::Pin::Pin2, Gpio::AltFunc::USART2);
+    mGpioA.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioA.setAlternate(Gpio::Index::Pin2, Gpio::AltFunc::USART2);
     // USART2 RX
-    mGpioA.configInput(Gpio::Pin::Pin3);
-    mGpioA.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::USART2);
-
-    // MISO
-    mGpioA.configInput(Gpio::Pin::Pin6);
-    mGpioA.setAlternate(Gpio::Pin::Pin6, Gpio::AltFunc::SPI1);
-    // CS
-    mGpioE.configOutput(Gpio::Pin::Pin3, Gpio::OutputType::PushPull);
-    mGpioE.setAlternate(Gpio::Pin::Pin3, Gpio::AltFunc::SPI1);
-    // MOSI
-    mGpioA.configOutput(Gpio::Pin::Pin7, Gpio::OutputType::PushPull);
-    mGpioA.setAlternate(Gpio::Pin::Pin7, Gpio::AltFunc::SPI1);
-    // SCK
-    mGpioA.configOutput(Gpio::Pin::Pin5, Gpio::OutputType::PushPull);
-    mGpioA.setAlternate(Gpio::Pin::Pin5, Gpio::AltFunc::SPI1);
+    mGpioA.configInput(Gpio::Index::Pin3);
+    mGpioA.setAlternate(Gpio::Index::Pin3, Gpio::AltFunc::USART2);
 
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);

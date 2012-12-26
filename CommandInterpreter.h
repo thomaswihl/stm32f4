@@ -25,7 +25,7 @@
 #include <vector>
 
 
-class CommandInterpreter : public System::Event
+class CommandInterpreter : public System::Event::Callback
 {
 public:
     struct Argument
@@ -78,7 +78,7 @@ public:
     void printAliases(Command* cmd);
     bool parseArgument(Argument& argument);
 protected:
-    virtual void eventCallback(bool success);
+    virtual void eventCallback(System::Event *event);
 private:
     enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
     enum class State { Input, Debug };
@@ -111,6 +111,7 @@ private:
     char mPrompt[MAX_PROMPT_LEN];
     State mState;
     char mReadChar;
+    System::Event mCharReceived;
 
     void printLine();
     Command* findCommand(const char* name, unsigned int len, Possibilities& possible);

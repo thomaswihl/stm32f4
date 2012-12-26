@@ -29,19 +29,38 @@ StmSystem gSys;
 
 int main()
 {
-    LIS302DL lis(gSys.mSpi1);
-    CommandInterpreter interpreter(gSys);
-
     printf("\n\n\nRESET\n");
     gSys.printInfo();
+
+    gSys.mRcc.enable(ClockControl::Function::GpioA);
+    gSys.mRcc.enable(ClockControl::Function::GpioE);
+    // MISO
+    gSys.mGpioA.configInput(Gpio::Index::Pin6);
+    gSys.mGpioA.setAlternate(Gpio::Index::Pin6, Gpio::AltFunc::SPI1);
+    // CS
+    gSys.mGpioE.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
+    // MOSI
+    gSys.mGpioA.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull);
+    gSys.mGpioA.setAlternate(Gpio::Index::Pin7, Gpio::AltFunc::SPI1);
+    // SCK
+    gSys.mGpioA.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull);
+    gSys.mGpioA.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::SPI1);
+
+    gSys.mRcc.enable(ClockControl::Function::Spi1);
+
+    gSys.mSpi1.configChipSelect(new Gpio::Pin(gSys.mGpioE, Gpio::Index::Pin3), true);
+    LIS302DL lis(gSys.mSpi1);
+    lis.enable();
+    CommandInterpreter interpreter(gSys);
+
     gSys.mRcc.enable(ClockControl::Function::GpioD);
 
-    gSys.mGpioD.configOutput(Gpio::Pin::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
-    gSys.mGpioD.configOutput(Gpio::Pin::Pin13, Gpio::OutputType::PushPull);
-    gSys.mGpioD.configOutput(Gpio::Pin::Pin14, Gpio::OutputType::PushPull);
-    gSys.mGpioD.configOutput(Gpio::Pin::Pin15, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
+    gSys.mGpioD.configOutput(Gpio::Index::Pin13, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Index::Pin15, Gpio::OutputType::PushPull);
 
-    gSys.mGpioD.set(Gpio::Pin::Pin12);
+    gSys.mGpioD.set(Gpio::Index::Pin12);
     interpreter.add(new CmdHelp());
     interpreter.add(new CmdInfo(gSys));
     interpreter.add(new CmdFunc(gSys));
@@ -55,9 +74,9 @@ int main()
     {
         if (gSys.waitForEvent(event) && event != nullptr)
         {
-            gSys.mGpioD.reset(Gpio::Pin::Pin12);
-            event->eventCallback(event->success());
-            gSys.mGpioD.set(Gpio::Pin::Pin12);
+            gSys.mGpioD.reset(Gpio::Index::Pin12);
+            event->callback();
+            gSys.mGpioD.set(Gpio::Index::Pin12);
         }
     }
 

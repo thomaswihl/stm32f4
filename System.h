@@ -47,12 +47,21 @@ public:
     class Event
     {
     public:
-        Event() { }
-        virtual void eventCallback(bool success) = 0;
-        virtual void setResult(bool success) { mSuccess = success; }
-        virtual bool success() { return mSuccess; }
+        class Callback
+        {
+        public:
+            virtual void eventCallback(Event* event) = 0;
+        };
+
+        Event(Callback& callback) : mCallback(callback) { }
+
+        void callback() { mCallback.eventCallback(this); }
+
+        void setResult(bool success) { mSuccess = success; }
+        bool success() { return mSuccess; }
     private:
         bool mSuccess;
+        Callback& mCallback;
     };
 
     enum class TrapIndex
@@ -85,7 +94,7 @@ public:
     uint32_t stackFree();
     uint32_t stackUsed();
 
-    void postEvent(Event* event);
+    static void postEvent(Event* event);
     bool waitForEvent(Event*& event);
 
     template <class T>

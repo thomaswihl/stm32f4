@@ -26,7 +26,9 @@ Serial::Serial(System &system, System::BaseAddress base, ClockControl *clockCont
     mBase(reinterpret_cast<volatile USART*>(base)),
     mClockControl(clockControl),
     mClock(clock),
-    mSpeed(0)
+    mSpeed(0),
+    mDmaTxComplete(*this),
+    mDmaRxComplete(*this)
 {
     static_assert(sizeof(USART) == 0x1c, "Struct has wrong size, compiler problem.");
     clockControl->addChangeHandler(this);
@@ -34,10 +36,7 @@ Serial::Serial(System &system, System::BaseAddress base, ClockControl *clockCont
 
 Serial::~Serial()
 {
-    mBase->SR.NF = 1;
-    mBase->DR = 2;
-    mBase->CR1.SBK = 1;
-
+    disable(Device::All);
 }
 
 void Serial::setSpeed(uint32_t speed)
@@ -75,15 +74,26 @@ void Serial::setHardwareFlowControl(Serial::HardwareFlowControl hardwareFlow)
 void Serial::enable(Device::Part part)
 {
     mBase->CR1.UE = 1;
-    mBase->CR1.TE = 1;
-    mBase->CR1.RE = 1;
+    if (part & Device::Write) mBase->CR1.TE = 1;
+    if (part & Device::Read) mBase->CR1.RE = 1;
 }
 
 void Serial::disable(Device::Part part)
 {
-    mBase->CR1.UE = 0;
-    mBase->CR1.TE = 0;
-    mBase->CR1.RE = 0;
+    if (part == Device::All)
+    {
+        mBase->CR1.UE = 0;
+    }
+    if (part & Device::Write)
+    {
+        mBase->CR1.TE = 0;
+        mBase->CR1.TCIE = 0;
+    }
+    if (part & Device::Read)
+    {
+        mBase->CR1.RE = 0;
+        mBase->CR1.RXNEIE = 0;
+    }
 }
 
 void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity parity, Serial::StopBits stopBits, HardwareFlowControl hardwareFlow)
@@ -94,40 +104,30 @@ void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity 
     setParity(parity);
     setStopBits(stopBits);
     setHardwareFlowControl(hardwareFlow);
-    enable(Device::Part::All);
 }
 
 void Serial::configDma(Dma::Stream *tx, Dma::Stream *rx)
 {
-    if (mDmaTx != nullptr) delete mDmaTx;
-    if (mDmaRx != nullptr) delete mDmaRx;
-    mBase->CR3.DMAT = 0;
-    mBase->CR3.DMAR = 0;
     mDmaTx = tx;
+    mDmaRx = rx;
     if (mDmaTx != nullptr)
     {
         mDmaTx->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaTx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mDmaTx->configFifo(Dma::Stream::FifoThreshold::Quater);
-        mBase->CR3.DMAT = 1;
-        mDmaTx->setCallback(this);
+        mDmaTx->setEvent(&mDmaTxComplete);
     }
-    mDmaRx = rx;
     if (mDmaRx != nullptr)
     {
         mDmaRx->config(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaRx->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mDmaTx->configFifo(Dma::Stream::FifoThreshold::Quater);
-        mBase->CR3.DMAR = 1;
-        mDmaRx->setCallback(this);
+        mDmaRx->setEvent(&mDmaRxComplete);
     }
 }
 
 void Serial::configInterrupt(InterruptController::Line* interrupt)
 {
-    if (mInterrupt != nullptr) delete mInterrupt;
-    mBase->CR1.TCIE = 0;
-    mBase->CR1.RXNEIE = 0;
     mInterrupt = interrupt;
     if (mInterrupt != nullptr)
     {
@@ -199,32 +199,53 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
     if (reason == ClockControl::Callback::Reason::Changed && mSpeed != 0) setSpeed(mSpeed);
 }
 
-void Serial::dmaCallback(Dma::Stream::Callback::Reason reason)
+void Serial::eventCallback(System::Event *event)
 {
-    if (reason == Dma::Stream::Callback::Reason::TransferComplete)
+    if (event == &mDmaTxComplete)
     {
-        // If we have an interrupt controller it will signal a TC as soon as the last transfer is complete.
-        if (mInterrupt == nullptr)
+        mBase->CR3.DMAT = 0;
+        if (event->success())
         {
-            // Else we have to wait for it to finish before we can start the next.
-            waitTransmitComplete();
-            Stream<char>::writeFinished(true);
+            // If we have an interrupt controller it will signal a TC as soon as the last transfer is complete.
+            if (mInterrupt == nullptr)
+            {
+                // Else we have to wait for it to finish before we can start the next.
+                waitTransmitComplete();
+                Stream<char>::writeFinished(true);
+            }
+        }
+        else
+        {
+            // Ooops something went wrong (probably our configuration, anyway, disable DMA.
+            configDma(nullptr, mDmaRx);
+            Stream<char>::writeFinished(false);
+            mSystem.printError("Serial", "DMA write transfer failed");
         }
     }
-    else
+    else if (event == &mDmaRxComplete)
     {
-        // Ooops something went wrong (probably our configuration, anyway, disable DMA.
-        configDma(nullptr, mDmaRx);
-        Stream<char>::writeFinished(false);
+        mBase->CR3.DMAR = 0;
+        if (event->success())
+        {
+            Stream<char>::readFinished(true);
+        }
+        else
+        {
+            // Ooops something went wrong (probably our configuration, anyway, disable DMA.
+            configDma(mDmaTx, nullptr);
+            Stream<char>::readFinished(false);
+            mSystem.printError("Serial", "DMA read transfer failed");
+        }
     }
 }
 
 void Serial::triggerWrite()
 {
-    if (mDmaTx != 0)
+    if (mDmaTx != 0 && Stream<char>::mWriteData)
     {
-        mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mWriteData));
-        mDmaTx->setTransferCount(mWriteCount);
+        mBase->CR3.DMAT = 1;
+        mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<char>::mWriteData));
+        mDmaTx->setTransferCount(Stream<char>::mWriteCount);
         mBase->SR.TC = 0;
         if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
         mDmaTx->start();
@@ -248,8 +269,9 @@ void Serial::triggerRead()
 {
     if (mDmaRx != 0)
     {
-        mDmaRx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mReadData));
-        mDmaRx->setTransferCount(mReadCount);
+        mBase->CR3.DMAR = 1;
+        mDmaRx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<char>::mReadData));
+        mDmaRx->setTransferCount(Stream<char>::mReadCount);
         mDmaRx->start();
     }
     else if (mInterrupt != 0)

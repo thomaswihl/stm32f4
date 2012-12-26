@@ -24,10 +24,7 @@
 class Gpio
 {
 public:
-    Gpio(unsigned int base);
-    ~Gpio();
-
-    enum class Pin { Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, Pin8, Pin9, Pin10, Pin11, Pin12, Pin13, Pin14, Pin15 };
+    enum class Index { Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, Pin8, Pin9, Pin10, Pin11, Pin12, Pin13, Pin14, Pin15 };
     enum class OutputType { PushPull = 0, OpenDrain = 1 };
     enum class Speed { Low = 0, Medium = 1, Fast = 2, High = 3 }; // Low = 2MHz, Medium = 25MHz, Fast = 50MHz, High = 100MHz (on 30pF), 80MHz (on 15pF)
     enum class Pull { None = 0, Up = 1, Down = 2 };
@@ -71,22 +68,37 @@ public:
     };
     enum class Mode { Input = 0, Output = 1, Alternate = 2, Analog = 3 };
 
-    bool get(Pin index);
+    class Pin
+    {
+    public:
+        Pin(Gpio& gpio, Index index);
+        void set();
+        void reset();
+        bool get();
+    private:
+        Gpio& mGpio;
+        Index mIndex;
+    };
+
+    Gpio(unsigned int base);
+    ~Gpio();
+
+    bool get(Index index);
     uint16_t get();
-    void set(Pin index);
+    void set(Index index);
     void set(uint16_t indices);
     void setValue(uint16_t value);
-    void reset(Pin index);
+    void reset(Index index);
     void reset(uint16_t indices);
 
-    void setMode(Pin index, Mode mode);
-    void setOutputType(Pin index, OutputType outputType);
-    void setSpeed(Pin index, Speed speed);
-    void setPull(Pin index, Pull pull);
-    void setAlternate(Pin index, AltFunc altFunc);
+    void setMode(Index index, Mode mode);
+    void setOutputType(Index index, OutputType outputType);
+    void setSpeed(Index index, Speed speed);
+    void setPull(Index index, Pull pull);
+    void setAlternate(Index index, AltFunc altFunc);
 
-    void configInput(Pin index, Pull pull = Pull::None);
-    void configOutput(Pin index, OutputType outputType, Pull pull = Pull::None, Speed speed = Speed::Medium);
+    void configInput(Index index, Pull pull = Pull::None);
+    void configOutput(Index index, OutputType outputType, Pull pull = Pull::None, Speed speed = Speed::Medium);
 
 
 private:

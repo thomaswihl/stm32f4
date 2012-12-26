@@ -25,7 +25,9 @@
 CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mSystem(system),
     mLineLen(0),
-    mState(State::Input)
+    mState(State::Input),
+    mReadChar(0),
+    mCharReceived(*this)
 {
     strcpy(mPrompt, "# ");
 }
@@ -100,7 +102,7 @@ void CommandInterpreter::add(Command* cmd)
 
 void CommandInterpreter::start()
 {
-    mSystem.mDebug.read(&mReadChar, 1, this);
+    mSystem.mDebug.read(&mReadChar, 1, &mCharReceived);
     printLine();
 }
 
@@ -206,10 +208,13 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
     return true;
 }
 
-void CommandInterpreter::eventCallback(bool success)
+void CommandInterpreter::eventCallback(System::Event* event)
 {
-    if (success) feed();
-    mSystem.mDebug.read(&mReadChar, 1, this);
+    if (event == &mCharReceived)
+    {
+        feed();
+        mSystem.mDebug.read(&mReadChar, 1, &mCharReceived);
+    }
 }
 
 void CommandInterpreter::printLine()

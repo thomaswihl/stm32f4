@@ -69,7 +69,7 @@ void Stream<T>::readFinished(bool success)
     if (mReadCallback != nullptr)
     {
         mReadCallback->setResult(success);
-        mSystem.postEvent(mReadCallback);
+        System::postEvent(mReadCallback);
         mReadCallback = nullptr;
     }
 }
@@ -112,7 +112,7 @@ void Stream<T>::writeFinished(bool success)
     if (mWriteCallback != nullptr)
     {
         mWriteCallback->setResult(success);
-        mSystem.postEvent(mWriteCallback);
+        System::postEvent(mWriteCallback);
         mWriteCallback = nullptr;
     }
 }

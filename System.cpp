@@ -277,7 +277,7 @@ uint32_t System::stackUsed()
 
 void System::postEvent(Event *event)
 {
-    mEventQueue.push(event);
+    mSystem->mEventQueue.push(event);
 }
 
 bool System::waitForEvent(Event *&event)

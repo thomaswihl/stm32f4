@@ -38,7 +38,7 @@ public:
         Dcmi = 32, Cryp = 36, Hash, Rng, OtgFs,
         Fsmc = 64,
         Tim2 = 128, Tim3, Tim4, Tim5, Tim6, Tim7, Tim12, Tim13, Tim14, WWdg = 139, Spi2 = 142, Spi3, Usart2 = 145, Usart3, Usart4, Uart5, I2c1, I2c2, I2c3, Can1 = 153, Can2, Pwr = 156, Dac,
-        Tim1 = 160, Tim8, Usart1 = 164, Usart6, Adc1 = 128, Adc2, Adc3, Sdio, Spi1, SysCfg = 14, Tim9 = 176, Tim10, Tim11, Spi5 = 180, Spi6
+        Tim1 = 160, Tim8, Usart1 = 164, Usart6, Adc1 = 168, Adc2, Adc3, Sdio, Spi1, SysCfg = 174, Tim9 = 176, Tim10, Tim11
     };
     enum class Clock
     {

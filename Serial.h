@@ -28,7 +28,7 @@
 
 #include <queue>
 
-class Serial : public InterruptController::Callback, public ClockControl::Callback, public Dma::Stream::Callback, public Stream<char>
+class Serial : public System::Event::Callback, public InterruptController::Callback, public ClockControl::Callback, public Stream<char>
 {
 public:
     enum class WordLength { Eight, Nine };
@@ -60,7 +60,7 @@ public:
 protected:
     virtual void interruptCallback(InterruptController::Index index);
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
-    virtual void dmaCallback(Dma::Stream::Callback::Reason reason);
+    virtual void eventCallback(System::Event *event);
 
 private:
     struct USART
@@ -151,10 +151,11 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
+    Dma::Stream::Event mDmaTxComplete;
+    Dma::Stream::Event mDmaRxComplete;
     InterruptController::Line* mInterrupt;
     Dma::Stream* mDmaTx;
     Dma::Stream* mDmaRx;
-    unsigned int mDmaTransferLength;
 
     void triggerWrite();
     void triggerRead();
