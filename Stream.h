@@ -21,18 +21,10 @@
 
 #include "System.h"
 #include "CircularBuffer.h"
-
-class Device
-{
-public:
-    enum Part { Read = 1, Write = 2, All = 3 };
-
-    virtual void enable(Part part) = 0;
-    virtual void disable(Part part) = 0;
-};
+#include "Dma.h"
 
 template<typename T>
-class Stream : public Device
+class Stream
 {
 public:
     Stream(System& system);

@@ -34,22 +34,33 @@ int main()
 
     gSys.mRcc.enable(ClockControl::Function::GpioA);
     gSys.mRcc.enable(ClockControl::Function::GpioE);
-    // MISO
-    gSys.mGpioA.configInput(Gpio::Index::Pin6);
-    gSys.mGpioA.setAlternate(Gpio::Index::Pin6, Gpio::AltFunc::SPI1);
-    // CS
-    gSys.mGpioE.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
-    // MOSI
-    gSys.mGpioA.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull);
-    gSys.mGpioA.setAlternate(Gpio::Index::Pin7, Gpio::AltFunc::SPI1);
     // SCK
     gSys.mGpioA.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull);
     gSys.mGpioA.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::SPI1);
+    // MISO
+    gSys.mGpioA.configInput(Gpio::Index::Pin6);
+    gSys.mGpioA.setAlternate(Gpio::Index::Pin6, Gpio::AltFunc::SPI1);
+    // MOSI
+    gSys.mGpioA.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull);
+    gSys.mGpioA.setAlternate(Gpio::Index::Pin7, Gpio::AltFunc::SPI1);
+    // CS
+    gSys.mGpioE.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
+    // INT1
+    gSys.mGpioE.configInput(Gpio::Index::Pin0);
+    // INT2
+    gSys.mGpioE.configInput(Gpio::Index::Pin1);
 
     gSys.mRcc.enable(ClockControl::Function::Spi1);
 
     gSys.mSpi1.configChipSelect(new Gpio::Pin(gSys.mGpioE, Gpio::Index::Pin3), true);
+    gSys.mSpi1.configDma(new Dma::Stream(gSys.mDma2, Dma::Stream::StreamIndex::Stream3, Dma::Stream::ChannelIndex::Channel3,
+                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream3)),
+                         new Dma::Stream(gSys.mDma2, Dma::Stream::StreamIndex::Stream2, Dma::Stream::ChannelIndex::Channel3,
+                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream2))
+                         );
+
     LIS302DL lis(gSys.mSpi1);
+    lis.configInterrupt(new ExternalInterrupt::Line(gSys.mExtI, StmSystem::InterruptIndex::EXTI0), new ExternalInterrupt::Line(gSys.mExtI, StmSystem::InterruptIndex::EXTI1));
     lis.enable();
     CommandInterpreter interpreter(gSys);
 

@@ -37,3 +37,7 @@ hw/lis302dl.cpp
 Stream.h
 Stream.cpp
 CircularBuffer.cpp
+Device.h
+Device.cpp
+SysCfg.h
+SysCfg.cpp

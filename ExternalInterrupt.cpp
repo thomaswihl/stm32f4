@@ -31,13 +31,32 @@ ExternalInterrupt::~ExternalInterrupt()
 {
 }
 
-void ExternalInterrupt::set(InterruptController::Index index, InterruptController::Callback *callback)
-{
-    mCallback[index] = callback;
-}
-
-
 void ExternalInterrupt::handle(InterruptController::Index index)
 {
     if (mCallback[index] != 0) mCallback[index]->interruptCallback(index);
 }
+
+ExternalInterrupt::Line::Line(ExternalInterrupt &interruptController, InterruptController::Index index) :
+    mInterruptController(interruptController),
+    mIndex(index)
+{
+}
+
+ExternalInterrupt::Line::~Line()
+{
+}
+
+void ExternalInterrupt::Line::setCallback(InterruptController::Callback *handler)
+{
+    mInterruptController.mCallback[mIndex] = handler;
+}
+
+void ExternalInterrupt::Line::enable()
+{
+}
+
+void ExternalInterrupt::Line::disable()
+{
+}
+
+

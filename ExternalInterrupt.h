@@ -29,8 +29,21 @@ public:
     ExternalInterrupt(unsigned int base, std::size_t vectorSize);
     ~ExternalInterrupt();
 
-    void set(InterruptController::Index index, InterruptController::Callback *callback);
     void handle(InterruptController::Index index);
+
+    class Line
+    {
+    public:
+        Line(ExternalInterrupt& interruptController, InterruptController::Index index);
+        ~Line();
+        void setCallback(InterruptController::Callback *handler);
+        void enable();
+        void disable();
+    private:
+        ExternalInterrupt& mInterruptController;
+        InterruptController::Index mIndex;
+    };
+
 private:
     struct EXTI
     {

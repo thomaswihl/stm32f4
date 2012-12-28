@@ -6,9 +6,10 @@
 #include "Stream.h"
 #include "Dma.h"
 #include "Gpio.h"
+#include "Device.h"
 
 template<typename T>
-class Spi : public System::Event::Callback, public InterruptController::Callback, public ClockControl::Callback, public Stream<T>
+class Spi : public Device, public ClockControl::Callback, public Stream<T>
 {
 public:
     Spi(System& system, System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
@@ -34,10 +35,13 @@ public:
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);
 
+    void configDma(Dma::Stream *write, Dma::Stream *read);
 protected:
-    virtual void interruptCallback(InterruptController::Index index);
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
-    virtual void eventCallback(System::Event *event);
+    virtual void interruptCallback(InterruptController::Index index);
+
+    virtual void dmaReadComplete(bool success);
+    virtual void dmaWriteComplete(bool success);
 
 private:
     struct SPI
@@ -122,11 +126,6 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
-    Dma::Stream::Event mDmaTxComplete;
-    Dma::Stream::Event mDmaRxComplete;
-    InterruptController::Line* mInterrupt;
-    Dma::Stream* mDmaTx;
-    Dma::Stream* mDmaRx;
     Gpio::Pin* mChipSelect;
     bool mActiveLow;
 

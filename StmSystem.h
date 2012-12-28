@@ -63,6 +63,7 @@ public:
             SPI2 = 0x40003800,
             SPI3 = 0x40003c00,
             STK = 0xe000e010,
+            SYSCFG = 0x40013800,
             FPU = 0xe000ed88,
             SCB = 0xe000ed00,
         };

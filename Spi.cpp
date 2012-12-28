@@ -6,8 +6,6 @@ Spi<T>::Spi(System &system, System::BaseAddress base, ClockControl *clockControl
     mBase(reinterpret_cast<volatile SPI*>(base)),
     mClockControl(clockControl),
     mClock(clock),
-    mDmaTxComplete(*this),
-    mDmaRxComplete(*this),
     mChipSelect(nullptr),
     mActiveLow(true)
 {
@@ -125,18 +123,48 @@ void Spi<T>::disable(Device::Part part)
 }
 
 template<typename T>
-void Spi<T>::interruptCallback(InterruptController::Index index)
+void Spi<T>::configDma(Dma::Stream *write, Dma::Stream *read)
 {
+    Device::configDma(write, read);
+    Dma::Stream::DataSize dataSize = Dma::Stream::DataSize::Byte;
+    if (sizeof(T) == 2) dataSize = Dma::Stream::DataSize::HalfWord;
+    if (Device::mDmaWrite != nullptr)
+    {
+        mDmaWrite->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, dataSize, dataSize, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+        mDmaWrite->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
+        mDmaWrite->configFifo(Dma::Stream::FifoThreshold::Quater);
+    }
+    if (Device::mDmaRead != nullptr)
+    {
+        mDmaRead->config(Dma::Stream::Direction::PeripheralToMemory, false, true, dataSize, dataSize, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+        mDmaRead->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
+        mDmaWrite->configFifo(Dma::Stream::FifoThreshold::Quater);
+    }
 }
 
 template<typename T>
 void Spi<T>::clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock)
 {
+    if (reason == ClockControl::Callback::Reason::Changed) setSpeed(mSpeed);
 }
 
 template<typename T>
-void Spi<T>::eventCallback(System::Event *event)
+void Spi<T>::interruptCallback(InterruptController::Index index)
 {
+}
+
+template<typename T>
+void Spi<T>::dmaReadComplete(bool success)
+{
+    mBase->CR2.RXDMAEN = 0;
+    Stream<T>::readFinished(success);
+}
+
+template<typename T>
+void Spi<T>::dmaWriteComplete(bool success)
+{
+    mBase->CR2.TXDMAEN = 0;
+    Stream<T>::writeFinished(success);
 }
 
 template<typename T>
@@ -162,14 +190,12 @@ void Spi<T>::deselect()
 template<typename T>
 void Spi<T>::triggerWrite()
 {
-    if (mDmaTx != 0 && Stream<T>::mWriteData)
+    if (mDmaWrite != 0)
     {
-//        mBase->CR3.DMAT = 1;
-//        mDmaTx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mWriteData));
-//        mDmaTx->setTransferCount(mWriteCount);
-//        mBase->SR.TC = 0;
-//        if (mInterrupt != nullptr) mBase->CR1.TCIE = 1;
-//        mDmaTx->start();
+        mBase->CR2.TXDMAEN = 1;
+        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::mWriteData));
+        mDmaWrite->setTransferCount(Stream<T>::mWriteCount);
+        mDmaWrite->start();
     }
     else if (mInterrupt != 0)
     {
@@ -189,12 +215,17 @@ void Spi<T>::triggerWrite()
 template<typename T>
 void Spi<T>::triggerRead()
 {
-    if (mDmaRx != 0)
+    // empty the receive register before starting another transfer,
+    // as it might be full from last transfer, in case it was a write only transfer
+    T c;
+    while (mBase->SR.RXNE) c = mBase->DR;
+    (void)c;
+    if (mDmaRead != 0)
     {
-//        mBase->CR3.DMAR = 1;
-//        mDmaRx->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mReadData));
-//        mDmaRx->setTransferCount(mReadCount);
-//        mDmaRx->start();
+        mBase->CR2.RXDMAEN = 1;
+        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::mReadData));
+        mDmaRead->setTransferCount(Stream<T>::mReadCount);
+        mDmaRead->start();
     }
     else if (mInterrupt != 0)
     {
@@ -244,18 +275,14 @@ void Spi<T>::simpleWrite()
     while (Stream<T>::write(c))
     {
         waitTransmitComplete();
-        //printf("W:%02x ", c);
         mBase->DR = c;
         waitReceiveNotEmpty();
         c = static_cast<T>(mBase->DR);
-        //printf("R:%02x ", c);
         Stream<T>::read(c);
     }
     Stream<T>::readFinished(true);
     Stream<T>::writeFinished(true);
-    //printf("\n");
 }
 
 template class Spi<char>;
 template class Spi<uint16_t>;
-

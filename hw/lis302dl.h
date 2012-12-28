@@ -2,18 +2,29 @@
 #define LIS302DL_H
 
 #include "../Spi.h"
+#include "../System.h"
+#include "../Device.h"
 
-class LIS302DL
+class LIS302DL : public System::Event::Callback
 {
 public:
     LIS302DL(Spi<char>& spi);
 
     void enable();
+    void disable();
+
+    void configInterrupt(ExternalInterrupt::Line* line1, ExternalInterrupt::Line* line2);
+
     int8_t x();
     int8_t y();
     int8_t z();
+
 protected:
+    System::Event mTransferCompleteEvent;
     Spi<char>& mSpi;
+    char* mBuffer;
+    ExternalInterrupt::Line* mLine1;
+    ExternalInterrupt::Line* mLine2;
     enum class InterruptConfig
     {
         Gnd = 0x00,
@@ -97,6 +108,10 @@ protected:
         ADDR_INCR = 0x40,
         ADDR_CONST = 0x00,
     };
+
+    virtual void eventCallback(System::Event* event);
+    virtual void interruptCallback(InterruptController::Index index);
+
 
     void set(Register reg, uint8_t value);
     uint8_t get(Register reg);

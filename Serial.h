@@ -25,10 +25,11 @@
 #include "Dma.h"
 #include "CircularBuffer.h"
 #include "Stream.h"
+#include "Device.h"
 
 #include <queue>
 
-class Serial : public System::Event::Callback, public InterruptController::Callback, public ClockControl::Callback, public Stream<char>
+class Serial : public Device, public ClockControl::Callback, public Stream<char>
 {
 public:
     enum class WordLength { Eight, Nine };
@@ -46,8 +47,6 @@ public:
     void setHardwareFlowControl(HardwareFlowControl hardwareFlow);
 
     void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
-    void configDma(Dma::Stream* tx, Dma::Stream* rx);
-    void configInterrupt(InterruptController::Line* interrupt);
 
     virtual void read(char* data, unsigned int count);
     virtual void read(char* data, unsigned int count, System::Event* callback);
@@ -57,10 +56,13 @@ public:
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);
 
+    void configDma(Dma::Stream *write, Dma::Stream *read);
 protected:
-    virtual void interruptCallback(InterruptController::Index index);
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
-    virtual void eventCallback(System::Event *event);
+    virtual void interruptCallback(InterruptController::Index index);
+
+    virtual void dmaReadComplete(bool success);
+    virtual void dmaWriteComplete(bool success);
 
 private:
     struct USART
@@ -151,11 +153,6 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
-    Dma::Stream::Event mDmaTxComplete;
-    Dma::Stream::Event mDmaRxComplete;
-    InterruptController::Line* mInterrupt;
-    Dma::Stream* mDmaTx;
-    Dma::Stream* mDmaRx;
 
     void triggerWrite();
     void triggerRead();
