@@ -75,7 +75,7 @@ void StmSystem::init()
     mRcc.enable(ClockControl::Function::GpioA);
     mRcc.enable(ClockControl::Function::Dma1);
 
-    mDebug.config(115200);
+    mDebug.config(921600);
     mDebug.configDma(new Dma::Stream(mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel4,
                                      new InterruptController::Line(mNvic, InterruptIndex::DMA1_Stream6)),
                      nullptr

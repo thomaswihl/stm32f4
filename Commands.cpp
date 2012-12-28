@@ -115,6 +115,6 @@ CmdLis::CmdLis(LIS302DL &lis) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), AR
 
 bool CmdLis::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
-    printf("%3u %3u %3u\n", mLis.x(), mLis.y(), mLis.z());
+    printf("%3i %3i %3i\n", mLis.x(), mLis.y(), mLis.z());
     return true;
 }

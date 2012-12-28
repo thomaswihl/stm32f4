@@ -37,9 +37,11 @@ void __attribute__((naked)) Trap()
 {
     // save the sp and lr (containing return info)
     __asm("mov r0, sp");
+    __asm("push {r4, r5, r6, r7, r8, r9, r10, r11, r12}");
     __asm("push {r0, lr}");
-    __asm("add.w r0, r0, #8");
+//  __asm("add.w r0, r0, #8");
     __asm("bl Trap2");
+    __asm("pop {r4, r5, r6, r7, r8, r9, r10, r11, r12}");
     __asm("pop {r0, lr}");
     __asm("mov sp, r0");
     while (true) ;

@@ -92,5 +92,5 @@ debug:
 	
 .PHONY: elf-dump
 elf-dump: proj
-	$(OBJDUMP) -d $(TARGET).elf > elf-dump
+	$(OBJDUMP) -Sd $(TARGET).elf > elf-dump
 	

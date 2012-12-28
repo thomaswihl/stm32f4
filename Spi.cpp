@@ -23,10 +23,10 @@ uint32_t Spi<T>::setSpeed(uint32_t maxSpeed)
     uint32_t divider = (clock + maxSpeed - 1) / maxSpeed;
     uint32_t br = 0;
     while ((2u << br) < divider) ++br;
-    br &= 7;
+    if (br > 7) br = 7;
     mBase->CR1.BR = br;
     mSpeed = maxSpeed;
-    return clock / (1 << (br + 1));
+    return clock / (2 << br);
 }
 
 template<typename T>
@@ -244,12 +244,16 @@ void Spi<T>::simpleWrite()
     while (Stream<T>::write(c))
     {
         waitTransmitComplete();
+        //printf("W:%02x ", c);
         mBase->DR = c;
         waitReceiveNotEmpty();
-        Stream<T>::read(static_cast<T>(mBase->DR));
+        c = static_cast<T>(mBase->DR);
+        //printf("R:%02x ", c);
+        Stream<T>::read(c);
     }
     Stream<T>::readFinished(true);
     Stream<T>::writeFinished(true);
+    //printf("\n");
 }
 
 template class Spi<char>;
