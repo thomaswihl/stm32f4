@@ -36,6 +36,7 @@ StmSystem::StmSystem() :
     mExtI(BaseAddress::EXTI, 23),
     mNvic(BaseAddress::NVIC, 82),
     mSysTick(BaseAddress::STK, &mRcc, 100),
+    mSysCfg(BaseAddress::SYSCFG),
     mDma1(BaseAddress::DMA1),
     mDma2(BaseAddress::DMA2),
 //    mUsart1(*this, BaseAddress::USART1, &mRcc, ClockControl::Clock::APB2),
@@ -95,7 +96,7 @@ void StmSystem::init()
 
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
-    //mFpu.enable(FpuControl::AccessPrivileges::Full);
+    mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 
 void StmSystem::debugRead(char *msg, unsigned int len)

@@ -23,13 +23,12 @@
 
 #include <cstdint>
 
-class ExternalInterrupt
+class ExternalInterrupt : public InterruptController::Callback
 {
 public:
-    ExternalInterrupt(unsigned int base, std::size_t vectorSize);
+    enum class Trigger { Level, Rising, Falling, RisingAndFalling };
+    ExternalInterrupt(unsigned int base, unsigned int vectorSize);
     ~ExternalInterrupt();
-
-    void handle(InterruptController::Index index);
 
     class Line
     {
@@ -37,31 +36,29 @@ public:
         Line(ExternalInterrupt& interruptController, InterruptController::Index index);
         ~Line();
         void setCallback(InterruptController::Callback *handler);
-        void enable();
+        void enable(Trigger trigger);
         void disable();
     private:
         ExternalInterrupt& mInterruptController;
         InterruptController::Index mIndex;
     };
 
+protected:
+    virtual void interruptCallback(InterruptController::Index index);
+
 private:
     struct EXTI
     {
-        uint32_t IMR : 23;
-        uint32_t : 0;
-        uint32_t EMR : 23;
-        uint32_t : 0;
-        uint32_t RTSR : 23;
-        uint32_t : 0;
-        uint32_t FTSR : 23;
-        uint32_t : 0;
-        uint32_t SWIER : 23;
-        uint32_t : 0;
-        uint32_t PR : 23;
-        uint32_t : 0;
+        uint32_t IMR;
+        uint32_t EMR;
+        uint32_t RTSR;
+        uint32_t FTSR;
+        uint32_t SWIER;
+        uint32_t PR;
     };
 
     volatile EXTI* mBase;
+    unsigned int mVectorSize;
     InterruptController::Callback** mCallback;
 
 };

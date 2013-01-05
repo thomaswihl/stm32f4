@@ -30,12 +30,13 @@ class CommandInterpreter : public System::Event::Callback
 public:
     struct Argument
     {
-        enum class Type { Unknown, String, UnsignedInt, Int };
+        enum class Type { Unknown, String, UnsignedInt, Int, Bool };
         union __value
         {
             unsigned int u;
             int i;
             char const * s;
+            bool b;
         }   value;
         Type type;
         bool optional;

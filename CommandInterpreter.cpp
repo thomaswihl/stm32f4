@@ -21,6 +21,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <strings.h>
 
 CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mSystem(system),
@@ -138,6 +139,7 @@ void CommandInterpreter::printArguments(CommandInterpreter::Command *cmd, bool s
             case Argument::Type::String: printf("string\n"); break;
             case Argument::Type::Int: printf("int\n"); break;
             case Argument::Type::UnsignedInt: printf("unsigned int\n"); break;
+            case Argument::Type::Bool: printf("bool\n"); break;
             case Argument::Type::Unknown: printf("unknown\n"); break;
             }
         }
@@ -195,6 +197,18 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
         case 's':
             if (argument.type != Argument::Type::Unknown) return false;
             argument.type = Argument::Type::String;
+            break;
+        case 'b':
+            if (argument.type != Argument::Type::Unknown) return false;
+            if (argument.value.s != nullptr)
+            {
+                if (strcasecmp(argument.value.s, "on") == 0) argument.value.b = true;
+                else if (strcasecmp(argument.value.s, "off") == 0) argument.value.b = false;
+                else if (strcmp(argument.value.s, "1") == 0) argument.value.b = true;
+                else if (strcmp(argument.value.s, "0") == 0) argument.value.b = false;
+                else return false;
+            }
+            argument.type = Argument::Type::Bool;
             break;
         case 'o':
             argument.optional = true;
@@ -266,7 +280,7 @@ void CommandInterpreter::execute()
     argv[0].value.s = mLine;
     argv[0].type = Argument::Type::String;
     unsigned int argc = 1;
-    // first we split our line int seperate strings (by replacing whitespace with binary 0)
+    // first we split our line into seperate strings (by replacing whitespace with binary 0)
     char split = ' ';
     int argStart = 0, prevArgStart = 0;
     for (unsigned int i = 0; i < mLineLen; ++i)

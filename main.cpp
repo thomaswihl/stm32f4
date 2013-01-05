@@ -29,6 +29,7 @@ StmSystem gSys;
 
 int main()
 {
+
     printf("\n\n\nRESET\n");
     gSys.printInfo();
 
@@ -47,8 +48,16 @@ int main()
     gSys.mGpioE.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
     // INT1
     gSys.mGpioE.configInput(Gpio::Index::Pin0);
+    gSys.mSysCfg.extIntSource(Gpio::Index::Pin0, SysCfg::Gpio::E);
+    InterruptController::Line extInt0(gSys.mNvic, StmSystem::InterruptIndex::EXTI0);
+    extInt0.setCallback(&gSys.mExtI);
+    extInt0.enable();
     // INT2
     gSys.mGpioE.configInput(Gpio::Index::Pin1);
+    gSys.mSysCfg.extIntSource(Gpio::Index::Pin1, SysCfg::Gpio::E);
+    InterruptController::Line extInt1(gSys.mNvic, StmSystem::InterruptIndex::EXTI1);
+    extInt1.setCallback(&gSys.mExtI);
+    extInt1.enable();
 
     gSys.mRcc.enable(ClockControl::Function::Spi1);
 
@@ -78,6 +87,8 @@ int main()
     interpreter.add(new CmdRead());
     interpreter.add(new CmdWrite());
     interpreter.add(new CmdLis(lis));
+    Gpio* gpio[] = { &gSys.mGpioA, &gSys.mGpioB, &gSys.mGpioC, &gSys.mGpioD, &gSys.mGpioE, &gSys.mGpioF, &gSys.mGpioG, &gSys.mGpioH, &gSys.mGpioI };
+    interpreter.add(new CmdPin(gpio, sizeof(gpio) / sizeof(gpio[0])));
     interpreter.start();
 
     System::Event* event;
@@ -85,9 +96,9 @@ int main()
     {
         if (gSys.waitForEvent(event) && event != nullptr)
         {
-            gSys.mGpioD.reset(Gpio::Index::Pin12);
+            gSys.mGpioD.set(Gpio::Index::Pin13);
             event->callback();
-            gSys.mGpioD.set(Gpio::Index::Pin12);
+            gSys.mGpioD.reset(Gpio::Index::Pin13);
         }
     }
 

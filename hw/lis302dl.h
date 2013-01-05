@@ -4,6 +4,7 @@
 #include "../Spi.h"
 #include "../System.h"
 #include "../Device.h"
+#include "../ExternalInterrupt.h"
 
 class LIS302DL : public System::Event::Callback
 {
@@ -20,11 +21,26 @@ public:
     int8_t z();
 
 protected:
+    class Callback : public InterruptController::Callback
+    {
+    public:
+        Callback(LIS302DL& lis) : mLis(lis) { }
+        virtual void interruptCallback(InterruptController::Index index) { mLis.interruptCallback(this); }
+
+        void setLine(ExternalInterrupt::Line* line) { mLine = line; }
+        void enable() { if (mLine != nullptr) mLine->enable(ExternalInterrupt::Trigger::Level); }
+        void disable() { if (mLine != nullptr) mLine->disable(); }
+    private:
+        LIS302DL& mLis;
+        ExternalInterrupt::Line* mLine;
+
+    };
+
     System::Event mTransferCompleteEvent;
     Spi<char>& mSpi;
     char* mBuffer;
-    ExternalInterrupt::Line* mLine1;
-    ExternalInterrupt::Line* mLine2;
+    Callback mLine1;
+    Callback mLine2;
     enum class InterruptConfig
     {
         Gnd = 0x00,
@@ -110,7 +126,7 @@ protected:
     };
 
     virtual void eventCallback(System::Event* event);
-    virtual void interruptCallback(InterruptController::Index index);
+    void interruptCallback(Callback *line);
 
 
     void set(Register reg, uint8_t value);

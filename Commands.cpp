@@ -1,5 +1,6 @@
 #include "Commands.h"
 
+#include <cmath>
 
 char const * const CmdHelp::NAME[] = { "help", "?" };
 char const * const CmdHelp::ARGV[] = { "os:command" };
@@ -18,6 +19,9 @@ char const * const CmdWrite::ARGV[] = { "u:address", "u:data" };
 
 char const * const CmdLis::NAME[] = { "lis" };
 char const * const CmdLis::ARGV[] = { };
+
+char const * const CmdPin::NAME[] = { "pin" };
+char const * const CmdPin::ARGV[] = { "s:pin", "ob:value" };
 
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
@@ -73,6 +77,24 @@ bool CmdRead::execute(CommandInterpreter &interpreter, int argc, const CommandIn
     return true;
 }
 
+template<class T>
+void CmdRead::dump(T* address, unsigned int count)
+{
+    char format[16];
+    std::sprintf(format, " %%0%ux", sizeof(T) * 2);
+    T* p = address;
+    for (unsigned int i = 0; i < count; ++i)
+    {
+        if ((i % (32 / sizeof(T))) == 0)
+        {
+            if (i != 0) printf("\n");
+            printf("%08x:", reinterpret_cast<unsigned int>(p));
+        }
+        printf(format, *p++);
+    }
+    printf("\n");
+}
+
 CmdWrite::CmdWrite() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
 }
@@ -115,6 +137,41 @@ CmdLis::CmdLis(LIS302DL &lis) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), AR
 
 bool CmdLis::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
-    printf("%3i %3i %3i\n", mLis.x(), mLis.y(), mLis.z());
+    int x, y, z;
+    x = mLis.x();
+    y = mLis.y();
+    z = mLis.z();
+    float a = x * x + y * y + z * z;
+    a = std::sqrt(a / 2500);
+    printf("%3i %3i %3i = %.2fg\n", x, y, z, a);
+    return true;
+}
+
+
+CmdPin::CmdPin(Gpio **gpio, unsigned int gpioCount) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mGpio(gpio), mGpioCount(gpioCount)
+{
+}
+
+bool CmdPin::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    char c = argv[1].value.s[0];
+    unsigned int index = c - 'A';
+    if (index > mGpioCount) index = c - 'a';
+    if (index > mGpioCount)
+    {
+        printf("Invalid GPIO, GPIO A-%c (or a-%c) is allowed.\n", 'A' + mGpioCount - 1, 'a' + mGpioCount - 1);
+        return false;
+    }
+    char* end;
+    unsigned int pin = strtoul(argv[1].value.s +1, &end, 10);
+    if (*end != 0 || pin > 15)
+    {
+        printf("Invalid index, GPIO has only 16 pins, so 0-15 is allowed.\n");
+        return false;
+    }
+    if (argc == 2)
+    {
+        printf("GPIO %c%i = %c\n", 'A' + index, pin, mGpio[index]->get(static_cast<Gpio::Index>(pin)) ? '1' : '0');
+    }
     return true;
 }

@@ -17,6 +17,7 @@
  */
 
 #include "InterruptController.h"
+#include "System.h"
 
 InterruptController::InterruptController(unsigned int base, std::size_t vectorSize) :
     mBase(reinterpret_cast<volatile NVIC*>(base))
@@ -31,7 +32,15 @@ InterruptController::~InterruptController()
 
 void InterruptController::handle(Index index)
 {
-    if (mHandler[index] != 0) mHandler[index]->interruptCallback(index);
+    if (mHandler[index] != 0)
+    {
+        mHandler[index]->interruptCallback(index);
+    }
+    else
+    {
+        System::instance() ->printError("NVIC", "Unhandled Interrupt");
+        mBase->ICER[index / 32] = 1 << (index % 32);
+    }
 }
 
 void InterruptController::setPriotity(InterruptController::Index index, InterruptController::Priority priority)

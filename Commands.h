@@ -60,22 +60,7 @@ private:
     static char const * const ARGV[];
 
     template<class T>
-    void dump(T* address, unsigned int count)
-    {
-        char format[16];
-        std::sprintf(format, " %%0%ux", sizeof(T) * 2);
-        T* p = address;
-        for (unsigned int i = 0; i < count; ++i)
-        {
-            if ((i % (32 / sizeof(T))) == 0)
-            {
-                if (i != 0) printf("\n");
-                printf("%08x:", reinterpret_cast<unsigned int>(p));
-            }
-            printf(format, *p++);
-        }
-        printf("\n");
-    }
+    void dump(T* address, unsigned int count);
 };
 
 class CmdWrite : public CommandInterpreter::Command
@@ -99,6 +84,19 @@ private:
     static char const * const NAME[];
     static char const * const ARGV[];
     LIS302DL& mLis;
+};
+
+class CmdPin : public CommandInterpreter::Command
+{
+public:
+    CmdPin(Gpio** gpio, unsigned int gpioCount);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Read or write GPIO pin."; }
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    Gpio** mGpio;
+    unsigned int mGpioCount;
 };
 
 

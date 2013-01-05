@@ -24,6 +24,7 @@
 #include "Gpio.h"
 #include "InterruptController.h"
 #include "ExternalInterrupt.h"
+#include "SysCfg.h"
 #include "Dma.h"
 #include "Serial.h"
 #include "Flash.h"
@@ -171,6 +172,7 @@ public:
     ExternalInterrupt mExtI;
     InterruptController mNvic;
     SysTickControl mSysTick;
+    SysCfg mSysCfg;
     Dma mDma1;
     Dma mDma2;
 //    Serial mUsart1;

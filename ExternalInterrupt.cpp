@@ -18,10 +18,13 @@
 
 #include "ExternalInterrupt.h"
 
+#include "System.h"
+
 #include <cstdio>
 
-ExternalInterrupt::ExternalInterrupt(unsigned int base, std::size_t vectorSize) :
-    mBase(reinterpret_cast<volatile EXTI*>(base))
+ExternalInterrupt::ExternalInterrupt(unsigned int base, unsigned int vectorSize) :
+    mBase(reinterpret_cast<volatile EXTI*>(base)),
+    mVectorSize(vectorSize)
 {
     static_assert(sizeof(EXTI) == 0x18, "Struct has wrong size, compiler problem.");
     mCallback = new InterruptController::Callback*[vectorSize];
@@ -31,9 +34,26 @@ ExternalInterrupt::~ExternalInterrupt()
 {
 }
 
-void ExternalInterrupt::handle(InterruptController::Index index)
+void ExternalInterrupt::interruptCallback(InterruptController::Index index)
 {
-    if (mCallback[index] != 0) mCallback[index]->interruptCallback(index);
+    uint32_t pr = mBase->PR;
+    for (unsigned int i = 0; i < mVectorSize; ++i)
+    {
+        if ((pr & (1 << i)) != 0)
+        {
+            if (mCallback[index] != 0)
+            {
+                mCallback[index]->interruptCallback(index);
+            }
+            else
+            {
+                System::instance() ->printError("EXTI", "Unhandled Interrupt");
+                mBase->IMR = mBase->IMR & ~(1 << i);
+            }
+        }
+    }
+    // clear pending interrupts
+    mBase->PR = pr;
 }
 
 ExternalInterrupt::Line::Line(ExternalInterrupt &interruptController, InterruptController::Index index) :
@@ -51,12 +71,42 @@ void ExternalInterrupt::Line::setCallback(InterruptController::Callback *handler
     mInterruptController.mCallback[mIndex] = handler;
 }
 
-void ExternalInterrupt::Line::enable()
+void ExternalInterrupt::Line::enable(Trigger trigger)
 {
+    uint32_t bit = 1 << mIndex;
+    uint32_t rom = 0;
+    uint32_t ram = 0xffffffff;
+    uint32_t fom = 0;
+    uint32_t fam = 0xffffffff;
+
+    switch (trigger)
+    {
+    case Trigger::Level:
+        ram &= ~bit;
+        fam &= ~bit;
+        break;
+    case Trigger::Rising:
+        rom |= bit;
+        fam &= ~bit;
+        break;
+    case Trigger::Falling:
+        ram &= ~bit;
+        fom |= bit;
+        break;
+    case Trigger::RisingAndFalling:
+        rom |= bit;
+        fom |= bit;
+        break;
+    }
+    mInterruptController.mBase->RTSR = (mInterruptController.mBase->RTSR & ram) | rom;
+    mInterruptController.mBase->FTSR = (mInterruptController.mBase->FTSR & fam) | fom;
+
+    mInterruptController.mBase->IMR = mInterruptController.mBase->IMR | (1 << mIndex);
 }
 
 void ExternalInterrupt::Line::disable()
 {
+    mInterruptController.mBase->IMR = mInterruptController.mBase->IMR & ~(1 << mIndex);
 }
 
 

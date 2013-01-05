@@ -22,7 +22,7 @@ CFLAGS += -nostartfiles
 CFLAGS += -std=c++0x
 CPPFLAGS = -fno-rtti -fno-exceptions
 
-#LDFLAGS = -lstdc++
+LDFLAGS = -lm
 
 VERSION_FILE = version.cpp
 
