@@ -29,8 +29,8 @@ public:
     CircularBuffer(unsigned int size);
     ~CircularBuffer();
 
-    inline unsigned int used() { return mUsed; }
-    inline unsigned int free() { return mSize - mUsed; }
+    inline unsigned int used() { if (mWrite >= mRead) return mWrite - mRead; else return (mWrite - mRead) + mSize;}
+    inline unsigned int free() { return mSize - used() - 1; }
     inline unsigned int size() { return mSize; }
 
     bool push(T elem);
@@ -51,7 +51,6 @@ protected:
     T* mBuffer;
     T* mWrite;
     T* mRead;
-    volatile unsigned int mUsed;
 
     unsigned int writePart(const T* data, unsigned int len);
     unsigned int readPart(T *data, unsigned int len);

@@ -143,6 +143,10 @@ bool Stream<T>::write(T &data)
         data = *mWriteData++;
         return true;
     }
+    if (mWriteCount < 0)
+    {
+        printf("\nWC<0: %i, %c %c %c\n", mWriteCount, *(mWriteData - 2), *(mWriteData - 1), *(mWriteData));
+    }
     writeFinished(true);
     return false;
 }

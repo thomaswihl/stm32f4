@@ -158,17 +158,17 @@ void Serial::write(const char *data, unsigned int count, System::Event *callback
 
 void Serial::interruptCallback(InterruptController::Index index)
 {
-    if (mBase->SR.RXNE)
+    if (mBase->SR.RXNE && mBase->CR1.RXNEIE)
     {
-        // check if we need to read another byte, if not dsiable the interrupt
+        // check if we need to read another byte, if not disable the interrupt
         if (!Stream<char>::read(static_cast<char>(mBase->DR)))
         {
             mBase->CR1.RXNEIE = 0;
         }
     }
-    if (mBase->SR.TC)
+    if (mBase->SR.TC && mBase->CR1.TCIE)
     {
-        // check if we need to write another byte, if not dsiable the interrupt
+        // check if we need to write another byte, if not disable the interrupt
         char c;
         if (Stream<char>::write(c))
         {

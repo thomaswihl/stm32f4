@@ -24,8 +24,7 @@ CircularBuffer<T>::CircularBuffer(unsigned int size)  :
     mSize(size),
     mBuffer(new T[size]),
     mWrite(mBuffer),
-    mRead(mBuffer),
-    mUsed(0)
+    mRead(mBuffer)
 {
 }
 
@@ -39,7 +38,6 @@ template<typename T>
 bool CircularBuffer<T>::push(T elem)
 {
     if (free() == 0) return false;
-    ++mUsed;
     *mWrite = elem;
     ++mWrite;
     align(mWrite);
@@ -50,7 +48,6 @@ template<typename T>
 bool CircularBuffer<T>::pop(T &elem)
 {
     if (used() == 0) return false;
-    --mUsed;
     elem = *mRead;
     ++mRead;
     align(mRead);
@@ -66,7 +63,6 @@ unsigned int CircularBuffer<T>::write(const T* data, unsigned int len)
         unsigned int partLen = writePart(data, len);
         data += partLen;
         len -= partLen;
-        mUsed += partLen;
         totalLen += partLen;
     }
     return totalLen;
@@ -81,7 +77,6 @@ unsigned int CircularBuffer<T>::read(T* data, unsigned int len)
         unsigned int partLen = readPart(data, len);
         data += partLen;
         len -= partLen;
-        mUsed -= partLen;
         totalLen += partLen;
     }
     return totalLen;
@@ -125,7 +120,7 @@ T *CircularBuffer<T>::bufferPointer()
 template<typename T>
 unsigned int CircularBuffer<T>::getContBuffer(const T *&data)
 {
-    if (mUsed == 0) return 0;
+    if (used() == 0) return 0;
     data = mRead;
     if (data < mWrite) return mWrite - data;
     return (mBuffer + mSize) - data;
@@ -136,7 +131,6 @@ unsigned int CircularBuffer<T>::skip(unsigned int len)
 {
     len = std::min(len, used());
     mRead += len;
-    mUsed -= len;
     if (mRead >= (mBuffer + mSize)) mRead -= mSize;
     return len;
 }
@@ -146,7 +140,6 @@ unsigned int CircularBuffer<T>::writePart(const T *data, unsigned int len)
 {
     unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mWrite), std::min(len, free()));
     std::memcpy(mWrite, data, maxLen * sizeof(T));
-    len -= maxLen;
     mWrite += maxLen;
     align(mWrite);
     return maxLen;
@@ -157,7 +150,6 @@ unsigned int CircularBuffer<T>::readPart(T *data, unsigned int len)
 {
     unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mRead), std::min(len, used()));
     std::memcpy(data, mRead, maxLen * sizeof(T));
-    len -= maxLen;
     mRead += maxLen;
     align(mRead);
     return maxLen;
