@@ -33,14 +33,17 @@ public:
     inline unsigned int free() { return mSize - mUsed; }
     inline unsigned int size() { return mSize; }
 
-    bool push(T c);
-    bool pop(T &c);
+    bool push(T elem);
+    bool pop(T &elem);
     unsigned int write(const T* data, unsigned int len);
     unsigned int read(T* data, unsigned int len);
+    T operator[](int index);
 
+    T* writePointer();
+    T* readPointer();
+    T* bufferPointer();
 
     unsigned int getContBuffer(const T*& data);
-
     unsigned int skip(unsigned int len);
 
 protected:
@@ -53,7 +56,7 @@ protected:
     unsigned int writePart(const T* data, unsigned int len);
     unsigned int readPart(T *data, unsigned int len);
 
-    inline void align(T*volatile& ptr) { if (ptr >= (mBuffer + mSize)) ptr = mBuffer; }
+    inline void align(T*volatile& ptr) { while (ptr >= (mBuffer + mSize)) ptr -= mSize; }
 
     friend int testCircularBuffer();
 

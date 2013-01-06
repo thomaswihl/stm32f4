@@ -85,6 +85,7 @@ void StmSystem::init()
 //                                                          new InterruptController::Line(mNvic, InterruptIndex::DMA1_Stream5))
                      );
     mDebug.configInterrupt(new InterruptController::Line(mNvic, InterruptIndex::USART2));
+    mDebug.readFifo(256);
     mDebug.enable(Device::All);
 
     // USART2 TX
@@ -118,8 +119,8 @@ void StmSystem::printInfo()
                 mRcc.clock(ClockControl::Clock::APB1) / 1000000,
                 mRcc.clock(ClockControl::Clock::APB2) / 1000000);
     std::printf("BOGOMIPS: %lu.%lu\n", bogoMips() / 1000000, bogoMips() % 1000000);
-    std::printf("RAM     : %luk free, %luk used.\n", memFree() / 1024, memUsed() / 1024);
-    std::printf("STACK   : %luk free, %luk used.\n", stackFree() / 1024, stackUsed() / 1024);
+    std::printf("RAM     : %luk heap free, %luk heap used, %luk bss used, %lik data used.\n", (memFree() + 512) / 1024, (memUsed() + 512) / 1024, (memBssUsed() + 512) / 1024, (memDataUsed() + 512) / 1024);
+    std::printf("STACK   : %luk free, %luk used, %luk max used.\n", (stackFree() + 512) / 1024, (stackUsed() + 512) / 1024, (stackMaxUsed() + 512) / 1024);
     std::printf("BUILD   : %s\n", GIT_VERSION);
     std::printf("DATE    : %s\n", BUILD_DATE);
 }

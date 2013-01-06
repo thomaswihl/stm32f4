@@ -193,8 +193,8 @@ void Spi<T>::triggerWrite()
     if (mDmaWrite != 0)
     {
         mBase->CR2.TXDMAEN = 1;
-        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::mWriteData));
-        mDmaWrite->setTransferCount(Stream<T>::mWriteCount);
+        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::writeData()));
+        mDmaWrite->setTransferCount(Stream<T>::writeCount());
         mDmaWrite->start();
     }
     else if (mInterrupt != 0)
@@ -223,8 +223,8 @@ void Spi<T>::triggerRead()
     if (mDmaRead != 0)
     {
         mBase->CR2.RXDMAEN = 1;
-        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::mReadData));
-        mDmaRead->setTransferCount(Stream<T>::mReadCount);
+        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::readData()));
+        mDmaRead->setTransferCount(Stream<T>::readCount());
         mDmaRead->start();
     }
     else if (mInterrupt != 0)
@@ -265,7 +265,6 @@ void Spi<T>::simpleRead()
     {
         waitReceiveNotEmpty();
     }   while (Stream<T>::read(static_cast<T>(mBase->DR)));
-    Stream<T>::readFinished(true);
 }
 
 template<typename T>
@@ -280,8 +279,6 @@ void Spi<T>::simpleWrite()
         c = static_cast<T>(mBase->DR);
         Stream<T>::read(c);
     }
-    Stream<T>::readFinished(true);
-    Stream<T>::writeFinished(true);
 }
 
 template class Spi<char>;

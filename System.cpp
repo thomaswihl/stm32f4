@@ -104,6 +104,7 @@ void _start()
 {
     memcpy(&__data_start, &__data_rom_start, &__data_end - &__data_start);
     memset(&__bss_start, 0, &__bss_end - &__bss_start);
+    System::initStack();
     // calls __preinit_array, call _init() and then calls __init_array (constructors)
     __libc_init_array();
 
@@ -238,6 +239,18 @@ void __throw_length_error(const char*)
 System* System::mSystem;
 char* System::mHeapEnd;
 unsigned int System::mTicks = 0;
+const unsigned int System::STACK_MAGIC;
+
+void System::initStack()
+{
+    unsigned int* p = reinterpret_cast<unsigned int*>(&__stack_start);
+    register unsigned int* stackPointer __asm("sp");
+    for (; p < stackPointer; ++p)
+    {
+        *p = STACK_MAGIC;
+    }
+}
+
 
 char* System::increaseHeap(unsigned int incr)
 {
@@ -265,6 +278,16 @@ uint32_t System::memUsed()
     return mHeapEnd - &__heap_start;
 }
 
+uint32_t System::memDataUsed()
+{
+    return &__data_end - &__data_start;
+}
+
+uint32_t System::memBssUsed()
+{
+    return &__bss_end - &__bss_start;
+}
+
 uint32_t System::stackFree()
 {
     register char* stack __asm("sp");
@@ -275,6 +298,17 @@ uint32_t System::stackUsed()
 {
     register char* stack __asm("sp");
     return &__stack_end - stack;
+}
+
+uint32_t System::stackMaxUsed()
+{
+    unsigned int* p = reinterpret_cast<unsigned int*>(&__stack_start);
+    register unsigned int* stackPointer __asm("sp");
+    for (; p < stackPointer; ++p)
+    {
+        if (*p != STACK_MAGIC) break;
+    }
+    return (reinterpret_cast<unsigned int*>(&__stack_end) - p) * sizeof(unsigned int);
 }
 
 void System::postEvent(Event *event)

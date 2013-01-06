@@ -69,8 +69,7 @@ bool CmdRead::execute(CommandInterpreter &interpreter, int argc, const CommandIn
     case 'h':
         dump<uint16_t>(reinterpret_cast<uint16_t*>(argv[1].value.u), count);
         break;
-    case 'w':
-    case 'e':
+    default:
         dump<uint32_t>(reinterpret_cast<uint32_t*>(argv[1].value.u), count);
         break;
     }
@@ -172,6 +171,11 @@ bool CmdPin::execute(CommandInterpreter &interpreter, int argc, const CommandInt
     if (argc == 2)
     {
         printf("GPIO %c%i = %c\n", 'A' + index, pin, mGpio[index]->get(static_cast<Gpio::Index>(pin)) ? '1' : '0');
+    }
+    else
+    {
+        if (argv[2].value.b) mGpio[index]->set(static_cast<Gpio::Index>(pin));
+        else mGpio[index]->reset(static_cast<Gpio::Index>(pin));
     }
     return true;
 }

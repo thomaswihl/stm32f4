@@ -36,22 +36,22 @@ CircularBuffer<T>::~CircularBuffer()
 }
 
 template<typename T>
-bool CircularBuffer<T>::push(T c)
+bool CircularBuffer<T>::push(T elem)
 {
     if (free() == 0) return false;
     ++mUsed;
-    *mWrite = c;
+    *mWrite = elem;
     ++mWrite;
     align(mWrite);
     return true;
 }
 
 template<typename T>
-bool CircularBuffer<T>::pop(T &c)
+bool CircularBuffer<T>::pop(T &elem)
 {
     if (used() == 0) return false;
     --mUsed;
-    c = *mRead;
+    elem = *mRead;
     ++mRead;
     align(mRead);
     return true;
@@ -85,6 +85,41 @@ unsigned int CircularBuffer<T>::read(T* data, unsigned int len)
         totalLen += partLen;
     }
     return totalLen;
+}
+
+template<typename T>
+T CircularBuffer<T>::operator [](int index)
+{
+    T* volatile p;
+    if (index < 0)
+    {
+        p = mWrite + index;
+        while (p < mBuffer) p += mSize;
+    }
+    else
+    {
+        p = mRead + index;
+    }
+    align(p);
+    return *p;
+}
+
+template<typename T>
+T *CircularBuffer<T>::writePointer()
+{
+    return mWrite;
+}
+
+template<typename T>
+T *CircularBuffer<T>::readPointer()
+{
+    return mRead;
+}
+
+template<typename T>
+T *CircularBuffer<T>::bufferPointer()
+{
+    return mBuffer;
 }
 
 template<typename T>
@@ -131,3 +166,4 @@ unsigned int CircularBuffer<T>::readPart(T *data, unsigned int len)
 template class CircularBuffer<char>;
 template class CircularBuffer<uint16_t>;
 template class CircularBuffer<System::Event*>;
+template class CircularBuffer<char*>;

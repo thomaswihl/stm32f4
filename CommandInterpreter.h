@@ -21,9 +21,9 @@
 
 #include "Serial.h"
 #include "StmSystem.h"
+#include "CircularBuffer.h"
 
 #include <vector>
-
 
 class CommandInterpreter : public System::Event::Callback
 {
@@ -81,8 +81,8 @@ public:
 protected:
     virtual void eventCallback(System::Event *event);
 private:
-    enum { MAX_LINE_LEN = 256, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
-    enum class State { Input, Debug };
+    enum { MAX_LINE_LEN = 256, MAX_ESCAPE_LEN = 8, MAX_PROMPT_LEN = 16, MAX_ARG_LEN = 16 };
+    enum class State { Input, Debug, Escape };
 
     class Possibilities
     {
@@ -113,11 +113,16 @@ private:
     State mState;
     char mReadChar;
     System::Event mCharReceived;
+    CircularBuffer<char*> mHistory;
+    int mHistoryIndex;
+    char mEscape[MAX_ESCAPE_LEN];
+    unsigned int mEscapeLen;
 
     void printLine();
     Command* findCommand(const char* name, unsigned int len, Possibilities& possible);
     void complete();
     void execute();
+    void addToHistory(const char* line);
 };
 
 #endif // COMMANDINTERPRETER_H

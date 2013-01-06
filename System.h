@@ -89,10 +89,15 @@ public:
 
     static inline System* instance() { return mSystem; }
     static char* increaseHeap(unsigned int incr);
+    static void initStack();
+
     uint32_t memFree();
     uint32_t memUsed();
+    uint32_t memDataUsed();
+    uint32_t memBssUsed();
     uint32_t stackFree();
     uint32_t stackUsed();
+    uint32_t stackMaxUsed();
 
     static void postEvent(Event* event);
     bool waitForEvent(Event*& event);
@@ -240,8 +245,10 @@ private:
         uint32_t AFSR;
     };
 
+    static const unsigned int STACK_MAGIC = 0xACE01234;
     static System* mSystem;
     static char* mHeapEnd;
+
 
     static unsigned int mTicks;
 

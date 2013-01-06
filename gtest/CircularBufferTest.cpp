@@ -20,7 +20,7 @@ unsigned int mRead;
 unsigned int mUsed;
 
 
-CircularBuffer* mCircularBuffer;
+CircularBuffer<char>* mCircularBuffer;
 
 int testCircularBuffer()
 {
@@ -41,7 +41,7 @@ int testCircularBuffer()
 
 TEST(CircularBuffer, push)
 {
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     for (int i = 0; i < MAX_SIZE; ++i)
     {
         EXPECT_EQ(i, mCircularBuffer->used());
@@ -55,7 +55,7 @@ TEST(CircularBuffer, push)
 
 TEST(CircularBuffer, pushPopRandom)
 {
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     unsigned int in = 0;
     unsigned int out = 0;
     std::default_random_engine generator(7);
@@ -94,7 +94,7 @@ TEST(CircularBuffer, pushPopRandom)
 
 TEST(CircularBuffer, readWriteRandom)
 {
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     unsigned int in = 0;
     unsigned int out = 0;
     std::default_random_engine generator(7);
@@ -135,7 +135,7 @@ TEST(CircularBuffer, readWriteRandom)
 TEST(CircularBuffer, bufferFullReadWrite)
 {
     static unsigned int extra = 10;
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     unsigned int in = 0;
     unsigned int out = 0;
     std::default_random_engine generator(7);
@@ -183,7 +183,7 @@ TEST(CircularBuffer, bufferFullReadWrite)
 TEST(CircularBuffer, bufferFullPushPop)
 {
     static unsigned int extra = 100;
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     unsigned int in = 0;
     unsigned int out = 0;
     std::default_random_engine generator(7);
@@ -235,7 +235,7 @@ TEST(CircularBuffer, bufferFullPushPop)
 TEST(CircularBuffer, bufferEmptyReadWrite)
 {
     static unsigned int extra = 100;
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     unsigned int in = 0;
     unsigned int out = 0;
     std::default_random_engine generator(7);
@@ -279,7 +279,7 @@ TEST(CircularBuffer, bufferEmptyReadWrite)
 TEST(CircularBuffer, bufferEmptyPushPop)
 {
     static unsigned int extra = 100;
-    mCircularBuffer = new CircularBuffer(MAX_SIZE);
+    mCircularBuffer = new CircularBuffer<char>(MAX_SIZE);
     unsigned int in = 0;
     unsigned int out = 0;
     std::default_random_engine generator(7);

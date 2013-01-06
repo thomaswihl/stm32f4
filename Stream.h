@@ -34,26 +34,37 @@ public:
     virtual void write(const T* data, unsigned int count) = 0;
     virtual void write(const T* data, unsigned int count, System::Event* callback) = 0;
 
+    virtual void readFifo(unsigned int size);
 protected:
     System& mSystem;
-    T* mReadData;
-    unsigned int mReadCount;
-    System::Event* mReadCallback;
-    const T* mWriteData;
-    unsigned int mWriteCount;
-    System::Event* mWriteCallback;
 
     virtual bool readPrepare(T* data, unsigned int count);
     virtual bool readPrepare(T* data, unsigned int count, System::Event* callback);
     virtual bool read(T data);
     virtual void readFinished(bool success);
+    T* readData();
+    unsigned int readCount();
 
     virtual bool writePrepare(const T* data, unsigned int count);
     virtual bool writePrepare(const T* data, unsigned int count, System::Event* callback);
     virtual bool write(T& data);
     virtual void writeFinished(bool success);
+    const T *writeData();
+    unsigned int writeCount();
+
+    virtual void triggerRead() = 0;
+    virtual void triggerWrite() = 0;
 
 private:
+    T* mReadData;
+    unsigned int mReadCount;
+    System::Event* mReadCallback;
+    const T* mWriteData;
+    int mWriteCount;
+    System::Event* mWriteCallback;
+    CircularBuffer<T>* mReadBuffer;
+
+    bool readFromBuffer(T *&data, unsigned int &count);
 };
 
 template<typename T>

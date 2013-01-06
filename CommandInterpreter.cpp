@@ -28,7 +28,10 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mLineLen(0),
     mState(State::Input),
     mReadChar(0),
-    mCharReceived(*this)
+    mCharReceived(*this),
+    mHistory(64),
+    mHistoryIndex(0),
+    mEscapeLen(0)
 {
     strcpy(mPrompt, "# ");
 }
@@ -58,8 +61,7 @@ void CommandInterpreter::feed()
             if (mLineLen > 0)
             {
                 --mLineLen;
-                static const char* BACKSPACE = "\x08 \x08";
-                mSystem.mDebug.write(BACKSPACE, 3);
+                printLine();
             }
             break;
         case 4:     // Ctrl+D
@@ -73,6 +75,11 @@ void CommandInterpreter::feed()
             mSystem.mRcc.resetClock();
             mSystem.printInfo();
             printLine();
+            break;
+        case 27:
+            mEscapeLen = 0;
+            mEscape[mEscapeLen++] = mReadChar;
+            mState = State::Escape;
             break;
         default:
             if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = mReadChar;
@@ -92,6 +99,62 @@ void CommandInterpreter::feed()
             printf("\nLeaving DEBUG mode\n");
             mState = State::Input;
             printLine();
+        }
+    }
+    else if (mState == State::Escape)
+    {
+        mEscape[mEscapeLen++] = mReadChar;
+        if (mEscapeLen == 2 && mReadChar >= 0x40 && mReadChar <= 0x5f)
+        {
+            // [
+        }
+        else
+        {
+            if (mReadChar >= 0x40 && mReadChar <= 0x7e)
+            {
+                bool unknown = true;
+                if (mEscapeLen == 3 && mEscape[0] == 0x1b && mEscape[1] == 0x5b)
+                {
+                    switch (mReadChar)
+                    {
+                    case 0x41:  // Curser Up
+                        unknown = false;
+                        if (mHistoryIndex > -static_cast<int>(mHistory.used())) --mHistoryIndex;
+                        printLine();
+                        break;
+                    case 0x42:  // Curser Down
+                        unknown = false;
+                        if (mHistoryIndex < 0) ++mHistoryIndex;
+                        printLine();
+                        break;
+                    case 0x44:  // Curser Left
+                        break;
+                    case 0x43:  // Curser Right
+                        break;
+                    case 0x35:  // Page Up
+                        break;
+                    case 0x36:  // Page Down
+                        break;
+                    case 0x48:  // Pos1
+                        break;
+                    case 0x46:  // End
+                        break;
+                    case 0x32:  // Insert
+                        break;
+                    case 0x33:  // Del
+                        break;
+                    }
+                }
+                mState = State::Input;
+                if (unknown)
+                {
+                    printf("\nESC: ");
+                    for (unsigned int i = 0; i < mEscapeLen; ++i) printf("%02x ", mEscape[i]);
+                    printf("\n");
+                    printLine();
+                }
+                mState = State::Input;
+            }
         }
     }
 }
@@ -234,8 +297,21 @@ void CommandInterpreter::eventCallback(System::Event* event)
 void CommandInterpreter::printLine()
 {
     mSystem.mDebug.write("\r", 1);
-    mSystem.mDebug.write(mPrompt, strlen(mPrompt));
-    mSystem.mDebug.write(mLine, mLineLen);
+    if (mHistoryIndex == 0)
+    {
+        mSystem.mDebug.write(mPrompt, strlen(mPrompt));
+        mSystem.mDebug.write(mLine, mLineLen);
+    }
+    else
+    {
+        char buf[16];
+        int len = sprintf(buf, "(%i) ", mHistoryIndex);
+        mSystem.mDebug.write(buf, len);
+        char* p = mHistory[mHistoryIndex];
+        mSystem.mDebug.write(p, strlen(p));
+    }
+    static const char* CLEAR_LINE = "\x1b[0K";
+    mSystem.mDebug.write(CLEAR_LINE, 4);
 }
 
 CommandInterpreter::Command *CommandInterpreter::findCommand(const char *name, unsigned int len, CommandInterpreter::Possibilities &possible)
@@ -277,6 +353,7 @@ void CommandInterpreter::execute()
 {
     static Argument argv[MAX_ARG_LEN];
     mLine[mLineLen] = 0;
+    addToHistory(mLine);
     argv[0].value.s = mLine;
     argv[0].type = Argument::Type::String;
     unsigned int argc = 1;
@@ -339,6 +416,22 @@ void CommandInterpreter::execute()
     }
     // Everything is fine, execute it.
     if (cmd != nullptr) cmd->execute(*this, argc, argv);
+}
+
+void CommandInterpreter::addToHistory(const char *line)
+{
+    unsigned int len = strlen(line) + 1;
+    char* copy = new char[len];
+    memcpy(copy, line, len);
+    if (mHistory.free() == 0)
+    {
+        char* del;
+        if (mHistory.pop(del))
+        {
+            delete[] del;
+        }
+    }
+    mHistory.push(copy);
 }
 
 

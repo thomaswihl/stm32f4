@@ -26,17 +26,34 @@ Stream<T>::Stream(System &system) :
     mReadCallback(nullptr),
     mWriteData(nullptr),
     mWriteCount(0),
-    mWriteCallback(nullptr)
+    mWriteCallback(nullptr),
+    mReadBuffer(nullptr)
 {
 
+}
+
+template<typename T>
+void Stream<T>::readFifo(unsigned int size)
+{
+    if (mReadBuffer != nullptr)
+    {
+        delete mReadBuffer;
+        mReadBuffer = nullptr;
+    }
+    if (size > 0)
+    {
+        mReadBuffer = new CircularBuffer<T>(size);
+        triggerRead();
+    }
 }
 
 template<typename T>
 bool Stream<T>::readPrepare(T *data, unsigned int count)
 {
     if (mReadCount != 0 || count == 0) return false;
-    mReadData = data;
+    if (readFromBuffer(data, count)) return false;
     mReadCount = count;
+    mReadData = data;
     return true;
 }
 
@@ -44,21 +61,30 @@ template<typename T>
 bool Stream<T>::readPrepare(T *data, unsigned int count, System::Event *callback)
 {
     if (mReadCount != 0 || count == 0) return false;
-    readPrepare(data, count);
     mReadCallback = callback;
-    return true;
+    return readPrepare(data, count);
 }
 
 template<typename T>
 bool Stream<T>::read(T data)
 {
-    if (mReadCount != 0 && mReadData != 0)
+    if (mReadBuffer != nullptr)
+    {
+        mReadBuffer->push(data);
+        if (mReadCount != 0 && mReadData != nullptr) readFromBuffer(mReadData, mReadCount);
+        return true;
+    }
+    else if (mReadCount != 0 && mReadData != nullptr)
     {
         *mReadData++ = data;
         --mReadCount;
-        return true;
+        if (mReadCount == 0)
+        {
+            readFinished(true);
+            return false;
+        }
     }
-    return false;
+    return true;
 }
 
 template<typename T>
@@ -75,9 +101,26 @@ void Stream<T>::readFinished(bool success)
 }
 
 template<typename T>
+T *Stream<T>::readData()
+{
+    if (mReadBuffer != nullptr)
+    {
+        return mReadBuffer->writePointer();
+    }
+    return mReadData;
+}
+
+template<typename T>
+unsigned int Stream<T>::readCount()
+{
+    if (mReadBuffer != nullptr) return 1;
+    return mReadCount;
+}
+
+template<typename T>
 bool Stream<T>::writePrepare(const T *data, unsigned int count)
 {
-    if (mWriteCount != 0 || count == 0) return false;
+    if (mWriteCount > 0 || count == 0) return false;
     mWriteData = data;
     mWriteCount = count;
     return true;
@@ -86,21 +129,21 @@ bool Stream<T>::writePrepare(const T *data, unsigned int count)
 template<typename T>
 bool Stream<T>::writePrepare(const T *data, unsigned int count, System::Event *callback)
 {
-    if (mWriteCount != 0 || count == 0) return false;
-    writePrepare(data, count);
+    if (mWriteCount > 0 || count == 0) return false;
     mWriteCallback = callback;
-    return true;
+    return writePrepare(data, count);
 }
 
 template<typename T>
 bool Stream<T>::write(T &data)
 {
-    if (mWriteCount != 0 && mWriteData != 0)
+    if (mWriteCount > 0 && mWriteData != nullptr)
     {
-        data = *mWriteData++;
         --mWriteCount;
+        data = *mWriteData++;
         return true;
     }
+    writeFinished(true);
     return false;
 }
 
@@ -115,6 +158,35 @@ void Stream<T>::writeFinished(bool success)
         System::postEvent(mWriteCallback);
         mWriteCallback = nullptr;
     }
+}
+
+template<typename T>
+const T *Stream<T>::writeData()
+{
+    return mWriteData;
+}
+
+template<typename T>
+unsigned int Stream<T>::writeCount()
+{
+    return mWriteCount;
+}
+
+template<typename T>
+bool Stream<T>::readFromBuffer(T*& data, unsigned int& count)
+{
+    if (mReadBuffer != nullptr)
+    {
+        int len = mReadBuffer->read(data, count);
+        count -= len;
+        data += len;
+        if (count == 0)
+        {
+            readFinished(true);
+            return true;
+        }
+    }
+    return false;
 }
 
 template class Stream<char>;
@@ -146,14 +218,3 @@ template<typename T>
 void BufferedStream<T>::write(const T *data, unsigned int count, System::Event *callback)
 {
 }
-
-
-//do
-//{
-//    unsigned int written = mWriteBuffer.write(data, size);
-//    size -= written;
-//    data += written;
-//    triggerWrite();
-//    }   while (size > 0);
-
-

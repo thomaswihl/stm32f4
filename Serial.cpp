@@ -161,15 +161,23 @@ void Serial::interruptCallback(InterruptController::Index index)
     if (mBase->SR.RXNE)
     {
         // check if we need to read another byte, if not dsiable the interrupt
-        if (Stream<char>::read(static_cast<char>(mBase->DR))) Stream<char>::readFinished(true);
-        else mBase->CR1.RXNEIE = 0;
+        if (!Stream<char>::read(static_cast<char>(mBase->DR)))
+        {
+            mBase->CR1.RXNEIE = 0;
+        }
     }
     if (mBase->SR.TC)
     {
         // check if we need to write another byte, if not dsiable the interrupt
         char c;
-        if (Stream<char>::write(c)) mBase->DR = c;
-        else mBase->CR1.TCIE = 0;
+        if (Stream<char>::write(c))
+        {
+            mBase->DR = c;
+        }
+        else
+        {
+            mBase->CR1.TCIE = 0;
+        }
     }
 }
 
@@ -182,6 +190,7 @@ void Serial::dmaReadComplete(bool success)
 void Serial::dmaWriteComplete(bool success)
 {
     mBase->CR3.DMAT = 0;
+    waitTransmitComplete();
     Stream<char>::writeFinished(success);
 }
 
@@ -195,8 +204,8 @@ void Serial::triggerWrite()
     if (mDmaWrite != 0)
     {
         mBase->CR3.DMAT = 1;
-        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<char>::mWriteData));
-        mDmaWrite->setTransferCount(Stream<char>::mWriteCount);
+        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(writeData()));
+        mDmaWrite->setTransferCount(writeCount());
         mBase->SR.TC = 0;
         mDmaWrite->start();
     }
@@ -220,8 +229,8 @@ void Serial::triggerRead()
     if (mDmaRead != 0)
     {
         mBase->CR3.DMAR = 1;
-        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<char>::mReadData));
-        mDmaRead->setTransferCount(Stream<char>::mReadCount);
+        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(readData()));
+        mDmaRead->setTransferCount(readCount());
         mDmaRead->start();
     }
     else if (mInterrupt != 0)
@@ -257,7 +266,6 @@ void Serial::simpleRead()
     {
         waitReceiveNotEmpty();
     }   while (Stream<char>::read(static_cast<char>(mBase->DR)));
-    Stream<char>::readFinished(true);
 }
 
 void Serial::simpleWrite()
@@ -268,6 +276,5 @@ void Serial::simpleWrite()
         waitTransmitComplete();
         mBase->DR = c;
     }
-    Stream<char>::writeFinished(true);
 }
 
