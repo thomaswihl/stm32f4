@@ -132,7 +132,7 @@ bool Stream<T>::read(T data)
     {
         mReadFifo->push(data);
         readFromFifo();
-        if (mReadCount == 0) readEpilog();
+        if (mReadCount == 0 && mReadData != 0) readEpilog();
         return true;
     }
     else if (mReadCount != 0)
@@ -186,6 +186,7 @@ bool Stream<T>::write(T &data)
     {
         data = *mWriteData++;
         --mWriteCount;
+        return true;
     }
     writeSuccess(true);
     return false;
@@ -210,8 +211,8 @@ bool Stream<T>::readProlog(T *data, unsigned int count)
     mReadCount = count;
     mReadData = data;
     readFromFifo();
-    if (mReadCount != 0) readPrepare();
-    else readEpilog();
+    readPrepare();
+    if (mReadCount == 0) readSuccess(true);
     return true;
 }
 

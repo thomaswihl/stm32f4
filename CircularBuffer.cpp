@@ -25,7 +25,8 @@ CircularBuffer<T>::CircularBuffer(unsigned int size)  :
     mSize(size),
     mBuffer(new T[size]),
     mWrite(mBuffer),
-    mRead(mBuffer)
+    mRead(mBuffer),
+    mUsed(0)
 {
 }
 

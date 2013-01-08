@@ -37,11 +37,11 @@ void __attribute__((naked)) Trap()
 {
     // save the sp and lr (containing return info)
     __asm("mov r0, sp");
-    __asm("push {r4, r5, r6, r7, r8, r9, r10, r11, r12}");
+    __asm("push {r4, r5, r6, r7, r8, r9, r10, r11}");
     __asm("push {r0, lr}");
-//  __asm("add.w r0, r0, #8");
+    //  __asm("add.w r0, r0, #8");
     __asm("bl Trap2");
-    __asm("pop {r4, r5, r6, r7, r8, r9, r10, r11, r12}");
+    __asm("pop {r4, r5, r6, r7, r8, r9, r10, r11}");
     __asm("pop {r0, lr}");
     __asm("mov sp, r0");
     while (true) ;
@@ -70,19 +70,19 @@ void __attribute__((interrupt)) Isr()
 extern void (* const gIsrVectorTable[])(void);
 __attribute__ ((section(".isr_vector_table")))
 void (* const gIsrVectorTable[])(void) = {
-    // 16 trap functions for ARM
-    (void (* const)())&__stack_end, (void (* const)())&_start, Trap, Trap, Trap, Trap, Trap, 0,
-    0, 0, 0, Trap, Trap, 0, Trap, SysTick,
-    // 82 hardware interrupts specific to the STM32F407
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
-    Isr, Isr
+        // 16 trap functions for ARM
+        (void (* const)())&__stack_end, (void (* const)())&_start, Trap, Trap, Trap, Trap, Trap, 0,
+0, 0, 0, Trap, Trap, 0, Trap, SysTick,
+// 82 hardware interrupts specific to the STM32F407
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
+Isr, Isr
 };
 
 // required for C++
@@ -203,37 +203,37 @@ void _exit(int v)
 
 void *operator new(std::size_t size)
 {
-   return malloc(size);
+    return malloc(size);
 }
 
 void *operator new[](std::size_t size)
 {
-   return ::operator new(size);
+    return ::operator new(size);
 }
 
 void operator delete(void *mem)
 {
-   free(mem);
+    free(mem);
 }
 
 void operator delete[](void *mem)
 {
-   ::operator delete(mem);
+    ::operator delete(mem);
 }
 
 namespace std
 {
-void __throw_bad_alloc()
-{
-    _write(1, "Out of memory, exiting.\n", 24);
-    exit(1);
-}
+    void __throw_bad_alloc()
+    {
+        _write(1, "Out of memory, exiting.\n", 24);
+        exit(1);
+    }
 
-void __throw_length_error(const char*)
-{
-    _write(1, "Length error, exiting.\n", 24);
-    exit(1);
-}
+    void __throw_length_error(const char*)
+    {
+        _write(1, "Length error, exiting.\n", 24);
+        exit(1);
+    }
 }
 
 System* System::mSystem;
@@ -417,17 +417,38 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
         break;
     }
 
-    static const char* REGISTER_NAME[] =
+    struct Register
     {
-        "R0", "R1", "R2", "R3", "R12", "LR", "PC", "xPSR"
+        const char* const name;
+        int offset;
+    };
+
+    static const Register REGISTER[] =
+    {
+        {"R0", 0},
+        {"R1", 1},
+        {"R2", 2},
+        {"R3", 3},
+        {"R4", -1},
+        {"R5", -2},
+        {"R6", -3},
+        {"R7", -4},
+        {"R8", -5},
+        {"R9", -6},
+        {"R10", -7},
+        {"R11", -8},
+        {"R12", 4},
+        {"LR", 5},
+        {"PC", 6},
+        {"xPSR", 7},
     };
 
     printf("Stack (0x%08x):\n", reinterpret_cast<unsigned int>(stackPointer));
 
     int i = 0;
-    for (const char*& str : REGISTER_NAME)
+    for (const Register& reg : REGISTER)
     {
-        printf("  %4s = 0x%08x (%u)\n", str, stackPointer[i], stackPointer[i]);
+        printf("  %4s = 0x%08x (%u)\n", reg.name, stackPointer[reg.offset], stackPointer[reg.offset]);
         ++i;
     }
 }
