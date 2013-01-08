@@ -48,11 +48,6 @@ public:
 
     void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
 
-    virtual void read(char* data, unsigned int count);
-    virtual void read(char* data, unsigned int count, System::Event* callback);
-    virtual void write(const char* data, unsigned int count);
-    virtual void write(const char* data, unsigned int count, System::Event* callback);
-
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);
 
@@ -154,13 +149,18 @@ private:
     ClockControl::Clock mClock;
     uint32_t mSpeed;
 
-    void triggerWrite();
-    void triggerRead();
     void waitTransmitComplete();
     void waitReceiveNotEmpty();
-    void simpleRead();
-    void simpleWrite();
 
+    virtual void readPrepare();
+    virtual void readSync();
+    virtual void readTrigger();
+    virtual void readDone();
+
+    virtual void writePrepare();
+    virtual void writeSync();
+    virtual void writeTrigger();
+    virtual void writeDone();
 };
 
 #endif // SERIAL_H

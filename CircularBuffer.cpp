@@ -18,6 +18,7 @@
 
 #include "System.h"
 #include "CircularBuffer.h"
+#include "atomic.h"
 
 template<typename T>
 CircularBuffer<T>::CircularBuffer(unsigned int size)  :
@@ -41,6 +42,7 @@ bool CircularBuffer<T>::push(T elem)
     *mWrite = elem;
     ++mWrite;
     align(mWrite);
+    atomic_add(&mUsed, 1);
     return true;
 }
 
@@ -51,6 +53,7 @@ bool CircularBuffer<T>::pop(T &elem)
     elem = *mRead;
     ++mRead;
     align(mRead);
+    atomic_add(&mUsed, -1);
     return true;
 }
 
@@ -63,6 +66,7 @@ unsigned int CircularBuffer<T>::write(const T* data, unsigned int len)
         unsigned int partLen = writePart(data, len);
         data += partLen;
         len -= partLen;
+        atomic_add(&mUsed, partLen);
         totalLen += partLen;
     }
     return totalLen;
@@ -77,6 +81,7 @@ unsigned int CircularBuffer<T>::read(T* data, unsigned int len)
         unsigned int partLen = readPart(data, len);
         data += partLen;
         len -= partLen;
+        atomic_add(&mUsed, -partLen);
         totalLen += partLen;
     }
     return totalLen;
@@ -85,7 +90,7 @@ unsigned int CircularBuffer<T>::read(T* data, unsigned int len)
 template<typename T>
 T CircularBuffer<T>::operator [](int index)
 {
-    T* volatile p;
+    volatile T* volatile p;
     if (index < 0)
     {
         p = mWrite + index;
@@ -102,13 +107,13 @@ T CircularBuffer<T>::operator [](int index)
 template<typename T>
 T *CircularBuffer<T>::writePointer()
 {
-    return mWrite;
+    return const_cast<T*>(mWrite);
 }
 
 template<typename T>
 T *CircularBuffer<T>::readPointer()
 {
-    return mRead;
+    return  const_cast<T*>(mRead);
 }
 
 template<typename T>
@@ -121,7 +126,7 @@ template<typename T>
 unsigned int CircularBuffer<T>::getContBuffer(const T *&data)
 {
     if (used() == 0) return 0;
-    data = mRead;
+    data =  const_cast<const T*>(mRead);
     if (data < mWrite) return mWrite - data;
     return (mBuffer + mSize) - data;
 }
@@ -131,7 +136,8 @@ unsigned int CircularBuffer<T>::skip(unsigned int len)
 {
     len = std::min(len, used());
     mRead += len;
-    if (mRead >= (mBuffer + mSize)) mRead -= mSize;
+    align(mRead);
+    atomic_add(&mUsed, -len);
     return len;
 }
 
@@ -139,7 +145,7 @@ template<typename T>
 unsigned int CircularBuffer<T>::writePart(const T *data, unsigned int len)
 {
     unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mWrite), std::min(len, free()));
-    std::memcpy(mWrite, data, maxLen * sizeof(T));
+    std::memcpy(const_cast<T*>(mWrite), data, maxLen * sizeof(T));
     mWrite += maxLen;
     align(mWrite);
     return maxLen;
@@ -149,7 +155,7 @@ template<typename T>
 unsigned int CircularBuffer<T>::readPart(T *data, unsigned int len)
 {
     unsigned int maxLen = std::min(static_cast<unsigned int>((mBuffer + mSize) - mRead), std::min(len, used()));
-    std::memcpy(data, mRead, maxLen * sizeof(T));
+    std::memcpy(data, const_cast<T*>(mRead), maxLen * sizeof(T));
     mRead += maxLen;
     align(mRead);
     return maxLen;

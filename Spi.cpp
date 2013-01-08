@@ -73,44 +73,6 @@ void Spi<T>::configChipSelect(Gpio::Pin *chipSelect, bool activeLow)
 }
 
 template<typename T>
-void Spi<T>::read(T *data, unsigned int count)
-{
-    if (readPrepare(data, count))
-    {
-        simpleRead();
-    }
-}
-
-template<typename T>
-void Spi<T>::read(T *data, unsigned int count, System::Event *callback)
-{
-    readPrepare(data, count);
-}
-
-template<typename T>
-void Spi<T>::write(const T *data, unsigned int count)
-{
-    if (writePrepare(data, count))
-    {
-        select();
-        simpleWrite();
-        deselect();
-    }
-}
-
-template<typename T>
-void Spi<T>::write(const T *data, unsigned int count, System::Event *callback)
-{
-    if (writePrepare(data, count))
-    {
-        select();
-        simpleWrite();
-        deselect();
-    }
-}
-
-
-template<typename T>
 void Spi<T>::enable(Device::Part part)
 {
     mBase->CR1.SPE = 1;
@@ -157,14 +119,14 @@ template<typename T>
 void Spi<T>::dmaReadComplete(bool success)
 {
     mBase->CR2.RXDMAEN = 0;
-    Stream<T>::readFinished(success);
+    Stream<T>::readSuccess(success);
 }
 
 template<typename T>
 void Spi<T>::dmaWriteComplete(bool success)
 {
     mBase->CR2.TXDMAEN = 0;
-    Stream<T>::writeFinished(success);
+    Stream<T>::writeSuccess(success);
 }
 
 template<typename T>
@@ -184,57 +146,6 @@ void Spi<T>::deselect()
     {
         if (mActiveLow) mChipSelect->set();
         else mChipSelect->reset();
-    }
-}
-
-template<typename T>
-void Spi<T>::triggerWrite()
-{
-    if (mDmaWrite != 0)
-    {
-        mBase->CR2.TXDMAEN = 1;
-        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::writeData()));
-        mDmaWrite->setTransferCount(Stream<T>::writeCount());
-        mDmaWrite->start();
-    }
-    else if (mInterrupt != 0)
-    {
-//        mBase->CR1.TCIE = 1;
-//        // send first bye, to start transmission
-//        char c;
-//        if (Stream<char>::write(c)) mBase->DR = c;
-//        else mBase->CR1.TCIE = 0;
-    }
-    else
-    {
-        // we have to do it manually
-        simpleWrite();
-    }
-}
-
-template<typename T>
-void Spi<T>::triggerRead()
-{
-    // empty the receive register before starting another transfer,
-    // as it might be full from last transfer, in case it was a write only transfer
-    T c;
-    while (mBase->SR.RXNE) c = mBase->DR;
-    (void)c;
-    if (mDmaRead != 0)
-    {
-        mBase->CR2.RXDMAEN = 1;
-        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::readData()));
-        mDmaRead->setTransferCount(Stream<T>::readCount());
-        mDmaRead->start();
-    }
-    else if (mInterrupt != 0)
-    {
-//        mBase->CR1.RXNEIE = 1;
-    }
-    else
-    {
-        // we have to do it manually
-        simpleRead();
     }
 }
 
@@ -259,16 +170,62 @@ void Spi<T>::waitReceiveNotEmpty()
 }
 
 template<typename T>
-void Spi<T>::simpleRead()
+void Spi<T>::readPrepare()
+{
+    select();
+}
+
+template<typename T>
+void Spi<T>::readSync()
 {
     do
     {
+        mBase->DR = 0;
         waitReceiveNotEmpty();
     }   while (Stream<T>::read(static_cast<T>(mBase->DR)));
 }
 
 template<typename T>
-void Spi<T>::simpleWrite()
+void Spi<T>::readTrigger()
+{
+    // empty the receive register before starting another transfer,
+    // as it might be full from last transfer, in case it was a write only transfer
+    T c;
+    while (mBase->SR.RXNE) c = mBase->DR;
+    (void)c;
+    if (mDmaRead != 0)
+    {
+        mBase->CR2.RXDMAEN = 1;
+        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::readData()));
+        mDmaRead->setTransferCount(Stream<T>::readCount());
+        mDmaRead->start();
+    }
+    else if (mInterrupt != 0)
+    {
+//        mBase->CR1.RXNEIE = 1;
+    }
+    else
+    {
+        // we have to do it manually
+        readSync();
+    }
+}
+
+template<typename T>
+void Spi<T>::readDone()
+{
+    deselect();
+}
+
+
+template<typename T>
+void Spi<T>::writePrepare()
+{
+    select();
+}
+
+template<typename T>
+void Spi<T>::writeSync()
 {
     T c;
     while (Stream<T>::write(c))
@@ -279,6 +236,37 @@ void Spi<T>::simpleWrite()
         c = static_cast<T>(mBase->DR);
         Stream<T>::read(c);
     }
+}
+
+template<typename T>
+void Spi<T>::writeTrigger()
+{
+    if (mDmaWrite != 0)
+    {
+        mBase->CR2.TXDMAEN = 1;
+        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::writeData()));
+        mDmaWrite->setTransferCount(Stream<T>::writeCount());
+        mDmaWrite->start();
+    }
+    else if (mInterrupt != 0)
+    {
+//        mBase->CR1.TCIE = 1;
+//        // send first bye, to start transmission
+//        char c;
+//        if (Stream<char>::write(c)) mBase->DR = c;
+//        else mBase->CR1.TCIE = 0;
+    }
+    else
+    {
+        // we have to do it manually
+        writeSync();
+    }
+}
+
+template<typename T>
+void Spi<T>::writeDone()
+{
+    deselect();
 }
 
 template class Spi<char>;

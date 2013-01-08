@@ -28,78 +28,54 @@ class Stream
 {
 public:
     Stream(System& system);
-    virtual void read(T* data, unsigned int count) = 0;
-    virtual void read(T* data, unsigned int count, System::Event* callback) = 0;
+    bool read(T* data, unsigned int count);
+    bool read(T* data, unsigned int count, System::Event* completeEvent);
 
-    virtual void write(const T* data, unsigned int count) = 0;
-    virtual void write(const T* data, unsigned int count, System::Event* callback) = 0;
+    bool write(const T* data, unsigned int count);
+    bool write(const T* data, unsigned int count, System::Event* completeEvent);
 
     virtual void readFifo(unsigned int size);
+    virtual void writeFifo(unsigned int size);
 protected:
     System& mSystem;
 
-    virtual bool readPrepare(T* data, unsigned int count);
-    virtual bool readPrepare(T* data, unsigned int count, System::Event* callback);
-    virtual bool read(T data);
-    virtual void readFinished(bool success);
+    virtual void readPrepare() = 0;
+    virtual void readSync() = 0;
+    virtual void readTrigger() = 0;
+    virtual void readDone() = 0;
+
+    void readSuccess(bool success);
+    bool read(T data);
     T* readData();
     unsigned int readCount();
 
-    virtual bool writePrepare(const T* data, unsigned int count);
-    virtual bool writePrepare(const T* data, unsigned int count, System::Event* callback);
-    virtual bool write(T& data);
-    virtual void writeFinished(bool success);
+    virtual void writePrepare() = 0;
+    virtual void writeSync() = 0;
+    virtual void writeTrigger() = 0;
+    virtual void writeDone() = 0;
+
+    void writeSuccess(bool success);
+    bool write(T& data);
     const T *writeData();
     unsigned int writeCount();
-
-    virtual void triggerRead() = 0;
-    virtual void triggerWrite() = 0;
 
 private:
     T* mReadData;
     unsigned int mReadCount;
-    System::Event* mReadCallback;
+    System::Event* mReadCompleteEvent;
     const T* mWriteData;
     int mWriteCount;
-    System::Event* mWriteCallback;
-    CircularBuffer<T>* mReadBuffer;
+    System::Event* mWriteCompleteEvent;
+    CircularBuffer<T>* mReadFifo;
+    CircularBuffer<T>* mWriteFifo;
 
-    bool readFromBuffer(T *&data, unsigned int &count);
-};
+    bool readProlog(T* data, unsigned int count);
+    void readEpilog();
+    void readFromFifo();
 
-template<typename T>
-class BufferedStream : public Stream<T>
-{
-public:
-    BufferedStream(Stream<T>& stream, unsigned int readBufferSize, unsigned int writeBufferSize) :
-        mStream(stream),
-        mReadBuffer(readBufferSize),
-        mWriteBuffer(writeBufferSize)
-    {
-
-    }
-
-    virtual void read(T* data, unsigned int count);
-    virtual void read(T* data, unsigned int count, System::Event* callback);
-
-    virtual void write(const T* data, unsigned int count);
-    virtual void write(const T* data, unsigned int count, System::Event* callback);
-protected:
-    void finished(bool read, bool success);
-private:
-    class EventCallback : public System::Event
-    {
-    public:
-        EventCallback(BufferedStream& stream, bool read) : mBufferedStream(stream), mRead(read) { }
-        virtual void eventCallback(bool success) { mBufferedStream.finished(mRead, success); }
-    private:
-        BufferedStream& mBufferedStream;
-        bool mRead;
-    };
-
-    Stream<T>& mStream;
-    CircularBuffer<T> mReadBuffer;
-    CircularBuffer<T> mWriteBuffer;
+    bool writeProlog(const T* data, unsigned int count);
+    void writeEpilog();
+    void writeFromFifo();
 };
 
 #endif // STREAM_H

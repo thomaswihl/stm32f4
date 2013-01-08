@@ -27,11 +27,6 @@ public:
     void config(MasterSlave masterSlave, ClockPolarity clockPolarity, ClockPhase clockPhase, Endianess endianess);
     void configChipSelect(Gpio::Pin* chipSelect, bool activeLow);
 
-    virtual void read(T* data, unsigned int count);
-    virtual void read(T* data, unsigned int count, System::Event* callback);
-    virtual void write(const T* data, unsigned int count);
-    virtual void write(const T* data, unsigned int count, System::Event* callback);
-
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);
 
@@ -132,12 +127,18 @@ private:
     void select();
     void deselect();
 
-    void triggerWrite();
-    void triggerRead();
     void waitTransmitComplete();
     void waitReceiveNotEmpty();
-    void simpleRead();
-    void simpleWrite();
+
+    virtual void readPrepare();
+    virtual void readSync();
+    virtual void readTrigger();
+    virtual void readDone();
+
+    virtual void writePrepare();
+    virtual void writeSync();
+    virtual void writeTrigger();
+    virtual void writeDone();
 
 };
 

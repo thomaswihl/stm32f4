@@ -29,8 +29,8 @@ public:
     CircularBuffer(unsigned int size);
     ~CircularBuffer();
 
-    inline unsigned int used() { if (mWrite >= mRead) return mWrite - mRead; else return (mWrite - mRead) + mSize;}
-    inline unsigned int free() { return mSize - used() - 1; }
+    inline unsigned int used() { return mUsed;}
+    inline unsigned int free() { return mSize - used(); }
     inline unsigned int size() { return mSize; }
 
     bool push(T elem);
@@ -39,7 +39,7 @@ public:
     unsigned int read(T* data, unsigned int len);
     T operator[](int index);
 
-    T* writePointer();
+    T *writePointer();
     T* readPointer();
     T* bufferPointer();
 
@@ -49,13 +49,14 @@ public:
 protected:
     unsigned int mSize;
     T* mBuffer;
-    T* mWrite;
-    T* mRead;
+    volatile T*volatile mWrite;
+    volatile T*volatile mRead;
+    volatile int32_t mUsed;
 
     unsigned int writePart(const T* data, unsigned int len);
     unsigned int readPart(T *data, unsigned int len);
 
-    inline void align(T*volatile& ptr) { while (ptr >= (mBuffer + mSize)) ptr -= mSize; }
+    inline void align(volatile T*volatile& ptr) { while (ptr >= (mBuffer + mSize)) ptr -= mSize; }
 
     friend int testCircularBuffer();
 

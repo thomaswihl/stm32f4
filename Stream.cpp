@@ -23,64 +23,125 @@ Stream<T>::Stream(System &system) :
     mSystem(system),
     mReadData(nullptr),
     mReadCount(0),
-    mReadCallback(nullptr),
+    mReadCompleteEvent(nullptr),
     mWriteData(nullptr),
     mWriteCount(0),
-    mWriteCallback(nullptr),
-    mReadBuffer(nullptr)
+    mWriteCompleteEvent(nullptr),
+    mReadFifo(nullptr),
+    mWriteFifo(nullptr)
 {
+}
 
+template<typename T>
+bool Stream<T>::read(T *data, unsigned int count)
+{
+    if (!readProlog(data, count)) return false;
+    if (mReadCount != 0)
+    {
+        readSync();
+        readEpilog();
+    }
+    return true;
+}
+
+template<typename T>
+bool Stream<T>::read(T *data, unsigned int count, System::Event *completeEvent)
+{
+    mReadCompleteEvent = completeEvent;
+    if (!readProlog(data, count))
+    {
+        mReadCompleteEvent = nullptr;
+        return false;
+    }
+    if (mReadCount != 0)
+    {
+        readTrigger();
+    }
+    return true;
+}
+
+template<typename T>
+bool Stream<T>::write(const T *data, unsigned int count)
+{
+    if (!writeProlog(data, count)) return false;
+    if (mWriteCount != 0)
+    {
+        writeSync();
+        writeEpilog();
+    }
+    return true;
+}
+
+template<typename T>
+bool Stream<T>::write(const T *data, unsigned int count, System::Event *completeEvent)
+{
+    mWriteCompleteEvent = completeEvent;
+    if (!writeProlog(data, count))
+    {
+        mWriteCompleteEvent = nullptr;
+        return false;
+    }
+    if (mWriteCount != 0)
+    {
+        writeTrigger();
+    }
+    return true;
 }
 
 template<typename T>
 void Stream<T>::readFifo(unsigned int size)
 {
-    if (mReadBuffer != nullptr)
+    if (mReadFifo != nullptr)
     {
-        delete mReadBuffer;
-        mReadBuffer = nullptr;
+        delete mReadFifo;
+        mReadFifo = nullptr;
     }
     if (size > 0)
     {
-        mReadBuffer = new CircularBuffer<T>(size);
-        triggerRead();
+        mReadFifo = new CircularBuffer<T>(size);
+        readTrigger();
     }
 }
 
 template<typename T>
-bool Stream<T>::readPrepare(T *data, unsigned int count)
+void Stream<T>::writeFifo(unsigned int size)
 {
-    if (mReadCount != 0 || count == 0) return false;
-    if (readFromBuffer(data, count)) return false;
-    mReadCount = count;
-    mReadData = data;
-    return true;
+    if (mWriteFifo != nullptr)
+    {
+        delete mWriteFifo;
+        mWriteFifo = nullptr;
+    }
+    if (size > 0)
+    {
+        mWriteFifo = new CircularBuffer<T>(size);
+        writeTrigger();
+    }
 }
 
 template<typename T>
-bool Stream<T>::readPrepare(T *data, unsigned int count, System::Event *callback)
+void Stream<T>::readSuccess(bool success)
 {
-    if (mReadCount != 0 || count == 0) return false;
-    mReadCallback = callback;
-    return readPrepare(data, count);
+    if (mReadCompleteEvent != nullptr) mReadCompleteEvent->setResult(success);
+    readEpilog();
 }
 
 template<typename T>
 bool Stream<T>::read(T data)
 {
-    if (mReadBuffer != nullptr)
+    if (mReadFifo != nullptr)
     {
-        mReadBuffer->push(data);
-        if (mReadCount != 0 && mReadData != nullptr) readFromBuffer(mReadData, mReadCount);
+        mReadFifo->push(data);
+        readFromFifo();
+        if (mReadCount == 0) readEpilog();
         return true;
     }
-    else if (mReadCount != 0 && mReadData != nullptr)
+    else if (mReadCount != 0)
     {
         *mReadData++ = data;
         --mReadCount;
         if (mReadCount == 0)
         {
-            readFinished(true);
+            readSuccess(true);
             return false;
         }
     }
@@ -88,24 +149,11 @@ bool Stream<T>::read(T data)
 }
 
 template<typename T>
-void Stream<T>::readFinished(bool success)
-{
-    mReadCount = 0;
-    mReadData = 0;
-    if (mReadCallback != nullptr)
-    {
-        mReadCallback->setResult(success);
-        System::postEvent(mReadCallback);
-        mReadCallback = nullptr;
-    }
-}
-
-template<typename T>
 T *Stream<T>::readData()
 {
-    if (mReadBuffer != nullptr)
+    if (mReadFifo != nullptr)
     {
-        return mReadBuffer->writePointer();
+        return mReadFifo->writePointer();
     }
     return mReadData;
 }
@@ -113,55 +161,34 @@ T *Stream<T>::readData()
 template<typename T>
 unsigned int Stream<T>::readCount()
 {
-    if (mReadBuffer != nullptr) return 1;
+    if (mReadFifo != nullptr) return 1;
     return mReadCount;
 }
 
 template<typename T>
-bool Stream<T>::writePrepare(const T *data, unsigned int count)
+void Stream<T>::writeSuccess(bool success)
 {
-    if (mWriteCount > 0 || count == 0) return false;
-    mWriteData = data;
-    mWriteCount = count;
-    return true;
-}
-
-template<typename T>
-bool Stream<T>::writePrepare(const T *data, unsigned int count, System::Event *callback)
-{
-    if (mWriteCount > 0 || count == 0) return false;
-    mWriteCallback = callback;
-    return writePrepare(data, count);
+    if (mWriteCompleteEvent != nullptr) mWriteCompleteEvent->setResult(success);
+    writeEpilog();
 }
 
 template<typename T>
 bool Stream<T>::write(T &data)
 {
-    if (mWriteCount > 0 && mWriteData != nullptr)
+    if (mWriteFifo != nullptr)
     {
-        --mWriteCount;
-        data = *mWriteData++;
+        mWriteFifo->push(data);
+        writeFromFifo();
+        if (mWriteCount == 0) writeEpilog();
         return true;
     }
-    if (mWriteCount < 0)
+    else if (mWriteCount != 0)
     {
-        printf("\nWC<0: %i, %c %c %c\n", mWriteCount, *(mWriteData - 2), *(mWriteData - 1), *(mWriteData));
+        data = *mWriteData++;
+        --mWriteCount;
     }
-    writeFinished(true);
+    writeSuccess(true);
     return false;
-}
-
-template<typename T>
-void Stream<T>::writeFinished(bool success)
-{
-    mWriteCount = 0;
-    mWriteData = 0;
-    if (mWriteCallback != nullptr)
-    {
-        mWriteCallback->setResult(success);
-        System::postEvent(mWriteCallback);
-        mWriteCallback = nullptr;
-    }
 }
 
 template<typename T>
@@ -177,48 +204,77 @@ unsigned int Stream<T>::writeCount()
 }
 
 template<typename T>
-bool Stream<T>::readFromBuffer(T*& data, unsigned int& count)
+bool Stream<T>::readProlog(T *data, unsigned int count)
 {
-    if (mReadBuffer != nullptr)
+    if (mReadData != nullptr) return false;
+    mReadCount = count;
+    mReadData = data;
+    readFromFifo();
+    if (mReadCount != 0) readPrepare();
+    else readEpilog();
+    return true;
+}
+
+template<typename T>
+void Stream<T>::readEpilog()
+{
+    readDone();
+    mReadCount = 0;
+    mReadData = nullptr;
+    if (mReadCompleteEvent != nullptr)
     {
-        int len = mReadBuffer->read(data, count);
-        count -= len;
-        data += len;
-        if (count == 0)
-        {
-            readFinished(true);
-            return true;
-        }
+        System::postEvent(mReadCompleteEvent);
+        mReadCompleteEvent = nullptr;
     }
-    return false;
+}
+
+template<typename T>
+void Stream<T>::readFromFifo()
+{
+    if (mReadFifo != nullptr && mReadCount != 0)
+    {
+        int len = mReadFifo->read(mReadData, mReadCount);
+        mReadCount -= len;
+        mReadData += len;
+    }
+}
+
+template<typename T>
+bool Stream<T>::writeProlog(const T *data, unsigned int count)
+{
+    if (mWriteData != nullptr) return false;
+    mWriteCount = count;
+    mWriteData = data;
+    writeFromFifo();
+    if (mWriteCount != 0) writePrepare();
+    else writeEpilog();
+    return true;
+}
+
+template<typename T>
+void Stream<T>::writeEpilog()
+{
+    writeDone();
+    mWriteCount = 0;
+    mWriteData = nullptr;
+    if (mWriteCompleteEvent != nullptr)
+    {
+        System::postEvent(mWriteCompleteEvent);
+        mWriteCompleteEvent = nullptr;
+    }
+}
+
+template<typename T>
+void Stream<T>::writeFromFifo()
+{
+    if (mWriteFifo != nullptr && mWriteCount != 0)
+    {
+        //int len = mWriteFifo->read(mWriteData, mWriteCount);
+        //mWriteCount -= len;
+        //mWriteData += len;
+    }
 }
 
 template class Stream<char>;
 template class Stream<uint16_t>;
 
-
-template<typename T>
-void BufferedStream<T>::read(T *data, unsigned int count)
-{
-    while (mReadBuffer.used() == 0)
-    {
-        __asm("wfi");
-    }
-
-    mReadBuffer.read(data, count);
-}
-
-template<typename T>
-void BufferedStream<T>::read(T *data, unsigned int count, System::Event *callback)
-{
-}
-
-template<typename T>
-void BufferedStream<T>::write(const T *data, unsigned int count)
-{
-}
-
-template<typename T>
-void BufferedStream<T>::write(const T *data, unsigned int count, System::Event *callback)
-{
-}

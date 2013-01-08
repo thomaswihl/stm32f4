@@ -121,41 +121,6 @@ void Serial::configDma(Dma::Stream *write, Dma::Stream *read)
     }
 }
 
-
-
-
-void Serial::read(char* data, unsigned int count)
-{
-    if (readPrepare(data, count))
-    {
-        simpleRead();
-    }
-}
-
-void Serial::read(char *data, unsigned int count, System::Event *callback)
-{
-    if (readPrepare(data, count, callback))
-    {
-        triggerRead();
-    }
-}
-
-void Serial::write(const char *data, unsigned int count)
-{
-    if (writePrepare(data, count))
-    {
-        simpleWrite();
-    }
-}
-
-void Serial::write(const char *data, unsigned int count, System::Event *callback)
-{
-    if (writePrepare(data, count, callback))
-    {
-        triggerWrite();
-    }
-}
-
 void Serial::interruptCallback(InterruptController::Index index)
 {
     if (mBase->SR.RXNE && mBase->CR1.RXNEIE)
@@ -184,14 +149,14 @@ void Serial::interruptCallback(InterruptController::Index index)
 void Serial::dmaReadComplete(bool success)
 {
     mBase->CR3.DMAR = 0;
-    Stream<char>::readFinished(success);
+    Stream<char>::readSuccess(success);
 }
 
 void Serial::dmaWriteComplete(bool success)
 {
     mBase->CR3.DMAT = 0;
     waitTransmitComplete();
-    Stream<char>::writeFinished(success);
+    Stream<char>::writeSuccess(success);
 }
 
 void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock)
@@ -199,7 +164,73 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
     if (reason == ClockControl::Callback::Reason::Changed && mSpeed != 0) setSpeed(mSpeed);
 }
 
-void Serial::triggerWrite()
+void Serial::waitTransmitComplete()
+{
+    int timeout = 100000;
+    while (!mBase->SR.TC && timeout > 0)
+    {
+        --timeout;
+    }
+}
+
+void Serial::waitReceiveNotEmpty()
+{
+    while (!mBase->SR.RXNE)
+    {
+    }
+}
+
+void Serial::readPrepare()
+{
+}
+
+void Serial::readSync()
+{
+    do
+    {
+        waitReceiveNotEmpty();
+    }   while (Stream<char>::read(static_cast<char>(mBase->DR)));
+}
+
+void Serial::readTrigger()
+{
+    if (mDmaRead != 0)
+    {
+        mBase->CR3.DMAR = 1;
+        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(readData()));
+        mDmaRead->setTransferCount(readCount());
+        mDmaRead->start();
+    }
+    else if (mInterrupt != 0)
+    {
+        mBase->CR1.RXNEIE = 1;
+    }
+    else
+    {
+        // we have to do it manually
+        readSync();
+    }
+}
+
+void Serial::readDone()
+{
+}
+
+void Serial::writePrepare()
+{
+}
+
+void Serial::writeSync()
+{
+    char c;
+    while (Stream<char>::write(c))
+    {
+        waitTransmitComplete();
+        mBase->DR = c;
+    }
+}
+
+void Serial::writeTrigger()
 {
     if (mDmaWrite != 0)
     {
@@ -220,61 +251,11 @@ void Serial::triggerWrite()
     else
     {
         // we have to do it manually
-        simpleWrite();
+        writeSync();
     }
 }
 
-void Serial::triggerRead()
+void Serial::writeDone()
 {
-    if (mDmaRead != 0)
-    {
-        mBase->CR3.DMAR = 1;
-        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(readData()));
-        mDmaRead->setTransferCount(readCount());
-        mDmaRead->start();
-    }
-    else if (mInterrupt != 0)
-    {
-        mBase->CR1.RXNEIE = 1;
-    }
-    else
-    {
-        // we have to do it manually
-        simpleRead();
-    }
-}
-
-void Serial::waitTransmitComplete()
-{
-    int timeout = 100000;
-    while (!mBase->SR.TC && timeout > 0)
-    {
-        --timeout;
-    }
-}
-
-void Serial::waitReceiveNotEmpty()
-{
-    while (!mBase->SR.RXNE)
-    {
-    }
-}
-
-void Serial::simpleRead()
-{
-    do
-    {
-        waitReceiveNotEmpty();
-    }   while (Stream<char>::read(static_cast<char>(mBase->DR)));
-}
-
-void Serial::simpleWrite()
-{
-    char c;
-    while (Stream<char>::write(c))
-    {
-        waitTransmitComplete();
-        mBase->DR = c;
-    }
 }
 
