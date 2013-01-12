@@ -2,7 +2,7 @@
 #define ATOMIC_H
 
 #include <stdint.h>
-#if __ARM__
+#if __arm__
 //inline int32_t atomic_add(volatile int32_t* v, int inc)
 //{
 //   int32_t t;
@@ -39,7 +39,7 @@ static inline void atomic_add(volatile int32_t* v, int inc)
 }
 #endif  // ARM
 
-#if __x86_64__ || __X86_32__ || __X86__
+#if __x86_64__ || __x86_32__ || __x86__
 inline void atomic_add(volatile int32_t* v, int inc)
 {
     *v += inc;

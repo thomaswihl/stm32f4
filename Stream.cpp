@@ -131,8 +131,8 @@ bool Stream<T>::read(T data)
     if (mReadFifo != nullptr)
     {
         mReadFifo->push(data);
-        readFromFifo();
-        if (mReadCount == 0 && mReadData != 0) readEpilog();
+        readFromFifo(mReadData, mReadCount);
+        if (mReadCount == 0 && mReadData != nullptr) readEpilog();
         return true;
     }
     else if (mReadCount != 0)
@@ -208,20 +208,27 @@ template<typename T>
 bool Stream<T>::readProlog(T *data, unsigned int count)
 {
     if (mReadData != nullptr) return false;
+    readFromFifo(data, count);
+    if (count == 0)
+    {
+        readSuccess(true);
+        return true;
+    }
     mReadCount = count;
     mReadData = data;
-    readFromFifo();
     readPrepare();
-    if (mReadCount == 0) readSuccess(true);
     return true;
 }
 
 template<typename T>
 void Stream<T>::readEpilog()
 {
-    readDone();
-    mReadCount = 0;
-    mReadData = nullptr;
+    if (mReadData != nullptr)
+    {
+        readDone();
+        mReadCount = 0;
+        mReadData = nullptr;
+    }
     if (mReadCompleteEvent != nullptr)
     {
         System::postEvent(mReadCompleteEvent);
@@ -230,13 +237,13 @@ void Stream<T>::readEpilog()
 }
 
 template<typename T>
-void Stream<T>::readFromFifo()
+void Stream<T>::readFromFifo(T *&data, unsigned int &count)
 {
-    if (mReadFifo != nullptr && mReadCount != 0)
+    if (data != nullptr && count != 0)
     {
-        int len = mReadFifo->read(mReadData, mReadCount);
-        mReadCount -= len;
-        mReadData += len;
+        int len = mReadFifo->read(data, count);
+        count -= len;
+        data += len;
     }
 }
 

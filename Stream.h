@@ -71,7 +71,7 @@ private:
 
     bool readProlog(T* data, unsigned int count);
     void readEpilog();
-    void readFromFifo();
+    void readFromFifo(T*& data, unsigned int& count);
 
     bool writeProlog(const T* data, unsigned int count);
     void writeEpilog();
