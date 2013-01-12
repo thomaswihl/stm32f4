@@ -31,7 +31,8 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mCharReceived(*this),
     mHistory(64),
     mHistoryIndex(0),
-    mEscapeLen(0)
+    mEscapeLen(0),
+    mFirstSpace(0)
 {
     strcpy(mPrompt, "# ");
 }
@@ -52,8 +53,15 @@ void CommandInterpreter::feed()
             break;
         case '\r':
             mSystem.mDebug.write("\r\n", 2);
+            if (mHistoryIndex != 0)
+            {
+                strcpy(mLine, mHistory[mHistoryIndex]);
+                mLineLen = strlen(mHistory[mHistoryIndex]);
+                mHistoryIndex = 0;
+            }
             execute();
             mLineLen = 0;
+            mFirstSpace = 0;
             printLine();
             break;
         case 8:
@@ -82,6 +90,11 @@ void CommandInterpreter::feed()
             mState = State::Escape;
             break;
         default:
+            if (mReadChar == ' ')
+            {
+                if (mLineLen == 0) break;
+                else if (mFirstSpace == 0) mFirstSpace = mLineLen;
+            }
             if (mLineLen < MAX_LINE_LEN) mLine[mLineLen++] = mReadChar;
             mSystem.mDebug.write(&mReadChar, 1);
             break;
@@ -234,6 +247,7 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
     }
     argument.optional = false;
     argument.type = Argument::Type::Unknown;
+    argument.enhancedType = Argument::EnhancedType::Unknown;
     char* end;
     for (; string < argument.name; ++string)
     {
@@ -275,6 +289,15 @@ bool CommandInterpreter::parseArgument(CommandInterpreter::Argument &argument)
             break;
         case 'o':
             argument.optional = true;
+            break;
+        case 'A':
+            argument.enhancedType = Argument::EnhancedType::Address;
+            break;
+        case 'P':
+            argument.enhancedType = Argument::EnhancedType::Pin;
+            break;
+        case 'V':
+            argument.enhancedType = Argument::EnhancedType::Value;
             break;
         default:
             return false;
@@ -332,32 +355,68 @@ CommandInterpreter::Command *CommandInterpreter::findCommand(const char *name, u
 
 void CommandInterpreter::complete()
 {
-    Possibilities possible;
-    findCommand(mLine, mLineLen, possible);
-    const char* useName = possible.string();
-    if (possible.count() == 1)
+    if (mFirstSpace == 0)
     {
-        int useLen = strlen(useName);
-        strncpy(mLine + mLineLen, useName + mLineLen, useLen - mLineLen);
-        mLineLen = useLen;
-        printLine();
+        Possibilities possible;
+        findCommand(mLine, mLineLen, possible);
+        const char* useName = possible.string();
+        if (possible.count() == 1)
+        {
+            int useLen = strlen(useName);
+            strncpy(mLine + mLineLen, useName + mLineLen, useLen - mLineLen);
+            mLineLen = useLen;
+            mFirstSpace = mLineLen - 1;
+            printLine();
+        }
+        else if (possible.count() > 1)
+        {
+            std::printf("\n%s\n", useName);
+            printLine();
+        }
     }
-    else if (possible.count() > 1)
+    else
     {
-        std::printf("\n%s\n", useName);
-        printLine();
+        Possibilities possible;
+        Command* cmd = findCommand(mLine, mFirstSpace, possible);
+        if (cmd != nullptr)
+        {
+            unsigned int argc = findArguments(false);
+            if (argc >= 2)
+            {
+                Argument arg;
+                arg.name = cmd->argument(argc - 2);
+                arg.value.s = nullptr;
+                parseArgument(arg);
+                if (arg.enhancedType == Argument::EnhancedType::Address)
+                {
+                    unsigned int i = mLineLen - 1;
+                    bool hex = false;
+                    while (i > 0 && mLine[i] != ' ')
+                    {
+                        if (mLine[i] == 'x' || mLine[i] == 'X')
+                        {
+                            hex = true;
+                            break;
+                        }
+                        --i;
+                    }
+                    if (hex)
+                    {
+                        for (unsigned int j = mLineLen - i; j < 9; ++j) mLine[mLineLen++] = '0';
+                        mLine[mLineLen++] = ' ';
+                        printLine();
+                    }
+                }
+            }
+        }
     }
 }
 
-void CommandInterpreter::execute()
+unsigned int CommandInterpreter::findArguments(bool splitArgs)
 {
-    static Argument argv[MAX_ARG_LEN];
-    mLine[mLineLen] = 0;
-    addToHistory(mLine);
-    argv[0].value.s = mLine;
-    argv[0].type = Argument::Type::String;
+    mArguments[0].value.s = mLine;
+    mArguments[0].type = Argument::Type::String;
     unsigned int argc = 1;
-    // first we split our line into seperate strings (by replacing whitespace with binary 0)
     char split = ' ';
     int argStart = 0, prevArgStart = 0;
     for (unsigned int i = 0; i < mLineLen; ++i)
@@ -365,30 +424,40 @@ void CommandInterpreter::execute()
         prevArgStart = argStart;
         if (mLine[i] == split)
         {
-            mLine[i] = 0;
+            if(splitArgs) mLine[i] = 0;
             split = ' ';
             ++argStart;
         }
         else if (split == ' ' && (mLine[i] == '"' || mLine[i] == '\''))
         {
-            mLine[i] = 0;
+            if(splitArgs) mLine[i] = 0;
             split = mLine[i];
             ++argStart;
         }
         if (argStart > 0 && argStart == prevArgStart)
         {
-            argv[argc].value.s = mLine + i;
-            argv[argc].type = Argument::Type::String;
+            mArguments[argc].value.s = mLine + i;
+            mArguments[argc].type = Argument::Type::String;
             ++argc;
+            if (argc >= MAX_ARG_LEN) break;
             argStart = 0;
         }
     }
-    if (argv[0].value.s[0] == 0) return;
+    return argc;
+}
+
+void CommandInterpreter::execute()
+{
+    mLine[mLineLen] = 0;
+    addToHistory(mLine);
+    // first we split our line into seperate strings (by replacing whitespace with binary 0)
+    unsigned int argc = findArguments(true);
+    if (mArguments[0].value.s[0] == 0) return;
     Possibilities possible;
-    Command* cmd = findCommand(argv[0].value.s, strlen(argv[0].value.s), possible);
+    Command* cmd = findCommand(mArguments[0].value.s, strlen(mArguments[0].value.s), possible);
     if (cmd == nullptr)
     {
-        printf("Unknown command: %s, try help.\n", argv[0].value.s);
+        printf("Unknown command: %s, try help.\n", mArguments[0].value.s);
         return;
     }
     unsigned int maxArgc = std::min(static_cast<unsigned int>(MAX_ARG_LEN), cmd->argumentCount() + 1);
@@ -397,15 +466,15 @@ void CommandInterpreter::execute()
     // If everything is fine so far we parse our arguments and check if they are valid.
     for (unsigned int i = 1; i < argc; ++i)
     {
-        argv[i].name = cmd->argument(i - 1);
+        mArguments[i].name = cmd->argument(i - 1);
         //printf("Parsing %s/%s: ", argv[i].name, argv[i].value.s);
-        if (!parseArgument(argv[i]))
+        if (!parseArgument(mArguments[i]))
         {
             failed = true;
             break;
         }
         //printf("%u\n", argv[i].value.u);
-        if (!argv[i].optional) ++minArgc;
+        if (!mArguments[i].optional) ++minArgc;
     }
     // If we fond a problem print a usage message.
     if (failed || argc < minArgc || argc > maxArgc)
@@ -415,12 +484,13 @@ void CommandInterpreter::execute()
         return;
     }
     // Everything is fine, execute it.
-    if (cmd != nullptr) cmd->execute(*this, argc, argv);
+    if (cmd != nullptr) cmd->execute(*this, argc, mArguments);
 }
 
 void CommandInterpreter::addToHistory(const char *line)
 {
     unsigned int len = strlen(line) + 1;
+    if (len == 1) return;
     char* copy = new char[len];
     memcpy(copy, line, len);
     if (mHistory.free() == 0)

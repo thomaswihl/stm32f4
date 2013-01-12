@@ -31,6 +31,7 @@ public:
     struct Argument
     {
         enum class Type { Unknown, String, UnsignedInt, Int, Bool };
+        enum class EnhancedType { Unknown, Address, Value, Pin };
         union __value
         {
             unsigned int u;
@@ -41,6 +42,7 @@ public:
         Type type;
         bool optional;
         const char* name;
+        EnhancedType enhancedType;
     };
     struct Command
     {
@@ -53,7 +55,7 @@ public:
         char const *const argument(unsigned int i) { return (i < mArgumentCount) ? mArgument[i] : nullptr; }
         unsigned int argumentCount() { return mArgumentCount; }
 
-        virtual bool execute(CommandInterpreter& interpreter, int argc, const Argument* argv) = 0;
+        virtual bool execute(CommandInterpreter& interpreter, int argc, const Argument* mArguments) = 0;
         virtual const char* helpText() const = 0;
 
     protected:
@@ -117,10 +119,14 @@ private:
     int mHistoryIndex;
     char mEscape[MAX_ESCAPE_LEN];
     unsigned int mEscapeLen;
+    unsigned int mFirstSpace;
+    Argument mArguments[MAX_ARG_LEN];
+
 
     void printLine();
     Command* findCommand(const char* name, unsigned int len, Possibilities& possible);
     void complete();
+    unsigned int findArguments(bool splitArgs);
     void execute();
     void addToHistory(const char* line);
 };

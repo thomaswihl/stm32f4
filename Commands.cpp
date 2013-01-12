@@ -12,16 +12,16 @@ char const * const CmdFunc::NAME[] = { "func" };
 char const * const CmdFunc::ARGV[] = { "s:function" };
 
 char const * const CmdRead::NAME[] = { "read", "rb", "rh", "rw" };
-char const * const CmdRead::ARGV[] = { "u:address", "ou:count" };
+char const * const CmdRead::ARGV[] = { "Au:address", "Vou:count" };
 
 char const * const CmdWrite::NAME[] = { "write", "wb", "wh", "ww" };
-char const * const CmdWrite::ARGV[] = { "u:address", "u:data" };
+char const * const CmdWrite::ARGV[] = { "Au:address", "Vu:data" };
 
 char const * const CmdLis::NAME[] = { "lis" };
 char const * const CmdLis::ARGV[] = { };
 
 char const * const CmdPin::NAME[] = { "pin" };
-char const * const CmdPin::ARGV[] = { "s:pin", "ob:value" };
+char const * const CmdPin::ARGV[] = { "Ps:pin", "Vob:value" };
 
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
@@ -100,7 +100,19 @@ CmdWrite::CmdWrite() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeo
 
 bool CmdWrite::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
-    return false;
+    switch (argv[0].value.s[1])
+    {
+    case 'b':
+        *reinterpret_cast<uint8_t*>(argv[1].value.u) = argv[2].value.u;
+        break;
+    case 'h':
+        *reinterpret_cast<uint16_t*>(argv[1].value.u) = argv[2].value.u;
+        break;
+    default:
+        *reinterpret_cast<uint32_t*>(argv[1].value.u) = argv[2].value.u;
+        break;
+    }
+    return true;
 }
 
 
@@ -125,6 +137,10 @@ bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandIn
     {
         uint64_t ns = mSystem.ns();
         printf("%llu\n", ns);
+    }
+    else
+    {
+        printf("Unknown function, allowed is: ns\n");
     }
     return true;
 }
