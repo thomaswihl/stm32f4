@@ -63,44 +63,41 @@ void Flash::set(Flash::Feature feature, bool enable)
 void Flash::unlock()
 {
     unlockCr();
-    mBase->CR.PSIZE = static_cast<uint32_t>(mAccessSize);
 }
 
-void Flash::erase(unsigned int sector)
+bool Flash::erase(unsigned int sector)
 {
+    mBase->CR.PSIZE = static_cast<uint32_t>(mAccessSize);
     mBase->CR.SER = 1;
     mBase->CR.SNB = sector;
     mBase->CR.STRT = 1;
-    while (mBase->SR.BSY == 1)
-    {
-
-    }
+    waitReady();
+    mBase->CR.SER = 0;
+    return result();
 }
 
-void Flash::erase()
+bool Flash::erase()
 {
+    mBase->CR.PSIZE = static_cast<uint32_t>(mAccessSize);
     mBase->CR.MER = 1;
     mBase->CR.STRT = 1;
-    while (mBase->SR.BSY == 1)
-    {
-
-    }
+    waitReady();
+    mBase->CR.MER = 0;
+    return result();
 }
 
 template<class T>
-void Flash::write(uint32_t address, const T *data, unsigned int count)
+bool Flash::write(uint32_t address, const T *data, unsigned int count)
 {
-    assert(sizeof(T) == (1 << static_cast<int>(mAccessSize)));
+    uint32_t size = 0;
+    while (sizeof(T) != (1 << size)) ++size;
+    mBase->CR.PSIZE = size;
     volatile T* dest = reinterpret_cast<volatile T*>(address);
     mBase->CR.PG = 1;
-    for (unsigned int i = 0; i < count; ++i)
-    {
-        *dest++ = *data++;
-    }
-    while (mBase->SR.BSY == 1)
-    {
-
-    }
+    for (unsigned int i = 0; i < count; ++i) *dest++ = *data++;
+    waitReady();
+    mBase->CR.PG = 0;
+    return result();
 }
 
 void Flash::lock()
@@ -135,4 +132,17 @@ void Flash::unlockOptcr()
 {
     mBase->OPTKEYR = 0x08192A3B;
     mBase->OPTKEYR = 0x4C5D6E7F;
+}
+
+void Flash::waitReady()
+{
+    while (mBase->SR.BSY == 1)
+    {
+    }
+}
+
+bool Flash::result()
+{
+    if (mBase->SR.PGSERR != 0 || mBase->SR.PGPERR != 0 || mBase->SR.PGAERR != 0 || mBase->SR.WRPERR != 0) return false;
+    return true;
 }

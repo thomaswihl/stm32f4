@@ -36,10 +36,10 @@ public:
     virtual ~Flash();
     void set(Feature feature, bool enable);
     void unlock();
-    void erase(unsigned int sector);
-    void erase();
+    bool erase(unsigned int sector);
+    bool erase();
     template<class T>
-    void write(uint32_t address, const T* data, unsigned int count);
+    bool write(uint32_t address, const T* data, unsigned int count);
     void lock();
 protected:
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
@@ -111,6 +111,8 @@ private:
     uint32_t getWaitStates(uint32_t clock);
     void unlockCr();
     void unlockOptcr();
+    void waitReady();
+    bool result();
 };
 
 #endif // FLASH_H
