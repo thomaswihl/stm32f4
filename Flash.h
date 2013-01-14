@@ -30,10 +30,17 @@ public:
         DataCache,
         Prefetch,
     };
+    enum class AccessSize { x8 = 0, x16 = 1, x32 = 2, x64 = 3 };
 
-    Flash(System::BaseAddress base, ClockControl& clockControl);
+    Flash(System::BaseAddress base, ClockControl& clockControl, AccessSize accessSize);
     virtual ~Flash();
     void set(Feature feature, bool enable);
+    void unlock();
+    void erase(unsigned int sector);
+    void erase();
+    template<class T>
+    void write(uint32_t address, const T* data, unsigned int count);
+    void lock();
 protected:
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
 
@@ -51,10 +58,59 @@ private:
             uint32_t DCRST : 1;
             uint32_t __RESERVED1 : 3;
         }   ACR;
+        uint32_t KEYR;
+        uint32_t OPTKEYR;
+        struct __SR
+        {
+            uint32_t EOP : 1;
+            uint32_t OPERR : 1;
+            uint32_t __RESERVED0 : 2;
+            uint32_t WRPERR : 1;
+            uint32_t PGAERR : 1;
+            uint32_t PGPERR : 1;
+            uint32_t PGSERR : 1;
+            uint32_t __RESERVED1 : 8;
+            uint32_t BSY : 1;
+            uint32_t __RESERVED2 : 15;
+        }   SR;
+        struct __CR
+        {
+            uint32_t PG : 1;
+            uint32_t SER : 1;
+            uint32_t MER : 1;
+            uint32_t SNB : 4;
+            uint32_t __RESERVED0 : 1;
+            uint32_t PSIZE : 2;
+            uint32_t __RESERVED1 : 6;
+            uint32_t STRT : 1;
+            uint32_t __RESERVED2 : 7;
+            uint32_t EOPIE : 1;
+            uint32_t ERRIE : 1;
+            uint32_t __RESERVED3 : 5;
+            uint32_t LOCK : 1;
+        }   CR;
+        struct __OPTCR
+        {
+            uint32_t OPTLOCK : 1;
+            uint32_t OPTSTRT : 1;
+            uint32_t BOR_LEV : 2;
+            uint32_t __RESERVED0 : 1;
+            uint32_t WDG_SW : 1;
+            uint32_t nRST_STOP : 1;
+            uint32_t nRST_STDBY : 1;
+            uint32_t RDP : 8;
+            uint32_t nWRP : 12;
+            uint32_t __RESERVED1 : 4;
+        }   OPTCR;
     };
+    static const unsigned int SECTOR_COUNT = 12;
+    static const unsigned int SECTOR_SIZE[SECTOR_COUNT];
     volatile FLASH* mBase;
+    AccessSize mAccessSize;
 
     uint32_t getWaitStates(uint32_t clock);
+    void unlockCr();
+    void unlockOptcr();
 };
 
 #endif // FLASH_H

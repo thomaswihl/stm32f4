@@ -18,10 +18,31 @@
 
 #include "Flash.h"
 
-Flash::Flash(System::BaseAddress base, ClockControl &clockControl) :
-    mBase(reinterpret_cast<volatile FLASH*>(base))
+#include <cassert>
+
+const unsigned int Flash::SECTOR_COUNT;
+const unsigned int Flash::SECTOR_SIZE[SECTOR_COUNT] =
 {
-    static_assert(sizeof(FLASH) == 0x4, "Struct has wrong size, compiler problem.");
+     16 * 1024,
+     16 * 1024,
+     16 * 1024,
+     16 * 1024,
+     64 * 1024,
+    128 * 1024,
+    128 * 1024,
+    128 * 1024,
+    128 * 1024,
+    128 * 1024,
+    128 * 1024,
+    128 * 1024,
+};
+
+
+Flash::Flash(System::BaseAddress base, ClockControl &clockControl, AccessSize accessSize) :
+    mBase(reinterpret_cast<volatile FLASH*>(base)),
+    mAccessSize(accessSize)
+{
+    static_assert(sizeof(FLASH) == 0x18, "Struct has wrong size, compiler problem.");
     clockControl.addChangeHandler(this);
 }
 
@@ -39,6 +60,54 @@ void Flash::set(Flash::Feature feature, bool enable)
     }
 }
 
+void Flash::unlock()
+{
+    unlockCr();
+    mBase->CR.PSIZE = static_cast<uint32_t>(mAccessSize);
+}
+
+void Flash::erase(unsigned int sector)
+{
+    mBase->CR.SER = 1;
+    mBase->CR.SNB = sector;
+    mBase->CR.STRT = 1;
+    while (mBase->SR.BSY == 1)
+    {
+
+    }
+}
+
+void Flash::erase()
+{
+    mBase->CR.MER = 1;
+    mBase->CR.STRT = 1;
+    while (mBase->SR.BSY == 1)
+    {
+
+    }
+}
+
+template<class T>
+void Flash::write(uint32_t address, const T *data, unsigned int count)
+{
+    assert(sizeof(T) == (1 << static_cast<int>(mAccessSize)));
+    volatile T* dest = reinterpret_cast<volatile T*>(address);
+    mBase->CR.PG = 1;
+    for (unsigned int i = 0; i < count; ++i)
+    {
+        *dest++ = *data++;
+    }
+    while (mBase->SR.BSY == 1)
+    {
+
+    }
+}
+
+void Flash::lock()
+{
+    mBase->CR.LOCK = 1;
+}
+
 void Flash::clockCallback(Reason reason, uint32_t newClock)
 {
     uint32_t ws = getWaitStates(newClock);
@@ -54,4 +123,16 @@ uint32_t Flash::getWaitStates(uint32_t clock)
     if (clock <= 150000000) return 4;
     if (clock <= 168000000) return 5;
     return 6;
+}
+
+void Flash::unlockCr()
+{
+    mBase->KEYR = 0x45670123;
+    mBase->KEYR = 0xCDEF89AB;
+}
+
+void Flash::unlockOptcr()
+{
+    mBase->OPTKEYR = 0x08192A3B;
+    mBase->OPTKEYR = 0x4C5D6E7F;
 }

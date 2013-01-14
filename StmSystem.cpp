@@ -49,7 +49,7 @@ StmSystem::StmSystem() :
     mSpi1(*this, BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
 //    mSpi2(*this, BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
 //    mSpi3(*this, BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
-    mFlash(BaseAddress::FLASH, mRcc),
+    mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
     mFpu(BaseAddress::FPU)
 {
     init();
@@ -97,6 +97,7 @@ void StmSystem::init()
 
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
+    mFlash.set(Flash::Feature::Prefetch, true);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 
