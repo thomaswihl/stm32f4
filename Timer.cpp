@@ -21,5 +21,57 @@
 Timer::Timer(System::BaseAddress base) :
     mBase(reinterpret_cast<volatile TIMER*>(base))
 {
-    static_assert(sizeof(TIMER) == 0x50, "Struct has wrong size, compiler problem.");
+    static_assert(sizeof(TIMER) == 0x54, "Struct has wrong size, compiler problem.");
+}
+
+void Timer::enable(Part part)
+{
+    mBase->CR1.CEN = 1;
+}
+
+void Timer::disable(Part part)
+{
+    mBase->CR1.CEN = 0;
+}
+
+void Timer::dmaReadComplete(bool success)
+{
+}
+
+void Timer::dmaWriteComplete(bool success)
+{
+}
+
+void Timer::setCounter(uint32_t counter)
+{
+    mBase->CNT = counter;
+}
+
+uint32_t Timer::counter()
+{
+    return mBase->CNT;
+}
+
+void Timer::setPrescaler(uint16_t prescaler)
+{
+    mBase->PSC = prescaler;
+}
+
+uint16_t Timer::prescaler()
+{
+    return mBase->PSC;
+}
+
+void Timer::setReload(uint32_t reload)
+{
+    mBase->ARR = reload;
+}
+
+uint32_t Timer::reload()
+{
+    return mBase->ARR;
+}
+
+void Timer::interruptCallback(InterruptController::Index index)
+{
 }

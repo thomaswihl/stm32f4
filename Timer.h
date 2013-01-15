@@ -20,13 +20,30 @@
 #define TIMER_H
 
 #include "System.h"
+#include "Device.h"
 
 #include <stdint.h>
 
-class Timer
+class Timer : public Device
 {
 public:
     Timer(System::BaseAddress base);
+
+    virtual void enable(Part part);
+    virtual void disable(Part part);
+    virtual void dmaReadComplete(bool success);
+    virtual void dmaWriteComplete(bool success);
+
+    void setCounter(uint32_t counter);
+    uint32_t counter();
+    void setPrescaler(uint16_t prescaler);
+    uint16_t prescaler();
+    void setReload(uint32_t reload);
+    uint32_t reload();
+
+protected:
+    virtual void interruptCallback(InterruptController::Index index);
+
 private:
     struct CCMR_OUTPUT
     {
@@ -172,10 +189,7 @@ private:
             uint16_t __RESERVED0 : 8;
         }   RCR;
         uint16_t __RESERVEDA;
-        uint32_t CCR1;
-        uint32_t CCR2;
-        uint32_t CCR3;
-        uint32_t CCR4;
+        uint32_t CCR[4];
         struct __BDTR
         {
             uint16_t DTG : 8;
@@ -186,7 +200,6 @@ private:
             uint16_t BKP : 1;
             uint16_t AOE : 1;
             uint16_t MOE : 1;
-            uint16_t __RESERVED0 : 8;
         }   BDTR;
         uint16_t __RESERVEDB;
         struct __DCR
@@ -195,10 +208,20 @@ private:
             uint16_t __RESERVED0 : 3;
             uint16_t DBL : 5;
             uint16_t __RESERVED1 : 3;
-        };
+        }   DCR;
         uint16_t __RESERVEDC;
         uint16_t DMAR;
         uint16_t __RESERVEDD;
+        struct __OR
+        {
+            uint16_t TIM11_TI1_RMP : 2;       // bist 0+1
+            uint16_t __RESERVED0 : 4;
+            uint16_t TIM5_TI4_RMP : 2;        // bits 6+7
+            uint16_t __RESERVED1 : 2;
+            uint16_t TIM2_ITR1_RMP : 2;       // bits 10+11
+            uint16_t __RESERVED2 : 4;
+        }   OR;
+        uint16_t __RESERVEDE;
     };
     volatile TIMER* mBase;
 };

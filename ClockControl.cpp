@@ -185,8 +185,48 @@ uint32_t ClockControl::clock(Clock clock)
     case Clock::AHB: return ahbClock;
     case Clock::APB1: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE1) - 3);
     case Clock::APB2: return ahbClock >> std::max(0, static_cast<int>(mBase->CFGR.PPRE2) - 3);
+    case Clock::RTC: return rtcClock();
     }
     return 0;
+}
+
+template<>
+void ClockControl::setPrescaler(AhbPrescaler prescaler)
+{
+    mBase->CFGR.HPRE = static_cast<uint32_t>(prescaler);
+}
+
+template<>
+void ClockControl::setPrescaler(Apb1Prescaler prescaler)
+{
+    // <42MHz
+    mBase->CFGR.PPRE1 = static_cast<uint32_t>(prescaler);
+}
+
+template<>
+void ClockControl::setPrescaler(Apb2Prescaler prescaler)
+{
+    // <84MHz
+    mBase->CFGR.PPRE2 = static_cast<uint32_t>(prescaler);
+}
+
+template<>
+void ClockControl::setPrescaler(RtcHsePrescaler prescaler)
+{
+    // =1MHz
+    mBase->CFGR.RTCPRE = static_cast<uint32_t>(prescaler);
+}
+
+template<>
+void ClockControl::setPrescaler(Mco1Prescaler prescaler)
+{
+    mBase->CFGR.MCO1PRE = static_cast<uint32_t>(prescaler);
+}
+
+template<>
+void ClockControl::setPrescaler(Mco2Prescaler prescaler)
+{
+    mBase->CFGR.MCO2PRE = static_cast<uint32_t>(prescaler);
 }
 
 bool ClockControl::getPllConfig(uint32_t clock, uint32_t &div, uint32_t &mul)
@@ -248,4 +288,20 @@ void ClockControl::resetClock(bool notifyAll)
 void ClockControl::notify(ClockControl::Callback::Reason reason, uint32_t clock)
 {
     for (Callback*& handler : mCallback) handler->clockCallback(reason, clock);
+}
+
+uint32_t ClockControl::rtcClock()
+{
+    switch (mBase->BDCR.RTCSEL)
+    {
+    case 0:     // No clock
+        return 0;
+    case 1:     // LSE clock
+        return 32768;
+    case 2:     // LSI clock
+        return 32768;
+    case 3:     // HSE clock
+        return mExternalClock / mBase->CFGR.RTCPRE;
+    }
+    return 0;
 }
