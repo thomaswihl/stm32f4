@@ -114,7 +114,6 @@ void Stream<T>::writeFifo(unsigned int size)
     if (size > 0)
     {
         mWriteFifo = new CircularBuffer<T>(size);
-        writeTrigger();
     }
 }
 
@@ -132,7 +131,7 @@ bool Stream<T>::read(T data)
     {
         mReadFifo->push(data);
         readFromFifo(mReadData, mReadCount);
-        if (mReadCount == 0 && mReadData != nullptr) readEpilog();
+        if (mReadCount == 0 && mReadData != nullptr) readSuccess(true);
         return true;
     }
     else if (mReadCount != 0)
@@ -177,10 +176,7 @@ bool Stream<T>::write(T &data)
 {
     if (mWriteFifo != nullptr)
     {
-        mWriteFifo->push(data);
-        writeFromFifo();
-        if (mWriteCount == 0) writeEpilog();
-        return true;
+        if (mWriteFifo->pop(data)) return true;
     }
     else if (mWriteCount != 0)
     {
@@ -239,7 +235,7 @@ void Stream<T>::readEpilog()
 template<typename T>
 void Stream<T>::readFromFifo(T *&data, unsigned int &count)
 {
-    if (data != nullptr && count != 0)
+    if (mReadFifo != nullptr && data != nullptr && count != 0)
     {
         int len = mReadFifo->read(data, count);
         count -= len;
@@ -251,20 +247,30 @@ template<typename T>
 bool Stream<T>::writeProlog(const T *data, unsigned int count)
 {
     if (mWriteData != nullptr) return false;
+    if (mWriteFifo != nullptr)
+    {
+        while (count != 0) writeToFifo(data, count);
+    }
+    if (count == 0)
+    {
+        writeSuccess(true);
+        return true;
+    }
     mWriteCount = count;
     mWriteData = data;
-    writeFromFifo();
-    if (mWriteCount != 0) writePrepare();
-    else writeEpilog();
+    writePrepare();
     return true;
 }
 
 template<typename T>
 void Stream<T>::writeEpilog()
 {
-    writeDone();
-    mWriteCount = 0;
-    mWriteData = nullptr;
+    if (mWriteData != nullptr)
+    {
+        writeDone();
+        mWriteCount = 0;
+        mWriteData = nullptr;
+    }
     if (mWriteCompleteEvent != nullptr)
     {
         System::postEvent(mWriteCompleteEvent);
@@ -273,13 +279,13 @@ void Stream<T>::writeEpilog()
 }
 
 template<typename T>
-void Stream<T>::writeFromFifo()
+void Stream<T>::writeToFifo(const T *&data, unsigned int &count)
 {
-    if (mWriteFifo != nullptr && mWriteCount != 0)
+    if (mWriteFifo != nullptr && data != nullptr && count != 0)
     {
-        //int len = mWriteFifo->read(mWriteData, mWriteCount);
-        //mWriteCount -= len;
-        //mWriteData += len;
+        int len = mWriteFifo->write(data, count);
+        count -= len;
+        data += len;
     }
 }
 

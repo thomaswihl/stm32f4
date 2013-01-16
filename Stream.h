@@ -75,7 +75,7 @@ private:
 
     bool writeProlog(const T* data, unsigned int count);
     void writeEpilog();
-    void writeFromFifo();
+    void writeToFifo(const T *&data, unsigned int &count);
 };
 
 #endif // STREAM_H

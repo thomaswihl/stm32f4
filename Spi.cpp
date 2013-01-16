@@ -188,6 +188,7 @@ void Spi<T>::readSync()
 template<typename T>
 void Spi<T>::readTrigger()
 {
+    return;
     // empty the receive register before starting another transfer,
     // as it might be full from last transfer, in case it was a write only transfer
     T c;
