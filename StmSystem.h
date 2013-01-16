@@ -32,6 +32,7 @@
 #include "SysTickControl.h"
 #include "FpuControl.h"
 #include "Spi.h"
+#include "IndependentWatchdog.h"
 
 class StmSystem : public System
 {
@@ -69,6 +70,7 @@ public:
             TIM14 = 0x40002000,
             NVIC = 0xe000e100,
             RCC = 0x40023800,
+            IWDG = 0x40003000,
             USART1 = 0x40011000,
             USART2 = 0x40004400,
             USART3 = 0x40004800,
@@ -216,6 +218,7 @@ public:
 //    Spi mSpi3;
     Flash mFlash;
     FpuControl mFpu;
+    IndependentWatchdog mIWdg;
 
 
     StmSystem();

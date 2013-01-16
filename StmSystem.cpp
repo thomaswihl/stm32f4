@@ -64,7 +64,8 @@ StmSystem::StmSystem() :
 //    mSpi2(*this, BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
 //    mSpi3(*this, BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
     mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
-    mFpu(BaseAddress::FPU)
+    mFpu(BaseAddress::FPU),
+    mIWdg(BaseAddress::IWDG)
 {
     init();
 }

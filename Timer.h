@@ -27,6 +27,10 @@
 class Timer : public Device
 {
 public:
+    enum class CapturePrescaler { EveryEdge = 0, Every2 = 1, Every4 = 2, Every8 = 3 };
+    enum class CaptureFilter { F1N1, F1N2, F1N4, F1N8, F2N6, F2N8, F4N6, F4N8, F8N6, F8N8, F16N5, F16N6, F16N8, F32N5, F32N6, F32N8 };
+    enum class CaptureEdge { Rising = 0, Falling = 1, Both = 3 };
+    enum class CaptureCompareIndex { Index1, Index2, Index3, Index4 };
     Timer(System::BaseAddress base);
 
     virtual void enable(Part part);
@@ -40,6 +44,9 @@ public:
     uint16_t prescaler();
     void setReload(uint32_t reload);
     uint32_t reload();
+    void configCapture(CaptureCompareIndex index, CapturePrescaler prescaler, CaptureFilter filter, CaptureEdge edge);
+    void enableCapture(CaptureCompareIndex index);
+    void disableCapture(CaptureCompareIndex index);
 
 protected:
     virtual void interruptCallback(InterruptController::Index index);

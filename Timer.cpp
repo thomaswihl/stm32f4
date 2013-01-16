@@ -72,6 +72,20 @@ uint32_t Timer::reload()
     return mBase->ARR;
 }
 
+void Timer::configCapture(Timer::CaptureCompareIndex index, Timer::CapturePrescaler prescaler, Timer::CaptureFilter filter, Timer::CaptureEdge edge)
+{
+}
+
+void Timer::enableCapture(CaptureCompareIndex index)
+{
+    mBase->CCER.CC1E = 1;
+}
+
+void Timer::disableCapture(CaptureCompareIndex index)
+{
+    mBase->CCER.CC1E = 1;
+}
+
 void Timer::interruptCallback(InterruptController::Index index)
 {
 }
