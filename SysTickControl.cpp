@@ -23,7 +23,8 @@ SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock, un
     mBase(reinterpret_cast<volatile STK*>(base)),
     mClock(clock),
     mInterval(msInterval),
-    mSingleCountTime(1)
+    mSingleCountTime(1),
+    mEvent(nullptr)
 {
     static_assert(sizeof(STK) == 0x10, "Struct has wrong size, compiler problem.");
     clock->addChangeHandler(this);
@@ -45,6 +46,11 @@ void SysTickControl::disable()
 {
     mBase->CTRL.TICKINT = 0;
     mBase->CTRL.ENABLE = 0;
+}
+
+SysTickControl::setEvent(System::Event *event)
+{
+    mEvent = event;
 }
 
 void SysTickControl::usleep(unsigned int us)

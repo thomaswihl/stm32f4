@@ -22,7 +22,8 @@
 #include <cstdio>
 
 StmSystem::StmSystem() :
-    System(BaseAddress::SCB),
+    mSysTick(BaseAddress::STK, &mRcc, 100),
+    System(BaseAddress::SCB, mSysTick),
     mGpioA(BaseAddress::GPIOA),
     mGpioB(BaseAddress::GPIOB),
     mGpioC(BaseAddress::GPIOC),
@@ -49,7 +50,6 @@ StmSystem::StmSystem() :
     mRcc(BaseAddress::RCC, 8000000),
     mExtI(BaseAddress::EXTI, 23),
     mNvic(BaseAddress::NVIC, 82),
-    mSysTick(BaseAddress::STK, &mRcc, 100),
     mSysCfg(BaseAddress::SYSCFG),
     mDma1(BaseAddress::DMA1),
     mDma2(BaseAddress::DMA2),

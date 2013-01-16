@@ -105,7 +105,6 @@ public:
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
 
-    static inline void sysTick() { ++mTicks; }
     static inline unsigned int ticks() { return mTicks; }
     virtual void usleep(unsigned int us) = 0;
     virtual uint64_t ns() = 0;
@@ -248,9 +247,6 @@ private:
     static const unsigned int STACK_MAGIC = 0xACE01234;
     static System* mSystem;
     static char* mHeapEnd;
-
-
-    static unsigned int mTicks;
 
     volatile SCB* mBase;
     uint32_t mBogoMips;
