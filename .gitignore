@@ -2,6 +2,10 @@
 *.slo
 *.lo
 *.o
+*.creator.user
+gtest/gtest
+gtest/stm-test
+version.cpp
 
 # Compiled Dynamic libraries
 *.so

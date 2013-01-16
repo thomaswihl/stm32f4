@@ -32,6 +32,20 @@ StmSystem::StmSystem() :
     mGpioG(BaseAddress::GPIOG),
     mGpioH(BaseAddress::GPIOH),
     mGpioI(BaseAddress::GPIOI),
+    mTim1(BaseAddress::TIM1),
+    mTim2(BaseAddress::TIM2),
+    mTim3(BaseAddress::TIM3),
+    mTim4(BaseAddress::TIM4),
+    mTim5(BaseAddress::TIM5),
+    mTim6(BaseAddress::TIM6),
+    mTim7(BaseAddress::TIM7),
+    mTim8(BaseAddress::TIM8),
+    mTim9(BaseAddress::TIM9),
+    mTim10(BaseAddress::TIM10),
+    mTim11(BaseAddress::TIM11),
+    mTim12(BaseAddress::TIM12),
+    mTim13(BaseAddress::TIM13),
+    mTim14(BaseAddress::TIM14),
     mRcc(BaseAddress::RCC, 8000000),
     mExtI(BaseAddress::EXTI, 23),
     mNvic(BaseAddress::NVIC, 82),
@@ -49,8 +63,9 @@ StmSystem::StmSystem() :
     mSpi1(*this, BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
 //    mSpi2(*this, BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
 //    mSpi3(*this, BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
-    mFlash(BaseAddress::FLASH, mRcc),
-    mFpu(BaseAddress::FPU)
+    mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
+    mFpu(BaseAddress::FPU),
+    mIWdg(BaseAddress::IWDG)
 {
     init();
 }
@@ -98,6 +113,7 @@ void StmSystem::init()
 
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
+    mFlash.set(Flash::Feature::Prefetch, true);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
 }
 

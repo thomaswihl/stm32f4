@@ -22,6 +22,7 @@
 #include "System.h"
 #include "ClockControl.h"
 #include "Gpio.h"
+#include "Timer.h"
 #include "InterruptController.h"
 #include "ExternalInterrupt.h"
 #include "SysCfg.h"
@@ -31,6 +32,7 @@
 #include "SysTickControl.h"
 #include "FpuControl.h"
 #include "Spi.h"
+#include "IndependentWatchdog.h"
 
 class StmSystem : public System
 {
@@ -52,8 +54,23 @@ public:
             GPIOG = 0x40021800,
             GPIOH = 0x40021c00,
             GPIOI = 0x40022000,
+            TIM1 = 0x40010000,
+            TIM2 = 0x40000000,
+            TIM3 = 0x40000400,
+            TIM4 = 0x40000800,
+            TIM5 = 0x40000C00,
+            TIM6 = 0x40001000,
+            TIM7 = 0x40001400,
+            TIM8 = 0x40010400,
+            TIM9 = 0x40014000,
+            TIM10 = 0x40014400,
+            TIM11 = 0x40014800,
+            TIM12 = 0x40001800,
+            TIM13 = 0x40001C00,
+            TIM14 = 0x40002000,
             NVIC = 0xe000e100,
             RCC = 0x40023800,
+            IWDG = 0x40003000,
             USART1 = 0x40011000,
             USART2 = 0x40004400,
             USART3 = 0x40004800,
@@ -168,6 +185,20 @@ public:
     Gpio mGpioG;
     Gpio mGpioH;
     Gpio mGpioI;
+    Timer mTim1;
+    Timer mTim2;
+    Timer mTim3;
+    Timer mTim4;
+    Timer mTim5;
+    Timer mTim6;
+    Timer mTim7;
+    Timer mTim8;
+    Timer mTim9;
+    Timer mTim10;
+    Timer mTim11;
+    Timer mTim12;
+    Timer mTim13;
+    Timer mTim14;
     ClockControl mRcc;
     ExternalInterrupt mExtI;
     InterruptController mNvic;
@@ -187,6 +218,7 @@ public:
 //    Spi mSpi3;
     Flash mFlash;
     FpuControl mFpu;
+    IndependentWatchdog mIWdg;
 
 
     StmSystem();

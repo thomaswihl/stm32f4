@@ -43,3 +43,7 @@ SysCfg.h
 SysCfg.cpp
 atomic.h
 atomic.cpp
+Timer.h
+Timer.cpp
+IndependentWatchdog.h
+IndependentWatchdog.cpp

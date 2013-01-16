@@ -40,10 +40,16 @@ public:
         Tim2 = 128, Tim3, Tim4, Tim5, Tim6, Tim7, Tim12, Tim13, Tim14, WWdg = 139, Spi2 = 142, Spi3, Usart2 = 145, Usart3, Usart4, Uart5, I2c1, I2c2, I2c3, Can1 = 153, Can2, Pwr = 156, Dac,
         Tim1 = 160, Tim8, Usart1 = 164, Usart6, Adc1 = 168, Adc2, Adc3, Sdio, Spi1, SysCfg = 174, Tim9 = 176, Tim10, Tim11
     };
-    enum class Clock
-    {
-        System, AHB, APB1, APB2
-    };
+    enum class Clock { System, AHB, APB1, APB2, RTC };
+    enum class AhbPrescaler { by1 = 0, by2 = 8, by4 = 9, by8 = 10, by16 = 11, by64 = 12, by128 = 13, by256 = 14, by512 = 15 };
+    enum class Apb1Prescaler { by1 = 0, by2 = 4, by4 = 5, by8 = 6, by16 = 7 };
+    enum class Apb2Prescaler { by1 = 0, by2 = 4, by4 = 5, by8 = 6, by16 = 7 };
+    enum class RtcHsePrescaler { by2 = 2, by3 = 3, by4 = 4, by5 = 5, by6 = 6, by7 = 7, by8 = 8, by9 = 9, by10 = 10,
+                                 by11 = 11, by12 = 12, by13 = 13, by14 = 14, by15 = 15, by16 = 16, by17 = 17, by18 = 18, by19 = 19,
+                                 by21 = 21, by22 = 22, by23 = 23, by24 = 24, by25 = 25, by26 = 26, by27 = 27, by28 = 28, by29 = 29,
+                                 by31 = 31 };
+    enum class Mco1Prescaler { by1 = 0, by2 = 4, by3 = 5, by4 = 6, by5 = 7 };
+    enum class Mco2Prescaler { by1 = 0, by2 = 4, by3 = 5, by4 = 6, by5 = 7 };
 
     ClockControl(System::BaseAddress base, uint32_t externalClock);
     ~ClockControl();
@@ -53,6 +59,8 @@ public:
 
     bool setSystemClock(uint32_t clock);
     uint32_t clock(Clock clock);
+    template<class T>
+    void setPrescaler(T prescaler);
 
     void resetClock();
     void reset();
@@ -476,6 +484,8 @@ private:
     bool getPllConfig(uint32_t clock, uint32_t& div, uint32_t& mul);
     void resetClock(bool notify);
     void notify(Callback::Reason reason, uint32_t clock);
+
+    uint32_t rtcClock();
 
     friend void testClockControl();
 };
