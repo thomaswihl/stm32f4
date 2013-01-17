@@ -22,8 +22,7 @@
 #include <cstdio>
 
 StmSystem::StmSystem() :
-    mSysTick(BaseAddress::STK, &mRcc, 100),
-    System(BaseAddress::SCB, mSysTick),
+    System(BaseAddress::SCB),
     mGpioA(BaseAddress::GPIOA),
     mGpioB(BaseAddress::GPIOB),
     mGpioC(BaseAddress::GPIOC),
@@ -50,19 +49,20 @@ StmSystem::StmSystem() :
     mRcc(BaseAddress::RCC, 8000000),
     mExtI(BaseAddress::EXTI, 23),
     mNvic(BaseAddress::NVIC, 82),
+    mSysTick(BaseAddress::STK, &mRcc, 100),
     mSysCfg(BaseAddress::SYSCFG),
     mDma1(BaseAddress::DMA1),
     mDma2(BaseAddress::DMA2),
-//    mUsart1(*this, BaseAddress::USART1, &mRcc, ClockControl::Clock::APB2),
-    mUsart2(*this, BaseAddress::USART2, &mRcc, ClockControl::Clock::APB1),
-//    mUsart3(*this, BaseAddress::USART3, &mRcc, ClockControl::Clock::APB1),
-//    mUart4(*this, BaseAddress::UART4, &mRcc, ClockControl::Clock::APB1),
-//    mUart5(*this, BaseAddress::UART5, &mRcc, ClockControl::Clock::APB1),
-//    mUsart6(*this, BaseAddress::USART6, &mRcc, ClockControl::Clock::APB2),
+//    mUsart1(BaseAddress::USART1, &mRcc, ClockControl::Clock::APB2),
+    mUsart2(BaseAddress::USART2, &mRcc, ClockControl::Clock::APB1),
+//    mUsart3(BaseAddress::USART3, &mRcc, ClockControl::Clock::APB1),
+//    mUart4(BaseAddress::UART4, &mRcc, ClockControl::Clock::APB1),
+//    mUart5(BaseAddress::UART5, &mRcc, ClockControl::Clock::APB1),
+//    mUsart6(BaseAddress::USART6, &mRcc, ClockControl::Clock::APB2),
     mDebug(mUsart2),
-    mSpi1(*this, BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
-//    mSpi2(*this, BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
-//    mSpi3(*this, BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
+    mSpi1(BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
+//    mSpi2(BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
+//    mSpi3(BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
     mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
     mFpu(BaseAddress::FPU),
     mIWdg(BaseAddress::IWDG)
@@ -115,6 +115,7 @@ void StmSystem::init()
     mFlash.set(Flash::Feature::DataCache, true);
     mFlash.set(Flash::Feature::Prefetch, true);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
+    mSysTick.enable();
 }
 
 void StmSystem::debugRead(char *msg, unsigned int len)

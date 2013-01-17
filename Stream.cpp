@@ -19,8 +19,7 @@
 #include "Stream.h"
 
 template<typename T>
-Stream<T>::Stream(System &system) :
-    mSystem(system),
+Stream<T>::Stream() :
     mReadData(nullptr),
     mReadCount(0),
     mReadCompleteEvent(nullptr),
@@ -29,6 +28,11 @@ Stream<T>::Stream(System &system) :
     mWriteCompleteEvent(nullptr),
     mReadFifo(nullptr),
     mWriteFifo(nullptr)
+{
+}
+
+template<typename T>
+Stream<T>::~Stream()
 {
 }
 

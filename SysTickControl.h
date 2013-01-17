@@ -21,15 +21,19 @@
 
 #include "System.h"
 #include "ClockControl.h"
+#include "InterruptController.h"
 
-class SysTickControl : ClockControl::Callback, public InterruptController::Callback
+class SysTickControl : ClockControl::Callback
 {
 public:
     SysTickControl(System::BaseAddress base, ClockControl* clock, unsigned int msInterval);
+    ~SysTickControl() { disable(); }
     void enable();
     void disable();
 
-    setEvent(System::Event* event);
+    void setInterval(unsigned int interval);
+    void tick();
+    void setEvent(System::Event* event);
 
     void usleep(unsigned int us);
     uint64_t ns();
@@ -63,7 +67,10 @@ private:
     ClockControl* mClock;
     unsigned int mInterval;
     unsigned int mSingleCountTime;
+    volatile unsigned int mTicks;
     System::Event* mEvent;
+
+    void config();
 };
 
 #endif // SYSTICKCONTROL_H

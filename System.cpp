@@ -62,12 +62,17 @@ void __attribute__((interrupt)) Isr()
     System::instance()->handleInterrupt();
 }
 
+void __attribute__((interrupt)) SysTick()
+{
+    System::instance()->handleSysTick();
+}
+
 extern void (* const gIsrVectorTable[])(void);
 __attribute__ ((section(".isr_vector_table")))
 void (* const gIsrVectorTable[])(void) = {
         // 16 trap functions for ARM
         (void (* const)())&__stack_end, (void (* const)())&_start, Trap, Trap, Trap, Trap, Trap, 0,
-0, 0, 0, Trap, Trap, 0, Trap, Isr,
+0, 0, 0, Trap, Trap, 0, Trap, SysTick,
 // 82 hardware interrupts specific to the STM32F407
 Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
 Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr, Isr,
@@ -233,7 +238,6 @@ namespace std
 
 System* System::mSystem;
 char* System::mHeapEnd;
-unsigned int System::mTicks = 0;
 const unsigned int System::STACK_MAGIC;
 
 void System::initStack()

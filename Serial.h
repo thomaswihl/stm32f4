@@ -37,7 +37,7 @@ public:
     enum class StopBits { One, Half, Two, OneAndHalf };
     enum class HardwareFlowControl { None, Cts, Rts, CtsRts };
 
-    Serial(System& system, System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
+    Serial(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
     virtual ~Serial();
 
     void setSpeed(uint32_t speed);

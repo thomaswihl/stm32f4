@@ -27,7 +27,8 @@ template<typename T>
 class Stream
 {
 public:
-    Stream(System& system);
+    Stream();
+    ~Stream();
     bool read(T* data, unsigned int count);
     bool read(T* data, unsigned int count, System::Event* completeEvent);
 
@@ -37,8 +38,6 @@ public:
     virtual void readFifo(unsigned int size);
     virtual void writeFifo(unsigned int size);
 protected:
-    System& mSystem;
-
     virtual void readPrepare() = 0;
     virtual void readSync() = 0;
     virtual void readTrigger() = 0;

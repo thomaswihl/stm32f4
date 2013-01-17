@@ -1,8 +1,7 @@
 #include "Spi.h"
 
 template<typename T>
-Spi<T>::Spi(System &system, System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
-    Stream<T>(system),
+Spi<T>::Spi(System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
     mBase(reinterpret_cast<volatile SPI*>(base)),
     mClockControl(clockControl),
     mClock(clock),

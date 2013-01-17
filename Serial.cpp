@@ -21,8 +21,7 @@
 #include <cassert>
 #include <cstdio>
 
-Serial::Serial(System &system, System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
-    Stream<char>(system),
+Serial::Serial(System::BaseAddress base, ClockControl *clockControl, ClockControl::Clock clock) :
     mBase(reinterpret_cast<volatile USART*>(base)),
     mClockControl(clockControl),
     mClock(clock),

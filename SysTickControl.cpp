@@ -32,11 +32,7 @@ SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock, un
 
 void SysTickControl::enable()
 {
-    uint32_t clock = mClock->clock(ClockControl::Clock::AHB) / 8000;
-    mSingleCountTime = 1000000 / clock;
-    clock *= mInterval;
     mBase->CTRL.CLKSOURCE = 0;
-    mBase->RELOAD = clock - 1;
     mBase->VAL = 0;
     mBase->CTRL.TICKINT = 1;
     mBase->CTRL.ENABLE = 1;
@@ -48,7 +44,19 @@ void SysTickControl::disable()
     mBase->CTRL.ENABLE = 0;
 }
 
-SysTickControl::setEvent(System::Event *event)
+void SysTickControl::setInterval(unsigned int interval)
+{
+    mInterval = interval;
+    config();
+}
+
+void SysTickControl::tick()
+{
+    ++mTicks;
+    if (mEvent != nullptr) System::postEvent(mEvent);
+}
+
+void SysTickControl::setEvent(System::Event *event)
 {
     mEvent = event;
 }
@@ -71,7 +79,7 @@ uint64_t SysTickControl::ns()
     {
         mBase->CTRL.COUNTFLAG = 0;
         count = mBase->VAL;
-        ticks = System::ticks();
+        ticks = mTicks;
     }   while (mBase->CTRL.COUNTFLAG);
     uint64_t val = mBase->RELOAD - count;
     val *= mSingleCountTime;
@@ -81,7 +89,14 @@ uint64_t SysTickControl::ns()
 
 void SysTickControl::clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock)
 {
-    if (reason == ClockControl::Callback::Reason::AboutToChange) disable();
-    else enable();
+    if (reason == ClockControl::Callback::Reason::Changed) config();
+}
+
+void SysTickControl::config()
+{
+    uint32_t clock = mClock->clock(ClockControl::Clock::AHB) / 8000;
+    mSingleCountTime = 1000000 / clock;
+    clock *= mInterval;
+    mBase->RELOAD = clock - 1;
 }
 

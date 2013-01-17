@@ -230,6 +230,7 @@ public:
     void printInfo();
     virtual void usleep(unsigned int us) { mSysTick.usleep(us); }
     virtual uint64_t ns() { return mSysTick.ns(); }
+    virtual void handleSysTick() { mSysTick.tick(); }
 protected:
     virtual void debugRead(char *msg, unsigned int len);
     virtual void debugWrite(const char *msg, unsigned int len);

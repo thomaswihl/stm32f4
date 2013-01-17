@@ -78,18 +78,26 @@ public:
     typedef unsigned long BaseAddress;
 
     virtual void handleInterrupt(uint32_t index) = 0;
-    virtual void handleTrap(TrapIndex index, unsigned int *stackPointer);
-    inline void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
-    inline void handleInterrupt() { handleInterrupt(mBase->ICSR.VECTACTIVE - 16); }
-
     virtual void debugRead(char *msg, unsigned int len) = 0;
     virtual void debugWrite(const char *msg, unsigned int len) = 0;
-    void printWarning(const char* component, const char* message);
-    void printError(const char* component, const char* message);
+    virtual void handleSysTick() = 0;
+    virtual void usleep(unsigned int us) = 0;
+    virtual uint64_t ns() = 0;
 
     static inline System* instance() { return mSystem; }
     static char* increaseHeap(unsigned int incr);
     static void initStack();
+    static void postEvent(Event* event);
+    template <class T>
+    static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
+
+
+    virtual void handleTrap(TrapIndex index, unsigned int *stackPointer);
+    inline void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
+    inline void handleInterrupt() { handleInterrupt(mBase->ICSR.VECTACTIVE - 16); }
+
+    void printWarning(const char* component, const char* message);
+    void printError(const char* component, const char* message);
 
     uint32_t memFree();
     uint32_t memUsed();
@@ -99,20 +107,12 @@ public:
     uint32_t stackUsed();
     uint32_t stackMaxUsed();
 
-    static void postEvent(Event* event);
     bool waitForEvent(Event*& event);
 
-    template <class T>
-    static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
-
-    static inline unsigned int ticks() { return mTicks; }
-    virtual void usleep(unsigned int us) = 0;
-    virtual uint64_t ns() = 0;
     void updateBogoMips();
     uint32_t bogoMips() { return mBogoMips; }
 
 protected:
-
     System(BaseAddress base);
     ~System();
 

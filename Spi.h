@@ -12,7 +12,7 @@ template<typename T>
 class Spi : public Device, public ClockControl::Callback, public Stream<T>
 {
 public:
-    Spi(System& system, System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
+    Spi(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
     enum class MasterSlave { Master = 1, Slave = 0 };
     enum class ClockPolarity { LowWhenIdle = 0, HighWhenIdle = 1 };
     // Selects the transition for data capture
