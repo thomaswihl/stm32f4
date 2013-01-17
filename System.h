@@ -93,8 +93,9 @@ public:
 
 
     virtual void handleTrap(TrapIndex index, unsigned int *stackPointer);
-    inline void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
-    inline void handleInterrupt() { handleInterrupt(mBase->ICSR.VECTACTIVE - 16); }
+    void handleTrap(unsigned int* stackPointer) { handleTrap(static_cast<TrapIndex>(mBase->ICSR.VECTACTIVE), stackPointer); }
+
+    void handleInterrupt();
 
     void printWarning(const char* component, const char* message);
     void printError(const char* component, const char* message);
@@ -106,6 +107,9 @@ public:
     uint32_t stackFree();
     uint32_t stackUsed();
     uint32_t stackMaxUsed();
+
+    uint64_t timeInInterrupt();
+    uint64_t timeInEvent();
 
     bool waitForEvent(Event*& event);
 
@@ -251,6 +255,8 @@ private:
     volatile SCB* mBase;
     uint32_t mBogoMips;
     CircularBuffer<Event*> mEventQueue;
+    uint64_t mTimeInInterrupt;
+    uint64_t mTimeIdle;
 };
 
 #endif

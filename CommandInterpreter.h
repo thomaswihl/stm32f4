@@ -108,6 +108,7 @@ private:
         unsigned int mCount;
     };
     StmSystem& mSystem;
+    System::Event mTickEvent;
     std::vector<Command*> mCmd;
     char mLine[MAX_LINE_LEN];
     unsigned int mLineLen;

@@ -310,6 +310,16 @@ uint32_t System::stackMaxUsed()
     return (reinterpret_cast<unsigned int*>(&__stack_end) - p) * sizeof(unsigned int);
 }
 
+uint64_t System::timeInInterrupt()
+{
+    return mTimeInInterrupt;
+}
+
+uint64_t System::timeInEvent()
+{
+    return ns() - mTimeIdle - mTimeInInterrupt;
+}
+
 void System::postEvent(Event *event)
 {
     mSystem->mEventQueue.push(event);
@@ -317,10 +327,12 @@ void System::postEvent(Event *event)
 
 bool System::waitForEvent(Event *&event)
 {
+    uint64_t start = ns();
     while (mEventQueue.used() == 0)
     {
         __asm("wfi");
     }
+    mTimeIdle += ns() - start;
     return mEventQueue.pop(event);
 }
 
@@ -338,7 +350,9 @@ void System::updateBogoMips()
 System::System(BaseAddress base) :
     mBase(reinterpret_cast<volatile SCB*>(base)),
     mBogoMips(0),
-    mEventQueue(16)
+    mEventQueue(16),
+    mTimeInInterrupt(0),
+    mTimeIdle(0)
 {
     static_assert(sizeof(SCB) == 0x40, "Struct has wrong size, compiler problem.");
     // Make sure we are the first and only instance
@@ -450,6 +464,13 @@ void System::handleTrap(TrapIndex index, unsigned int* stackPointer)
         printf("  %4s = 0x%08x (%u)\n", reg.name, stackPointer[reg.offset], stackPointer[reg.offset]);
         ++i;
     }
+}
+
+void System::handleInterrupt()
+{
+    uint64_t start = ns();
+    handleInterrupt(mBase->ICSR.VECTACTIVE - 16);
+    mTimeInInterrupt += ns() - start;
 }
 
 void System::printWarning(const char *component, const char *message)

@@ -44,16 +44,26 @@ void SysTickControl::disable()
     mBase->CTRL.ENABLE = 0;
 }
 
-void SysTickControl::setInterval(unsigned int interval)
+void SysTickControl::setInterval(unsigned int msInterval)
 {
-    mInterval = interval;
+    mInterval = msInterval;
     config();
+}
+
+unsigned int SysTickControl::interval()
+{
+    return mInterval;
 }
 
 void SysTickControl::tick()
 {
     ++mTicks;
     if (mEvent != nullptr) System::postEvent(mEvent);
+}
+
+unsigned int SysTickControl::ticks()
+{
+    return mTicks;
 }
 
 void SysTickControl::setEvent(System::Event *event)

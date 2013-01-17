@@ -31,8 +31,10 @@ public:
     void enable();
     void disable();
 
-    void setInterval(unsigned int interval);
+    void setInterval(unsigned int msInterval);
+    unsigned int interval();
     void tick();
+    unsigned int ticks();
     void setEvent(System::Event* event);
 
     void usleep(unsigned int us);

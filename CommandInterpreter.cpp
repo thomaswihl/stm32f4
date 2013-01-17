@@ -25,6 +25,7 @@
 
 CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mSystem(system),
+    mTickEvent(*this),
     mLineLen(0),
     mState(State::Input),
     mReadChar(0),
@@ -180,6 +181,7 @@ void CommandInterpreter::add(Command* cmd)
 void CommandInterpreter::start()
 {
     mSystem.mDebug.read(&mReadChar, 1, &mCharReceived);
+    mSystem.mSysTick.setEvent(&mTickEvent);
     printLine();
 }
 
@@ -314,6 +316,21 @@ void CommandInterpreter::eventCallback(System::Event* event)
     {
         feed();
         mSystem.mDebug.read(&mReadChar, 1, &mCharReceived);
+    }
+    else if (event == &mTickEvent)
+    {
+        static unsigned int ps = -1;
+        unsigned int s = mSystem.mSysTick.ticks() * mSystem.mSysTick.interval() / 1000;
+        if (s != ps)
+        {
+            ps = s;
+            uint32_t te = mSystem.timeInEvent() / 1000000;
+            uint32_t ti = mSystem.timeInInterrupt() / 1000000;
+            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus, %10lu.%03lus\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
+                   te / 1000, te % 1000,
+                   ti / 1000, ti % 1000);
+            fflush(nullptr);
+        }
     }
 }
 

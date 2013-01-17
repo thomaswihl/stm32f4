@@ -1,6 +1,7 @@
 #include "Commands.h"
 
 #include <cmath>
+#include <strings.h>
 
 char const * const CmdHelp::NAME[] = { "help", "?" };
 char const * const CmdHelp::ARGV[] = { "os:command" };
@@ -169,6 +170,19 @@ CmdPin::CmdPin(Gpio **gpio, unsigned int gpioCount) : Command(NAME, sizeof(NAME)
 
 bool CmdPin::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
+    if (argc == 2 && strcasecmp(argv[1].value.s, "all") == 0)
+    {
+        for (unsigned int index = 0; index < mGpioCount; ++index)
+        {
+            printf("GPIO %c: ", 'A' + index);
+            for (int pin = 15; pin >= 0; --pin)
+            {
+                printf("%c", mGpio[index]->get(static_cast<Gpio::Index>(pin)) ? '1' : '0');
+            }
+            printf("\n");
+        }
+        return true;
+    }
     char c = argv[1].value.s[0];
     unsigned int index = c - 'A';
     if (index > mGpioCount) index = c - 'a';
