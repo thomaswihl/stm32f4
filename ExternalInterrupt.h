@@ -26,7 +26,7 @@
 class ExternalInterrupt : public InterruptController::Callback
 {
 public:
-    enum class Trigger { Level, Rising, Falling, RisingAndFalling };
+    enum class Trigger { Rising, Falling, RisingAndFalling };
     ExternalInterrupt(unsigned int base, unsigned int vectorSize);
     ~ExternalInterrupt();
 
@@ -38,6 +38,7 @@ public:
         void setCallback(InterruptController::Callback *handler);
         void enable(Trigger trigger);
         void disable();
+        InterruptController::Index index();
     private:
         ExternalInterrupt& mInterruptController;
         InterruptController::Index mIndex;

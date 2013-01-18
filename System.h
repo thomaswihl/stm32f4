@@ -87,7 +87,6 @@ public:
     static inline System* instance() { return mSystem; }
     static char* increaseHeap(unsigned int incr);
     static void initStack();
-    static void postEvent(Event* event);
     template <class T>
     static inline void setRegister(volatile T* reg, uint32_t value) { *reinterpret_cast<volatile uint32_t*>(reg) = value; }
 
@@ -111,6 +110,7 @@ public:
     uint64_t timeInInterrupt();
     uint64_t timeInEvent();
 
+    void postEvent(Event* event);
     bool waitForEvent(Event*& event);
 
     void updateBogoMips();

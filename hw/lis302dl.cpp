@@ -4,8 +4,9 @@ LIS302DL::LIS302DL(Spi<char> &spi) :
     mTransferCompleteEvent(*this),
     mSpi(spi),
     mBuffer(new char[2]),
-    mLine1(*this),
-    mLine2(*this)
+    mLine1(nullptr),
+    mLine2(nullptr),
+    mDataReadyEvent(nullptr)
 {
     mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::HighWhenIdle, Spi<char>::ClockPhase::SecondTransition, Spi<char>::Endianess::MsbFirst);
     mSpi.setSpeed(10000000);
@@ -17,8 +18,8 @@ void LIS302DL::enable()
     set(Register::Control1, DataRate100 | PowerUp | Range2G | EnableX | EnableY | EnableZ);
     set(Register::Control2, Spi4Wire | DisableFilter);
     set(Register::Control3, InterruptActiveHigh | InterruptPushPull | (static_cast<uint8_t>(InterruptConfig::DataReady) << Interrupt1ConfigShift) | (static_cast<uint8_t>(InterruptConfig::Click) << Interrupt2ConfigShift));
-    mLine1.enable();
-    mLine2.enable();
+    mLine1->enable(ExternalInterrupt::Trigger::Rising);
+    mLine2->enable(ExternalInterrupt::Trigger::Rising);
 }
 
 void LIS302DL::disable()
@@ -29,8 +30,15 @@ void LIS302DL::disable()
 
 void LIS302DL::configInterrupt(ExternalInterrupt::Line *line1, ExternalInterrupt::Line *line2)
 {
-    mLine1.setLine(line1);
-    mLine2.setLine(line2);
+    mLine1 = line1;
+    if (mLine1 != nullptr) mLine1->setCallback(this);
+    mLine2 = line2;
+    if (mLine2 != nullptr) mLine2->setCallback(this);
+}
+
+void LIS302DL::setDataReadyEvent(System::Event *event)
+{
+    mDataReadyEvent = event;
 }
 
 int8_t LIS302DL::x()
@@ -53,15 +61,15 @@ void LIS302DL::eventCallback(System::Event *event)
 {
 }
 
-void LIS302DL::interruptCallback(Callback *line)
+void LIS302DL::interruptCallback(InterruptController::Index index)
 {
-    if (line == &mLine1)
+    if (index == mLine1->index())
     {
-
+        if (mDataReadyEvent != 0) System::instance()->postEvent(mDataReadyEvent);
     }
-    else if (line == &mLine2)
+    else if (index == mLine2->index())
     {
-
+        printf("LINE2 IRQ\n");
     }
 }
 
@@ -82,4 +90,5 @@ uint8_t LIS302DL::get(LIS302DL::Register reg)
     mSpi.write(buf, sizeof(buf));
     return buf[1];
 }
+
 

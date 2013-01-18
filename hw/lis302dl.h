@@ -6,7 +6,7 @@
 #include "../Device.h"
 #include "../ExternalInterrupt.h"
 
-class LIS302DL : public System::Event::Callback
+class LIS302DL : public System::Event::Callback, public InterruptController::Callback
 {
 public:
     LIS302DL(Spi<char>& spi);
@@ -15,32 +15,13 @@ public:
     void disable();
 
     void configInterrupt(ExternalInterrupt::Line* line1, ExternalInterrupt::Line* line2);
+    void setDataReadyEvent(System::Event* event);
 
     int8_t x();
     int8_t y();
     int8_t z();
 
 protected:
-    class Callback : public InterruptController::Callback
-    {
-    public:
-        Callback(LIS302DL& lis) : mLis(lis) { }
-        virtual void interruptCallback(InterruptController::Index index) { mLis.interruptCallback(this); }
-
-        void setLine(ExternalInterrupt::Line* line) { mLine = line; }
-        void enable() { if (mLine != nullptr) mLine->enable(ExternalInterrupt::Trigger::Level); }
-        void disable() { if (mLine != nullptr) mLine->disable(); }
-    private:
-        LIS302DL& mLis;
-        ExternalInterrupt::Line* mLine;
-
-    };
-
-    System::Event mTransferCompleteEvent;
-    Spi<char>& mSpi;
-    char* mBuffer;
-    Callback mLine1;
-    Callback mLine2;
     enum class InterruptConfig
     {
         Gnd = 0x00,
@@ -125,8 +106,15 @@ protected:
         ADDR_CONST = 0x00,
     };
 
+    System::Event mTransferCompleteEvent;
+    Spi<char>& mSpi;
+    char* mBuffer;
+    ExternalInterrupt::Line* mLine1;
+    ExternalInterrupt::Line* mLine2;
+    System::Event* mDataReadyEvent;
+
     virtual void eventCallback(System::Event* event);
-    void interruptCallback(Callback *line);
+    void interruptCallback(InterruptController::Index index);
 
 
     void set(Register reg, uint8_t value);

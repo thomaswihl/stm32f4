@@ -4,6 +4,7 @@
 #include "CommandInterpreter.h"
 #include "StmSystem.h"
 #include "hw/lis302dl.h"
+#include "System.h"
 
 #include <cstdio>
 
@@ -74,16 +75,20 @@ private:
     static char const * const ARGV[];
 };
 
-class CmdLis : public CommandInterpreter::Command
+class CmdLis : public CommandInterpreter::Command, public System::Event::Callback
 {
 public:
     CmdLis(LIS302DL& lis);
     virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
     virtual const char* helpText() const { return "Show LIS302DL info."; }
+protected:
+    virtual void eventCallback(System::Event* event);
 private:
     static char const * const NAME[];
     static char const * const ARGV[];
     LIS302DL& mLis;
+    System::Event mEvent;
+    bool mEnabled;
 };
 
 class CmdPin : public CommandInterpreter::Command

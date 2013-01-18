@@ -48,6 +48,7 @@ int main()
     gSys.mGpioE.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
     // INT1
     gSys.mGpioE.configInput(Gpio::Index::Pin0);
+    gSys.mRcc.enable(ClockControl::Function::SysCfg);
     gSys.mSysCfg.extIntSource(Gpio::Index::Pin0, SysCfg::Gpio::E);
     InterruptController::Line extInt0(gSys.mNvic, StmSystem::InterruptIndex::EXTI0);
     extInt0.setCallback(&gSys.mExtI);
@@ -69,8 +70,7 @@ int main()
                          );
 
     LIS302DL lis(gSys.mSpi1);
-    lis.configInterrupt(new ExternalInterrupt::Line(gSys.mExtI, StmSystem::InterruptIndex::EXTI0), new ExternalInterrupt::Line(gSys.mExtI, StmSystem::InterruptIndex::EXTI1));
-    lis.enable();
+    lis.configInterrupt(new ExternalInterrupt::Line(gSys.mExtI, 0), new ExternalInterrupt::Line(gSys.mExtI, 1));
     CommandInterpreter interpreter(gSys);
 
     gSys.mRcc.enable(ClockControl::Function::GpioD);

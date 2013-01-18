@@ -147,11 +147,30 @@ bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandIn
 }
 
 
-CmdLis::CmdLis(LIS302DL &lis) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mLis(lis)
+CmdLis::CmdLis(LIS302DL &lis) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mLis(lis), mEvent(*this), mEnabled(false)
 {
+    mLis.setDataReadyEvent(&mEvent);
 }
 
 bool CmdLis::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    if (mEnabled)
+    {
+        mLis.disable();
+        mEnabled = false;
+    }
+    else
+    {
+        mLis.enable();
+        (void)mLis.x();
+        (void)mLis.y();
+        (void)mLis.z();
+        mEnabled = true;
+    }
+    return true;
+}
+
+void CmdLis::eventCallback(System::Event *event)
 {
     int x, y, z;
     x = mLis.x();
@@ -159,8 +178,8 @@ bool CmdLis::execute(CommandInterpreter &interpreter, int argc, const CommandInt
     z = mLis.z();
     float a = x * x + y * y + z * z;
     a = std::sqrt(a / 2500);
-    printf("%3i %3i %3i = %.2fg\n", x, y, z, a);
-    return true;
+    printf("\x1b[s\x1b[2;H%3i %3i %3i = %.2fg\x1b[K\x1b[u", x, y, z, a);
+    fflush(nullptr);
 }
 
 

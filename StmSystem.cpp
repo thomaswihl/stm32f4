@@ -103,7 +103,7 @@ void StmSystem::init()
     mNvic.setPriotity(InterruptIndex::DMA1_Stream5, InterruptController::Priority::Low);
     mDebug.configInterrupt(new InterruptController::Line(mNvic, InterruptIndex::USART2));
     mDebug.readFifo(256);
-    mDebug.writeFifo(1024);
+    mDebug.writeFifo(256);
     mDebug.enable(Device::All);
 
     // USART2 TX

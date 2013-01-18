@@ -58,7 +58,7 @@ unsigned int SysTickControl::interval()
 void SysTickControl::tick()
 {
     ++mTicks;
-    if (mEvent != nullptr) System::postEvent(mEvent);
+    if (mEvent != nullptr) System::instance()->postEvent(mEvent);
 }
 
 unsigned int SysTickControl::ticks()

@@ -21,6 +21,7 @@
 SysCfg::SysCfg(System::BaseAddress base) :
     mBase(reinterpret_cast<volatile SYSCFG*>(base))
 {
+    static_assert(sizeof(SYSCFG) == 0x24, "Struct has wrong size, compiler problem.");
 }
 
 void SysCfg::extIntSource(::Gpio::Index index, SysCfg::Gpio gpio)

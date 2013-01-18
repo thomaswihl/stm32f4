@@ -250,7 +250,7 @@ void Stream<T>::readEpilog()
     }
     if (mReadCompleteEvent != nullptr)
     {
-        System::postEvent(mReadCompleteEvent);
+        System::instance()->postEvent(mReadCompleteEvent);
         mReadCompleteEvent = nullptr;
     }
 }
@@ -296,7 +296,7 @@ void Stream<T>::writeEpilog()
     }
     if (mWriteCompleteEvent != nullptr)
     {
-        System::postEvent(mWriteCompleteEvent);
+        System::instance()->postEvent(mWriteCompleteEvent);
         mWriteCompleteEvent = nullptr;
     }
 }
@@ -306,11 +306,10 @@ void Stream<T>::writeToFifo(const T *&data, unsigned int &count)
 {
     if (mWriteFifo != nullptr && data != nullptr && count != 0)
     {
-        bool fifoEmpty = mWriteFifo->used() == 0;
-        int len = mWriteFifo->write(data, count);
+        unsigned int len = mWriteFifo->write(data, count);
         count -= len;
         data += len;
-        if (fifoEmpty) writeTrigger();
+        if (mWriteFifo->used() == len) writeTrigger();
     }
 }
 

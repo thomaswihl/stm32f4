@@ -41,13 +41,14 @@ void ExternalInterrupt::interruptCallback(InterruptController::Index index)
     {
         if ((pr & (1 << i)) != 0)
         {
-            if (mCallback[index] != 0)
+            if (mCallback[i] != 0)
             {
-                mCallback[index]->interruptCallback(index);
+                mCallback[i]->interruptCallback(i);
             }
             else
             {
-                System::instance() ->printError("EXTI", "Unhandled Interrupt");
+                printf("Unhandled %i\n", i);
+                System::instance()->printError("EXTI", "Unhandled Interrupt");
                 mBase->IMR = mBase->IMR & ~(1 << i);
             }
         }
@@ -81,10 +82,10 @@ void ExternalInterrupt::Line::enable(Trigger trigger)
 
     switch (trigger)
     {
-    case Trigger::Level:
-        ram &= ~bit;
-        fam &= ~bit;
-        break;
+//    case Trigger::Level:
+//        ram &= ~bit;
+//        fam &= ~bit;
+//        break;
     case Trigger::Rising:
         rom |= bit;
         fam &= ~bit;
@@ -107,6 +108,11 @@ void ExternalInterrupt::Line::enable(Trigger trigger)
 void ExternalInterrupt::Line::disable()
 {
     mInterruptController.mBase->IMR = mInterruptController.mBase->IMR & ~(1 << mIndex);
+}
+
+InterruptController::Index ExternalInterrupt::Line::index()
+{
+    return mIndex;
 }
 
 
