@@ -22,7 +22,7 @@
 #include "System.h"
 #include "Dma.h"
 
-class Device : public System::Event::Callback, public InterruptController::Callback
+class Device : public Dma::Stream::Callback, public InterruptController::Callback
 {
 public:
     Device();
@@ -30,20 +30,18 @@ public:
 
     virtual void enable(Part part) = 0;
     virtual void disable(Part part) = 0;
-    virtual void dmaReadComplete(bool success) = 0;
-    virtual void dmaWriteComplete(bool success) = 0;
+    virtual void dmaReadComplete() = 0;
+    virtual void dmaWriteComplete() = 0;
 
     virtual void configDma(Dma::Stream* write, Dma::Stream* read);
     virtual void configInterrupt(InterruptController::Line* interrupt);
 
 protected:
-    Dma::Stream::Event mDmaWriteComplete;
-    Dma::Stream::Event mDmaReadComplete;
     InterruptController::Line* mInterrupt;
     Dma::Stream* mDmaWrite;
     Dma::Stream* mDmaRead;
 
-    virtual void eventCallback(System::Event *event);
+    virtual void dmaCallback(Dma::Stream* stream, Dma::Stream::Callback::Reason reason);
 
 
 };

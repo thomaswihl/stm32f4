@@ -19,8 +19,8 @@
 #include "Device.h"
 
 Device::Device() :
-    mDmaWriteComplete(*this),
-    mDmaReadComplete(*this)
+    mDmaWrite(nullptr),
+    mDmaRead(nullptr)
 {
 
 }
@@ -31,11 +31,11 @@ void Device::configDma(Dma::Stream *write, Dma::Stream *read)
     mDmaRead = read;
     if (mDmaWrite != nullptr)
     {
-        mDmaWrite->setEvent(&mDmaWriteComplete);
+        mDmaWrite->setCallback(this);
     }
     if (mDmaRead != nullptr)
     {
-        mDmaRead->setEvent(&mDmaReadComplete);
+        mDmaRead->setCallback(this);
     }
 }
 
@@ -49,27 +49,27 @@ void Device::configInterrupt(InterruptController::Line* interrupt)
     }
 }
 
-void Device::eventCallback(System::Event *event)
+void Device::dmaCallback(Dma::Stream* stream, Dma::Stream::Callback::Reason reason)
 {
-    if (event == &mDmaWriteComplete)
+    if (stream == mDmaWrite)
     {
-        if (!event->success())
+        if (reason != Dma::Stream::Callback::Reason::TransferComplete)
         {
             // Ooops something went wrong (probably our configuration, anyway, disable DMA.
             configDma(nullptr, mDmaRead);
             System::instance()->printError("Device", "DMA write transfer failed");
         }
-        dmaWriteComplete(event->success());
+        dmaWriteComplete();
     }
-    else if (event == &mDmaReadComplete)
+    else if (stream == mDmaRead)
     {
-        if (!event->success())
+        if (reason != Dma::Stream::Callback::Reason::TransferComplete)
         {
             // Ooops something went wrong (probably our configuration, anyway, disable DMA.
             configDma(mDmaWrite, nullptr);
             System::instance()->printError("Device", "DMA read transfer failed");
         }
-        dmaWriteComplete(event->success());
+        dmaReadComplete();
     }
 }
 

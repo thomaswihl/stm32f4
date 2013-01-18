@@ -115,17 +115,17 @@ void Spi<T>::interruptCallback(InterruptController::Index index)
 }
 
 template<typename T>
-void Spi<T>::dmaReadComplete(bool success)
+void Spi<T>::dmaReadComplete()
 {
     mBase->CR2.RXDMAEN = 0;
-    Stream<T>::readSuccess(success);
+    Stream<T>::readDmaComplete(mDmaRead->transferCount());
 }
 
 template<typename T>
-void Spi<T>::dmaWriteComplete(bool success)
+void Spi<T>::dmaWriteComplete()
 {
     mBase->CR2.TXDMAEN = 0;
-    Stream<T>::writeSuccess(success);
+    Stream<T>::writeDmaComplete(mDmaWrite->transferCount());
 }
 
 template<typename T>
@@ -195,10 +195,16 @@ void Spi<T>::readTrigger()
     (void)c;
     if (mDmaRead != 0)
     {
-        mBase->CR2.RXDMAEN = 1;
-        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::readData()));
-        mDmaRead->setTransferCount(Stream<T>::readCount());
-        mDmaRead->start();
+        T* data;
+        unsigned int len;
+        readDmaBuffer(data, len);
+        if (len > 0)
+        {
+            mBase->CR2.RXDMAEN = 1;
+            mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
+            mDmaRead->setTransferCount(len);
+            mDmaRead->start();
+        }
     }
     else if (mInterrupt != 0)
     {
@@ -243,10 +249,16 @@ void Spi<T>::writeTrigger()
 {
     if (mDmaWrite != 0)
     {
-        mBase->CR2.TXDMAEN = 1;
-        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(Stream<T>::writeData()));
-        mDmaWrite->setTransferCount(Stream<T>::writeCount());
-        mDmaWrite->start();
+        const T* data;
+        unsigned int len;
+        writeDmaBuffer(data, len);
+        if (len > 0)
+        {
+            mBase->CR2.TXDMAEN = 1;
+            mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
+            mDmaWrite->setTransferCount(len);
+            mDmaWrite->start();
+        }
     }
     else if (mInterrupt != 0)
     {

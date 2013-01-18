@@ -25,7 +25,7 @@ class InterruptController
 {
 public:
     typedef std::uint8_t Index;
-    enum class Priority { Prio0, Prio1, Prio2, Prio3, Prio4, Prio5, Prio6, Prio7, Prio8, Prio9, Prio10, Prio11, Prio12, Prio13, Prio14, Prio15 };
+    enum class Priority { Highest, Prio1, Prio2, High, Prio4, MediumHigh, Prio6, Medium, Prio8, MediumLow, Prio10, Low, Prio12, Prio13, Prio14, Lowest };
 
     InterruptController(unsigned int base, std::size_t vectorSize);
     ~InterruptController();

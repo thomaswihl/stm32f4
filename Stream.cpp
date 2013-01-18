@@ -122,10 +122,18 @@ void Stream<T>::writeFifo(unsigned int size)
 }
 
 template<typename T>
-void Stream<T>::readSuccess(bool success)
+void Stream<T>::readDmaComplete(unsigned int count)
 {
-    if (mReadCompleteEvent != nullptr) mReadCompleteEvent->setResult(success);
-    readEpilog();
+    if (mReadFifo != nullptr)
+    {
+
+    }
+    else
+    {
+        mReadData += count;
+        mReadCount -= count;
+    }
+    if (mReadCount == 0) readEpilog();
 }
 
 template<typename T>
@@ -135,7 +143,7 @@ bool Stream<T>::read(T data)
     {
         mReadFifo->push(data);
         readFromFifo(mReadData, mReadCount);
-        if (mReadCount == 0 && mReadData != nullptr) readSuccess(true);
+        if (mReadCount == 0 && mReadData != nullptr) readEpilog();
         return true;
     }
     else if (mReadCount != 0)
@@ -144,7 +152,7 @@ bool Stream<T>::read(T data)
         --mReadCount;
         if (mReadCount == 0)
         {
-            readSuccess(true);
+            readEpilog();
             return false;
         }
     }
@@ -152,27 +160,36 @@ bool Stream<T>::read(T data)
 }
 
 template<typename T>
-T *Stream<T>::readData()
+void Stream<T>::readDmaBuffer(T *&data, unsigned int &count)
 {
     if (mReadFifo != nullptr)
     {
-        return mReadFifo->writePointer();
+        data = mReadFifo->writePointer();
+        if (mReadFifo->free() > 0) count = 1;
+        else count = 0;
     }
-    return mReadData;
+    else
+    {
+        data = mReadData;
+        count = mReadCount;
+    }
 }
 
 template<typename T>
-unsigned int Stream<T>::readCount()
+void Stream<T>::writeDmaComplete(unsigned int count)
 {
-    if (mReadFifo != nullptr) return 1;
-    return mReadCount;
-}
-
-template<typename T>
-void Stream<T>::writeSuccess(bool success)
-{
-    if (mWriteCompleteEvent != nullptr) mWriteCompleteEvent->setResult(success);
-    writeEpilog();
+    if (mWriteFifo != nullptr)
+    {
+        mWriteFifo->skip(count);
+        if (mWriteFifo->used() != 0) writeTrigger();
+    }
+    else
+    {
+        mWriteData += count;
+        mWriteCount -= count;
+        if (mWriteCount == 0) writeEpilog();
+        else writeTrigger();
+    }
 }
 
 template<typename T>
@@ -188,20 +205,22 @@ bool Stream<T>::write(T &data)
         --mWriteCount;
         return true;
     }
-    writeSuccess(true);
+    writeEpilog();
     return false;
 }
 
 template<typename T>
-const T *Stream<T>::writeData()
+void Stream<T>::writeDmaBuffer(const T *&data, unsigned int &count)
 {
-    return mWriteData;
-}
-
-template<typename T>
-unsigned int Stream<T>::writeCount()
-{
-    return mWriteCount;
+    if (mWriteFifo != nullptr)
+    {
+        count = mWriteFifo->getContBuffer(data);
+    }
+    else
+    {
+        data = mWriteData;
+        count = mWriteCount;
+    }
 }
 
 template<typename T>
@@ -211,7 +230,7 @@ bool Stream<T>::readProlog(T *data, unsigned int count)
     readFromFifo(data, count);
     if (count == 0)
     {
-        readSuccess(true);
+        readEpilog();
         return true;
     }
     mReadCount = count;
@@ -257,7 +276,7 @@ bool Stream<T>::writeProlog(const T *data, unsigned int count)
     }
     if (count == 0)
     {
-        writeSuccess(true);
+        writeEpilog();
         return true;
     }
     mWriteCount = count;
@@ -287,9 +306,11 @@ void Stream<T>::writeToFifo(const T *&data, unsigned int &count)
 {
     if (mWriteFifo != nullptr && data != nullptr && count != 0)
     {
+        bool fifoEmpty = mWriteFifo->used() == 0;
         int len = mWriteFifo->write(data, count);
         count -= len;
         data += len;
+        if (fifoEmpty) writeTrigger();
     }
 }
 

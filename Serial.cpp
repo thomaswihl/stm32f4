@@ -111,12 +111,22 @@ void Serial::configDma(Dma::Stream *write, Dma::Stream *read)
         mDmaWrite->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaWrite->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mDmaWrite->configFifo(Dma::Stream::FifoThreshold::Quater);
+        mBase->CR3.DMAT = 1;
+    }
+    else
+    {
+        mBase->CR3.DMAT = 0;
     }
     if (Device::mDmaRead != nullptr)
     {
         mDmaRead->config(Dma::Stream::Direction::PeripheralToMemory, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaRead->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
         mDmaWrite->configFifo(Dma::Stream::FifoThreshold::Quater);
+        mBase->CR3.DMAR = 1;
+    }
+    else
+    {
+        mBase->CR3.DMAR = 0;
     }
 }
 
@@ -145,17 +155,15 @@ void Serial::interruptCallback(InterruptController::Index index)
     }
 }
 
-void Serial::dmaReadComplete(bool success)
+void Serial::dmaReadComplete()
 {
-    mBase->CR3.DMAR = 0;
-    Stream<char>::readSuccess(success);
+    Stream<char>::readDmaComplete(mDmaRead->transferCount());
 }
 
-void Serial::dmaWriteComplete(bool success)
+void Serial::dmaWriteComplete()
 {
-    mBase->CR3.DMAT = 0;
     waitTransmitComplete();
-    Stream<char>::writeSuccess(success);
+    Stream<char>::writeDmaComplete(mDmaWrite->transferCount());
 }
 
 void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock)
@@ -165,10 +173,8 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
 
 void Serial::waitTransmitComplete()
 {
-    int timeout = 100000;
-    while (!mBase->SR.TC && timeout > 0)
+    while (!mBase->SR.TC)
     {
-        --timeout;
     }
 }
 
@@ -195,10 +201,16 @@ void Serial::readTrigger()
 {
     if (mDmaRead != 0)
     {
-        mBase->CR3.DMAR = 1;
-        mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(readData()));
-        mDmaRead->setTransferCount(readCount());
-        mDmaRead->start();
+        if (!mDmaRead->complete()) return;
+        char* data;
+        unsigned int len;
+        readDmaBuffer(data, len);
+        if (len > 0)
+        {
+            mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
+            mDmaRead->setTransferCount(len);
+            mDmaRead->start();
+        }
     }
     else if (mInterrupt != 0)
     {
@@ -233,11 +245,17 @@ void Serial::writeTrigger()
 {
     if (mDmaWrite != 0)
     {
-        mBase->CR3.DMAT = 1;
-        mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(writeData()));
-        mDmaWrite->setTransferCount(writeCount());
-        mBase->SR.TC = 0;
-        mDmaWrite->start();
+        if (!mDmaWrite->complete()) return;
+        const char* data;
+        unsigned int len;
+        writeDmaBuffer(data, len);
+        if (len > 0)
+        {
+            mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
+            mDmaWrite->setTransferCount(len);
+            mBase->SR.TC = 0;
+            mDmaWrite->start();
+        }
     }
     else if (mInterrupt != 0)
     {

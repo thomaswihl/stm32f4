@@ -34,11 +34,11 @@ void Timer::disable(Part part)
     mBase->CR1.CEN = 0;
 }
 
-void Timer::dmaReadComplete(bool success)
+void Timer::dmaReadComplete()
 {
 }
 
-void Timer::dmaWriteComplete(bool success)
+void Timer::dmaWriteComplete()
 {
 }
 

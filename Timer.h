@@ -35,8 +35,8 @@ public:
 
     virtual void enable(Part part);
     virtual void disable(Part part);
-    virtual void dmaReadComplete(bool success);
-    virtual void dmaWriteComplete(bool success);
+    virtual void dmaReadComplete();
+    virtual void dmaWriteComplete();
 
     void setCounter(uint32_t counter);
     uint32_t counter();

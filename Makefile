@@ -53,7 +53,7 @@ $(VERSION_FILE):
 	date | tr -d "\n" >> $@
 	echo "\";" >> $@
 	echo -n 'const char* const GIT_VERSION = "' >> $@
-	git branch --abbrev=100 -v | tr -d "\n" >> $@
+	git branch --abbrev=100 -v | tr -d "\n" | sed 's/"/\\"/g' >> $@
 	echo "\";" >> $@
 	echo >> $@
 

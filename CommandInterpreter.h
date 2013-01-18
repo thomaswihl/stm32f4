@@ -114,6 +114,7 @@ private:
     unsigned int mLineLen;
     char mPrompt[MAX_PROMPT_LEN];
     State mState;
+    bool mCommandTime;
     char mReadChar;
     System::Event mCharReceived;
     CircularBuffer<char*> mHistory;

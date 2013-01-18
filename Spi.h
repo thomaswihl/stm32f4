@@ -35,8 +35,8 @@ protected:
     virtual void clockCallback(ClockControl::Callback::Reason reason, uint32_t newClock);
     virtual void interruptCallback(InterruptController::Index index);
 
-    virtual void dmaReadComplete(bool success);
-    virtual void dmaWriteComplete(bool success);
+    virtual void dmaReadComplete();
+    virtual void dmaWriteComplete();
 
 private:
     struct SPI

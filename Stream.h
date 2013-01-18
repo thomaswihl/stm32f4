@@ -43,20 +43,18 @@ protected:
     virtual void readTrigger() = 0;
     virtual void readDone() = 0;
 
-    void readSuccess(bool success);
+    void readDmaComplete(unsigned int count);
     bool read(T data);
-    T* readData();
-    unsigned int readCount();
+    void readDmaBuffer(T*& data, unsigned int& count);
 
     virtual void writePrepare() = 0;
     virtual void writeSync() = 0;
     virtual void writeTrigger() = 0;
     virtual void writeDone() = 0;
 
-    void writeSuccess(bool success);
+    void writeDmaComplete(unsigned int count);
     bool write(T& data);
-    const T *writeData();
-    unsigned int writeCount();
+    void writeDmaBuffer(const T*& data, unsigned int& count);
 
 private:
     T* mReadData;

@@ -60,7 +60,7 @@ Dma::Stream::Stream(Dma &dma, Dma::Stream::StreamIndex stream, Dma::Stream::Chan
     mStream(static_cast<uint8_t>(stream)),
     mChannel(static_cast<uint8_t>(channel)),
     mInterrupt(interrupt),
-    mEvent(nullptr),
+    mCallback(nullptr),
     mPeripheral(0),
     mMemory0(0),
     mMemory1(0),
@@ -142,9 +142,9 @@ void Dma::Stream::setAddress(Dma::Stream::End end, System::BaseAddress address)
     else mPeripheral = address;
 }
 
-void Dma::Stream::setEvent(Dma::Stream::Event *event)
+void Dma::Stream::setCallback(Callback* callback)
 {
-    mEvent = event;
+    mCallback = callback;
 }
 
 void Dma::Stream::config(Dma::Stream::Direction direction, bool peripheralIncrement, bool memoryIncrement, Dma::Stream::DataSize peripheralDataSize, Dma::Stream::DataSize memoryDataSize, Dma::Stream::BurstLength peripheralBurst, Dma::Stream::BurstLength memoryBurst)
@@ -166,9 +166,9 @@ void Dma::Stream::interruptCallback(InterruptController::Index index)
     // get and clear interrupt flags
     uint8_t status = mDma.getInterruptStatus(mStream);
     mDma.clearInterruptStatus(mStream, status);
-    if (mEvent != nullptr)
+    if (mCallback != nullptr)
     {
-        Event::Reason reason = Event::Reason::TransferComplete;
+        Callback::Reason reason = Callback::Reason::TransferComplete;
         // someone cares about our result so lets find it
         bool fifoError = (status & FifoError) != 0;
         bool directModeError = (status & DirectModeError) != 0;
@@ -176,24 +176,32 @@ void Dma::Stream::interruptCallback(InterruptController::Index index)
 
         // This can only happen in peripheral to memory transfer with no memory increase.
         // It means that 1 transfer didn't happen and there will be 2 successive transfers
-        if (directModeError) reason = Event::Reason::DirectModeError;
+        if (directModeError) reason = Callback::Reason::DirectModeError;
 
         // In direct transfer FIFO error signals an over/underrun and isn't serios, so we can ignore it.
         // In FIFO mode this is fatal (as no data has been transmitted) and caused by wrong configuration of FIFO.
-        if (fifoError && !mDma.mBase->STREAM[mStream].FCR.DMDIS) reason = Event::Reason::FifoError;
+        if (fifoError && !mDma.mBase->STREAM[mStream].FCR.DMDIS) reason = Callback::Reason::FifoError;
 
         // A bus errror triggers this as well as a write to memory register during a transfer, pretty fatal.
-        if (transferError) reason = Event::Reason::DirectModeError;
-
-        mEvent->setReason(reason);
-        if (mEvent != nullptr) System::postEvent(mEvent);
+        if (transferError) reason = Callback::Reason::DirectModeError;
+        mCallback->dmaCallback(this, reason);
     }
+}
+
+bool Dma::Stream::complete()
+{
+    return mDma.mBase->STREAM[mStream].CR.EN == 0;
 }
 
 
 void Dma::Stream::setTransferCount(uint16_t count)
 {
     mCount = count;
+}
+
+uint16_t Dma::Stream::transferCount()
+{
+    return mCount;
 }
 
 void Dma::Stream::setFlowControl(Dma::Stream::FlowControl flowControl)

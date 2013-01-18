@@ -108,17 +108,13 @@ public:
         enum class FifoThreshold { Quater = 0, Half = 1, ThreeQuater = 2, Full = 3, Disable = 4 };
         enum class End { Memory = 0, Peripheral = 1, MemoryToMemoryDestination = 0, MemoryToMemorySource = 1, Memory0 = 0, Memory1 = 2 };
 
-        class Event : public System::Event
+        class Callback
         {
         public:
             enum class Reason { TransferComplete, TransferError, FifoError, DirectModeError };
-
-            Event(System::Event::Callback& callback) : System::Event(callback) { }
-
-            void setReason(Reason reason) { mReason = reason; }
-            Reason reason() { return mReason; }
-        private:
-            Reason mReason;
+            Callback() { }
+            virtual ~Callback() { }
+            virtual void dmaCallback(Stream* stream, Reason reason) = 0;
         };
 
         Stream(Dma& dma, StreamIndex stream, ChannelIndex channel, InterruptController::Line* interrupt);
@@ -133,8 +129,9 @@ public:
         void setIncrement(End end, bool increment);
         void setDirection(Direction direction);
         void setAddress(End end, System::BaseAddress address);
-        void setEvent(Event *event);
+        void setCallback(Callback* callback);
         void setTransferCount(uint16_t count);
+        uint16_t transferCount();
         void setFlowControl(FlowControl flowControl);
 
         void config(Direction direction, bool peripheralIncrement, bool memoryIncrement, DataSize peripheralDataSize, DataSize memoryDataSize, BurstLength peripheralBurst, BurstLength memoryBurst);
@@ -142,12 +139,14 @@ public:
 
         virtual void interruptCallback(InterruptController::Index index);
 
+        bool complete();
+
     private:
         Dma& mDma;
         uint8_t mStream;
         uint8_t mChannel;
         InterruptController::Line* mInterrupt;
-        Event* mEvent;
+        Callback* mCallback;
 
         System::BaseAddress mPeripheral;
         System::BaseAddress mMemory0;

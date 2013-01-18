@@ -28,6 +28,7 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mTickEvent(*this),
     mLineLen(0),
     mState(State::Input),
+    mCommandTime(false),
     mReadChar(0),
     mCharReceived(*this),
     mHistory(64),
@@ -83,6 +84,11 @@ void CommandInterpreter::feed()
             printf("\nResetting clock\n");
             mSystem.mRcc.resetClock();
             mSystem.printInfo();
+            printLine();
+            break;
+        case 20:    // Ctrl+T
+            mCommandTime = !mCommandTime;
+            printf("\nCommand time %s.\n", mCommandTime ? "on" : "off");
             printLine();
             break;
         case 27:
@@ -326,7 +332,7 @@ void CommandInterpreter::eventCallback(System::Event* event)
             ps = s;
             uint32_t te = mSystem.timeInEvent() / 1000000;
             uint32_t ti = mSystem.timeInInterrupt() / 1000000;
-            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus, %10lu.%03lus\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
+            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus Event, %10lu.%03lus IRQ\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
                    te / 1000, te % 1000,
                    ti / 1000, ti % 1000);
             fflush(nullptr);
@@ -501,7 +507,16 @@ void CommandInterpreter::execute()
         return;
     }
     // Everything is fine, execute it.
-    if (cmd != nullptr) cmd->execute(*this, argc, mArguments);
+    if (cmd != nullptr)
+    {
+        uint64_t start = System::instance()->ns();
+        cmd->execute(*this, argc, mArguments);
+        if (mCommandTime)
+        {
+            uint64_t delta = System::instance()->ns() - start;
+            printf("Command took %u.%06us\n", static_cast<unsigned int>(delta / 1000000000), static_cast<unsigned int>((delta / 1000) % 1000000));
+        }
+    }
 }
 
 void CommandInterpreter::addToHistory(const char *line)
