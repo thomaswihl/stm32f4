@@ -32,20 +32,6 @@ StmSystem::StmSystem() :
     mGpioG(BaseAddress::GPIOG),
     mGpioH(BaseAddress::GPIOH),
     mGpioI(BaseAddress::GPIOI),
-    mTim1(BaseAddress::TIM1),
-    mTim2(BaseAddress::TIM2),
-    mTim3(BaseAddress::TIM3),
-    mTim4(BaseAddress::TIM4),
-    mTim5(BaseAddress::TIM5),
-    mTim6(BaseAddress::TIM6),
-    mTim7(BaseAddress::TIM7),
-    mTim8(BaseAddress::TIM8),
-    mTim9(BaseAddress::TIM9),
-    mTim10(BaseAddress::TIM10),
-    mTim11(BaseAddress::TIM11),
-    mTim12(BaseAddress::TIM12),
-    mTim13(BaseAddress::TIM13),
-    mTim14(BaseAddress::TIM14),
     mRcc(BaseAddress::RCC, 8000000),
     mExtI(BaseAddress::EXTI, 23),
     mNvic(BaseAddress::NVIC, 82),
@@ -86,7 +72,7 @@ void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
 
 void StmSystem::init()
 {
-    mRcc.setSystemClock(168000000);
+    //mRcc.setSystemClock(168000000);
     mRcc.enable(ClockControl::Function::Usart2);
     mRcc.enable(ClockControl::Function::GpioA);
     mRcc.enable(ClockControl::Function::Dma1);

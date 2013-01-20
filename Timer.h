@@ -21,37 +21,44 @@
 
 #include "System.h"
 #include "Device.h"
+#include "InterruptController.h"
 
 #include <stdint.h>
 
-class Timer : public Device
+class Timer : public InterruptController::Callback
 {
 public:
     enum class CapturePrescaler { EveryEdge = 0, Every2 = 1, Every4 = 2, Every8 = 3 };
     enum class CaptureFilter { F1N1, F1N2, F1N4, F1N8, F2N6, F2N8, F4N6, F4N8, F8N6, F8N8, F16N5, F16N6, F16N8, F32N5, F32N6, F32N8 };
-    enum class CaptureEdge { Rising = 0, Falling = 1, Both = 3 };
-    enum class CaptureCompareIndex { Index1, Index2, Index3, Index4 };
-    Timer(System::BaseAddress base);
+    enum class CaptureEdge { Rising = 0, Falling = 2, Both = 10 };
+    enum class CaptureCompareIndex { Index1 = 0, Index2 = 1, Index3 = 2, Index4 = 3 };
+    enum class CaptureCompareEnable { None = 0, Output = 1, ComplementeryOuput = 4, All = 5 };
+    enum class Option { Timer11_Input1_Gpio = 0, Timer11_Input1_Hse_Rtc = 2 };
+    enum class EventType { Update, CaptureCompare1, CaptureCompare2, CaptureCompare3, CaptureCompare4 };
+    Timer(System::BaseAddress base, InterruptController::Line& line);
 
-    virtual void enable(Part part);
-    virtual void disable(Part part);
+    void enable();
+    void disable();
+
     virtual void dmaReadComplete();
     virtual void dmaWriteComplete();
 
     void setCounter(uint32_t counter);
     uint32_t counter();
     void setPrescaler(uint16_t prescaler);
-    uint16_t prescaler();
     void setReload(uint32_t reload);
-    uint32_t reload();
+    void setOption(Option option);
+    void setEvent(EventType type, System::Event* event);
+    uint32_t captureCompare(CaptureCompareIndex index);
+
     void configCapture(CaptureCompareIndex index, CapturePrescaler prescaler, CaptureFilter filter, CaptureEdge edge);
-    void enableCapture(CaptureCompareIndex index);
-    void disableCapture(CaptureCompareIndex index);
+    void enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable enable);
 
 protected:
     virtual void interruptCallback(InterruptController::Index index);
 
 private:
+    enum { EVENT_COUNT = 5 };
     struct CCMR_OUTPUT
     {
         uint8_t CCS : 2;
@@ -60,11 +67,15 @@ private:
         uint8_t OCM : 3;
         uint8_t OCCE : 1;
     };
-    struct CCMR_INPUT
+    union CCMR_INPUT
     {
-        uint8_t CCS : 2;
-        uint8_t ICPSC : 2;
-        uint8_t ICF : 4;
+        struct
+        {
+            uint8_t CCS : 2;
+            uint8_t ICPSC : 2;
+            uint8_t ICF : 4;
+        };
+        uint8_t CCMR_INPUT;
     };
 
     struct TIMER
@@ -163,28 +174,8 @@ private:
             uint16_t __RESERVED0 : 8;
         }   EGR;
         uint16_t __RESERVED5;
-        uint16_t CCMR1;
-        uint16_t __RESERVED6;
-        uint16_t CCMR2;
-        uint16_t __RESERVED7;
-        struct __CCER
-        {
-            uint16_t CC1E : 1;
-            uint16_t CC1P : 1;
-            uint16_t CC1NE : 1;
-            uint16_t CC1NP : 1;
-            uint16_t CC2E : 1;
-            uint16_t CC2P : 1;
-            uint16_t CC2NE : 1;
-            uint16_t CC2NP : 1;
-            uint16_t CC3E : 1;
-            uint16_t CC3P : 1;
-            uint16_t CC3NE : 1;
-            uint16_t CC3NP : 1;
-            uint16_t CC4E : 1;
-            uint16_t CC4P : 1;
-            uint16_t __RESERVED0 : 2;
-        }   CCER;
+        uint16_t CCMR[4];
+        uint16_t CCER;
         uint16_t __RESERVED8;
         uint32_t CNT;
         uint16_t PSC;
@@ -219,18 +210,14 @@ private:
         uint16_t __RESERVEDC;
         uint16_t DMAR;
         uint16_t __RESERVEDD;
-        struct __OR
-        {
-            uint16_t TIM11_TI1_RMP : 2;       // bist 0+1
-            uint16_t __RESERVED0 : 4;
-            uint16_t TIM5_TI4_RMP : 2;        // bits 6+7
-            uint16_t __RESERVED1 : 2;
-            uint16_t TIM2_ITR1_RMP : 2;       // bits 10+11
-            uint16_t __RESERVED2 : 4;
-        }   OR;
+        uint16_t OR;
         uint16_t __RESERVEDE;
     };
     volatile TIMER* mBase;
+    InterruptController::Line& mLine;
+    System::Event* mEvent[EVENT_COUNT];
+
+    void postEvent(EventType type);
 };
 
 #endif // TIMER_H

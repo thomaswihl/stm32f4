@@ -215,6 +215,7 @@ void ClockControl::setPrescaler(RtcHsePrescaler prescaler)
 {
     // =1MHz
     mBase->CFGR.RTCPRE = static_cast<uint32_t>(prescaler);
+    mBase->BDCR.RTCEN = 1;
 }
 
 template<>

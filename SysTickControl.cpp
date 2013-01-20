@@ -28,6 +28,7 @@ SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock, un
 {
     static_assert(sizeof(STK) == 0x10, "Struct has wrong size, compiler problem.");
     clock->addChangeHandler(this);
+    config();
 }
 
 void SysTickControl::enable()

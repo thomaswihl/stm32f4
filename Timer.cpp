@@ -18,19 +18,26 @@
 
 #include "Timer.h"
 
-Timer::Timer(System::BaseAddress base) :
-    mBase(reinterpret_cast<volatile TIMER*>(base))
+#include <cassert>
+
+Timer::Timer(System::BaseAddress base, InterruptController::Line &line) :
+    mBase(reinterpret_cast<volatile TIMER*>(base)),
+    mLine(line)
 {
     static_assert(sizeof(TIMER) == 0x54, "Struct has wrong size, compiler problem.");
+    for (unsigned i = 0; i < EVENT_COUNT; ++i) mEvent[i] = nullptr;
+    mLine.setCallback(this);
 }
 
-void Timer::enable(Part part)
+void Timer::enable()
 {
     mBase->CR1.CEN = 1;
+    mLine.enable();
 }
 
-void Timer::disable(Part part)
+void Timer::disable()
 {
+    mLine.disable();
     mBase->CR1.CEN = 0;
 }
 
@@ -57,35 +64,59 @@ void Timer::setPrescaler(uint16_t prescaler)
     mBase->PSC = prescaler;
 }
 
-uint16_t Timer::prescaler()
-{
-    return mBase->PSC;
-}
-
 void Timer::setReload(uint32_t reload)
 {
     mBase->ARR = reload;
 }
 
-uint32_t Timer::reload()
+void Timer::setOption(Option option)
 {
-    return mBase->ARR;
+    mBase->OR = static_cast<uint16_t>(option);
+}
+
+void Timer::setEvent(Timer::EventType type, System::Event *event)
+{
+    mEvent[static_cast<int>(type)] = event;
+}
+
+uint32_t Timer::captureCompare(Timer::CaptureCompareIndex index)
+{
+    return mBase->CCR[static_cast<int>(index)];
 }
 
 void Timer::configCapture(Timer::CaptureCompareIndex index, Timer::CapturePrescaler prescaler, Timer::CaptureFilter filter, Timer::CaptureEdge edge)
 {
+    CCMR_INPUT mr;
+    mr.CCS = 1;
+    mr.ICF = static_cast<uint16_t>(filter);
+    mr.ICPSC = static_cast<uint16_t>(prescaler);
+    int i = static_cast<int>(index) & 2;
+    int shift = (static_cast<int>(index) & 1) * 8;
+    mBase->CCMR[i] = (mBase->CCMR[i] & ~(0xff << shift)) | (mr.CCMR_INPUT << shift);
+
+    shift = static_cast<uint16_t>(index) * 4;
+    uint16_t andmask = ~(static_cast<uint16_t>(CaptureEdge::Both) << shift);
+    uint16_t ormask = static_cast<uint16_t>(edge) << shift;
+    mBase->CCER = (mBase->CCER & andmask) | ormask;
 }
 
-void Timer::enableCapture(CaptureCompareIndex index)
+void Timer::enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable enable)
 {
-    mBase->CCER.CC1E = 1;
-}
-
-void Timer::disableCapture(CaptureCompareIndex index)
-{
-    mBase->CCER.CC1E = 1;
+    int shift = static_cast<uint16_t>(index) * 4;
+    uint16_t andmask = ~(static_cast<uint16_t>(CaptureCompareEnable::All) << shift);
+    uint16_t ormask = static_cast<uint16_t>(enable) << shift;
+    mBase->CCER = (mBase->CCER & andmask) | ormask;
 }
 
 void Timer::interruptCallback(InterruptController::Index index)
 {
+    if (mBase->SR.UIF) postEvent(EventType::Update);
+    if (mBase->SR.CC1IF) postEvent(EventType::CaptureCompare1);
+}
+
+void Timer::postEvent(Timer::EventType type)
+{
+    int index = static_cast<int>(type);
+    assert(index < EVENT_COUNT);
+    if (mEvent[index] != nullptr) System::instance()->postEvent(mEvent[index]);
 }

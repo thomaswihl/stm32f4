@@ -24,6 +24,8 @@ char const * const CmdLis::ARGV[] = { };
 char const * const CmdPin::NAME[] = { "pin" };
 char const * const CmdPin::ARGV[] = { "Ps:pin", "Vob:value" };
 
+char const * const CmdMeasureClock::NAME[] = { "clock" };
+char const * const CmdMeasureClock::ARGV[] = { };
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -227,4 +229,35 @@ bool CmdPin::execute(CommandInterpreter &interpreter, int argc, const CommandInt
         else mGpio[index]->reset(static_cast<Gpio::Index>(pin));
     }
     return true;
+}
+
+
+CmdMeasureClock::CmdMeasureClock(ClockControl &clockControl, Timer &timer) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mClockControl(clockControl), mTimer(timer), mEvent(*this), mCount(0)
+{
+}
+
+bool CmdMeasureClock::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    mClockControl.enable(ClockControl::Function::Tim11);
+    mClockControl.setPrescaler(ClockControl::RtcHsePrescaler::by16);  // HSE_RTC = HSE / 16 = 500kHz
+    // Timer 11 capture input = HSE_RTC / 8 = 62500Hz
+    mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::CapturePrescaler::Every8, Timer::CaptureFilter::F1N1, Timer::CaptureEdge::Rising);
+    // So with HSI = 16MHz -> TIM_CLK = 32MHz this should give us 512 counts
+    mTimer.setOption(Timer::Option::Timer11_Input1_Hse_Rtc);
+    mTimer.setEvent(Timer::EventType::CaptureCompare1, &mEvent);
+    mTimer.enable();
+    mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
+    return true;
+}
+
+void CmdMeasureClock::eventCallback(System::Event *event)
+{
+    ++mCount;
+    if (mCount > 8)
+    {
+        mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::None);
+        mTimer.disable();
+        mCount = 0;
+    }
+    printf("%lu\n", mTimer.captureCompare(Timer::CaptureCompareIndex::Index1));
 }

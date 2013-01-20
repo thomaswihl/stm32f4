@@ -29,7 +29,6 @@ StmSystem gSys;
 
 int main()
 {
-
     printf("\n\n\nRESET\n");
     gSys.printInfo();
 
@@ -87,8 +86,14 @@ int main()
     interpreter.add(new CmdRead());
     interpreter.add(new CmdWrite());
     interpreter.add(new CmdLis(lis));
+
+    InterruptController::Line timer11Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_TRG_COM_TIM11);
+    Timer timer11(StmSystem::BaseAddress::TIM11, timer11Irq);
+    interpreter.add(new CmdMeasureClock(gSys.mRcc, timer11));
+
     Gpio* gpio[] = { &gSys.mGpioA, &gSys.mGpioB, &gSys.mGpioC, &gSys.mGpioD, &gSys.mGpioE, &gSys.mGpioF, &gSys.mGpioG, &gSys.mGpioH, &gSys.mGpioI };
     interpreter.add(new CmdPin(gpio, sizeof(gpio) / sizeof(gpio[0])));
+
     interpreter.start();
 
     System::Event* event;
