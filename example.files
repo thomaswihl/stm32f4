@@ -48,3 +48,5 @@ Timer.cpp
 IndependentWatchdog.h
 IndependentWatchdog.cpp
 README
+Power.h
+Power.cpp
