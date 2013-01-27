@@ -40,6 +40,10 @@ public:
         Tim2 = 128, Tim3, Tim4, Tim5, Tim6, Tim7, Tim12, Tim13, Tim14, WWdg = 139, Spi2 = 142, Spi3, Usart2 = 145, Usart3, Usart4, Uart5, I2c1, I2c2, I2c3, Can1 = 153, Can2, Pwr = 156, Dac,
         Tim1 = 160, Tim8, Usart1 = 164, Usart6, Adc1 = 168, Adc2, Adc3, Sdio, Spi1, SysCfg = 174, Tim9 = 176, Tim10, Tim11
     };
+    struct Reset
+    {
+        enum Reason { LowPower = 0x80000000, WindowWatchdog = 0x40000000, IndependentWatchdog = 0x20000000, Software = 0x10000000, PowerOn = 0x08000000, Pin = 0x04000000, BrownOut = 0x02000000 };
+    };
     enum class Clock { System, AHB, APB1, APB2, RTC };
     enum class AhbPrescaler { by1 = 0, by2 = 8, by4 = 9, by8 = 10, by16 = 11, by64 = 12, by128 = 13, by256 = 14, by512 = 15 };
     enum class Apb1Prescaler { by1 = 0, by2 = 4, by4 = 5, by8 = 6, by16 = 7 };
@@ -50,6 +54,7 @@ public:
                                  by31 = 31 };
     enum class Mco1Prescaler { by1 = 0, by2 = 4, by3 = 5, by4 = 6, by5 = 7 };
     enum class Mco2Prescaler { by1 = 0, by2 = 4, by3 = 5, by4 = 6, by5 = 7 };
+    enum class RtcClock { None = 0, LowSpeedExternal = 1, LowSpeedInternal = 2, HighSpeedExternal = 3 };
 
     ClockControl(System::BaseAddress base, uint32_t externalClock);
     ~ClockControl();
@@ -64,9 +69,12 @@ public:
 
     void resetClock();
     void reset();
+    Reset::Reason resetReason();
 
     void enable(Function function, bool inLowPower = true);
     void disable(Function function);
+
+    void enableRtc(RtcClock clock);
 
 private:
     enum
@@ -443,19 +451,22 @@ private:
             uint32_t BDRST : 1;
             uint32_t __RESERVED2 : 15;
         }   BDCR;
-        struct __CSR
+        union __CSR
         {
-            uint32_t LSION : 1;
-            uint32_t LSIRDY : 1;
-            uint32_t __RESERVED0 : 22;
-            uint32_t RMVF : 1;
-            uint32_t BORRSTF : 1;
-            uint32_t PINRSTF : 1;
-            uint32_t PORRSTF : 1;
-            uint32_t SFTRSTF : 1;
-            uint32_t IWDGRSTF : 1;
-            uint32_t WWDGRSTF : 1;
-            uint32_t LPWRRSTF : 1;
+            struct {
+                uint32_t LSION : 1;
+                uint32_t LSIRDY : 1;
+                uint32_t __RESERVED0 : 22;
+                uint32_t RMVF : 1;
+                uint32_t BORRSTF : 1;
+                uint32_t PINRSTF : 1;
+                uint32_t PORRSTF : 1;
+                uint32_t SFTRSTF : 1;
+                uint32_t IWDGRSTF : 1;
+                uint32_t WWDGRSTF : 1;
+                uint32_t LPWRRSTF : 1;
+            }   CSR;
+            uint32_t v;
         }   CSR;
         uint32_t __RESERVED9;
         uint32_t __RESERVEDA;

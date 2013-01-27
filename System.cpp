@@ -322,7 +322,9 @@ uint64_t System::timeInEvent()
 
 void System::postEvent(Event *event)
 {
-    mSystem->mEventQueue.push(event);
+    __asm("cpsid i");
+    assert(mSystem->mEventQueue.push(event));
+    __asm("cpsie i");
 }
 
 bool System::waitForEvent(Event *&event)

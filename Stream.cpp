@@ -23,6 +23,7 @@ Stream<T>::Stream() :
     mReadData(nullptr),
     mReadCount(0),
     mReadCompleteEvent(nullptr),
+    mReadEvent(*this),
     mWriteData(nullptr),
     mWriteCount(0),
     mWriteCompleteEvent(nullptr),
@@ -142,8 +143,7 @@ bool Stream<T>::read(T data)
     if (mReadFifo != nullptr)
     {
         mReadFifo->push(data);
-        readFromFifo(mReadData, mReadCount);
-        if (mReadCount == 0 && mReadData != nullptr) readEpilog();
+        System::instance()->postEvent(&mReadEvent);
         return true;
     }
     else if (mReadCount != 0)
@@ -220,6 +220,16 @@ void Stream<T>::writeDmaBuffer(const T *&data, unsigned int &count)
     {
         data = mWriteData;
         count = mWriteCount;
+    }
+}
+
+template<typename T>
+void Stream<T>::eventCallback(System::Event *event)
+{
+    if (event == &mReadEvent)
+    {
+        readFromFifo(mReadData, mReadCount);
+        if (mReadCount == 0 && mReadData != nullptr) readEpilog();
     }
 }
 
