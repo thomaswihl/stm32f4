@@ -132,7 +132,21 @@ void Serial::configDma(Dma::Stream *write, Dma::Stream *read)
 
 void Serial::interruptCallback(InterruptController::Index index)
 {
-    if (mBase->SR.RXNE && mBase->CR1.RXNEIE)
+    uint32_t v = mBase->SR.v;
+    __SR* sr = reinterpret_cast<__SR*>(&v);
+    if (sr->ORE)
+    {
+        Stream<char>::readResult(System::Event::Result::OverrunError);
+    }
+    if (sr->FE)
+    {
+        Stream<char>::readResult(System::Event::Result::FramingError);
+    }
+    if (sr->PE)
+    {
+        Stream<char>::readResult(System::Event::Result::ParityError);
+    }
+    if (sr->RXNE && mBase->CR1.RXNEIE)
     {
         // check if we need to read another byte, if not disable the interrupt
         if (!Stream<char>::read(static_cast<char>(mBase->DR)))
@@ -140,7 +154,7 @@ void Serial::interruptCallback(InterruptController::Index index)
             mBase->CR1.RXNEIE = 0;
         }
     }
-    if (mBase->SR.TC && mBase->CR1.TCIE)
+    if (sr->TC && mBase->CR1.TCIE)
     {
         // check if we need to write another byte, if not disable the interrupt
         char c;
@@ -173,14 +187,14 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
 
 void Serial::waitTransmitComplete()
 {
-    while (!mBase->SR.TC)
+    while (!mBase->SR.SR.TC)
     {
     }
 }
 
 void Serial::waitReceiveNotEmpty()
 {
-    while (!mBase->SR.RXNE)
+    while (!mBase->SR.SR.RXNE)
     {
     }
 }
@@ -253,7 +267,7 @@ void Serial::writeTrigger()
         {
             mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
             mDmaWrite->setTransferCount(len);
-            mBase->SR.TC = 0;
+            mBase->SR.SR.TC = 0;
             mDmaWrite->start();
         }
     }

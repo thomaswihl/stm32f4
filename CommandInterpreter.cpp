@@ -320,6 +320,22 @@ void CommandInterpreter::eventCallback(System::Event* event)
 {
     if (event == &mCharReceived)
     {
+        if (event->result() != System::Event::Result::Success)
+        {
+            static const char* const OVERRUN_ERROR = "Overrun";
+            static const char* const PARITY_ERROR = "Parity";
+            static const char* const FRAMING_ERROR = "Framing";
+            const char* s = "";
+            switch (event->result())
+            {
+            case System::Event::Result::OverrunError: s = OVERRUN_ERROR; break;
+            case System::Event::Result::ParityError: s = PARITY_ERROR; break;
+            case System::Event::Result::FramingError: s = FRAMING_ERROR; break;
+            default: break;
+            }
+            printf("\nERROR: %s\n", s);
+            printLine();
+        }
         feed();
         mSystem.mDebug.read(&mReadChar, 1, &mCharReceived);
     }

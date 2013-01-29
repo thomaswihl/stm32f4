@@ -47,6 +47,7 @@ public:
     class Event
     {
     public:
+        enum class Result { Success, ParityError, FramingError, OverrunError };
         class Callback
         {
         public:
@@ -57,10 +58,10 @@ public:
 
         void callback() { mCallback.eventCallback(this); }
 
-        void setResult(bool success) { mSuccess = success; }
-        bool success() { return mSuccess; }
+        void setResult(Result result) { mResult = result; }
+        Result result() { return mResult; }
     private:
-        bool mSuccess;
+        Result mResult;
         Callback& mCallback;
     };
 

@@ -137,6 +137,12 @@ void Stream<T>::readDmaComplete(unsigned int count)
 }
 
 template<typename T>
+void Stream<T>::readResult(System::Event::Result result)
+{
+    if (mReadCompleteEvent != nullptr) mReadCompleteEvent->setResult(result);
+}
+
+template<typename T>
 bool Stream<T>::read(T data)
 {
     if (mReadFifo != nullptr)
@@ -193,6 +199,12 @@ void Stream<T>::writeDmaComplete(unsigned int count)
 }
 
 template<typename T>
+void Stream<T>::writeResult(System::Event::Result result)
+{
+    if (mWriteCompleteEvent != nullptr) mWriteCompleteEvent->setResult(result);
+}
+
+template<typename T>
 bool Stream<T>::write(T &data)
 {
     if (mWriteFifo != nullptr)
@@ -227,6 +239,7 @@ template<typename T>
 bool Stream<T>::readProlog(T *data, unsigned int count)
 {
     if (mReadData != nullptr) return false;
+    readResult(System::Event::Result::Success);
     readFromFifo(data, count);
     if (count == 0)
     {
@@ -270,6 +283,7 @@ template<typename T>
 bool Stream<T>::writeProlog(const T *data, unsigned int count)
 {
     if (mWriteData != nullptr) return false;
+    writeResult(System::Event::Result::Success);
     if (mWriteFifo != nullptr)
     {
         while (count != 0) writeToFifo(data, count);

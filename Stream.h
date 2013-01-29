@@ -44,6 +44,7 @@ protected:
     virtual void readDone() = 0;
 
     void readDmaComplete(unsigned int count);
+    void readResult(System::Event::Result result);
     bool read(T data);
     void readDmaBuffer(T*& data, unsigned int& count);
 
@@ -53,6 +54,7 @@ protected:
     virtual void writeDone() = 0;
 
     void writeDmaComplete(unsigned int count);
+    void writeResult(System::Event::Result result);
     bool write(T& data);
     void writeDmaBuffer(const T*& data, unsigned int& count);
 
