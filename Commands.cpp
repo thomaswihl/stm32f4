@@ -247,6 +247,19 @@ bool CmdMeasureClock::execute(CommandInterpreter &interpreter, int argc, const C
     mTimer.setEvent(Timer::EventType::CaptureCompare1, &mEvent);
     mTimer.enable();
     mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
+    //for (int i = 0; i < 5; ++i)
+    {
+        uint32_t first = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+        uint32_t second;
+        do
+        {
+            second = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+        }   while (second == first);
+        uint32_t delta;
+        if (second > first) delta = second - first;
+        else delta = 65536 + second - first;
+        printf("External high speed clock (HSE) is approximatly %luMHz (TIM11 CC = %lu).\n", 16 * 16 * 8 / delta, delta);
+    }
     return true;
 }
 

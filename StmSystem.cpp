@@ -72,7 +72,7 @@ void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
 
 void StmSystem::init()
 {
-    //mRcc.setSystemClock(168000000);
+    mRcc.setSystemClock(168000000);
     mRcc.enable(ClockControl::Function::Usart2);
     mRcc.enable(ClockControl::Function::GpioA);
     mRcc.enable(ClockControl::Function::Dma1);
@@ -101,7 +101,8 @@ void StmSystem::init()
 
     mFlash.set(Flash::Feature::InstructionCache, true);
     mFlash.set(Flash::Feature::DataCache, true);
-    mFlash.set(Flash::Feature::Prefetch, true);
+    // Be careful with prefetch, it does nasty things...
+    //mFlash.set(Flash::Feature::Prefetch, true);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
     mSysTick.enable();
 }

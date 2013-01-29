@@ -20,6 +20,7 @@
 #include "CommandInterpreter.h"
 #include "Commands.h"
 #include "hw/lis302dl.h"
+#include "Power.h"
 
 #include <cstdio>
 #include <memory>
@@ -29,7 +30,16 @@ StmSystem gSys;
 
 int main()
 {
-    printf("\n\n\nRESET\n");
+    ClockControl::Reset::Reason rr = gSys.mRcc.resetReason();
+    printf("\n\n\nRESET: ");
+    if (rr & ClockControl::Reset::LowPower) printf("LOW POWER   ");
+    if (rr & ClockControl::Reset::WindowWatchdog) printf("WINDOW WATCHDOG   ");
+    if (rr & ClockControl::Reset::IndependentWatchdog) printf("INDEPENDENT WATCHDOG   ");
+    if (rr & ClockControl::Reset::Software) printf("SOFTWARE RESET   ");
+    if (rr & ClockControl::Reset::PowerOn) printf("POWER ON   ");
+    if (rr & ClockControl::Reset::Pin) printf("PIN RESET   ");
+    if (rr & ClockControl::Reset::BrownOut) printf("BROWN OUT   ");
+    printf("\n");
     gSys.printInfo();
 
     gSys.mRcc.enable(ClockControl::Function::GpioA);
@@ -89,6 +99,10 @@ int main()
 
     InterruptController::Line timer11Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_TRG_COM_TIM11);
     Timer timer11(StmSystem::BaseAddress::TIM11, timer11Irq);
+    Power pwr(StmSystem::BaseAddress::PWR);
+    pwr.backupDomainWp(false);
+    gSys.mRcc.enableRtc(ClockControl::RtcClock::HighSpeedExternal);
+    pwr.backupDomainWp(true);
     interpreter.add(new CmdMeasureClock(gSys.mRcc, timer11));
 
     Gpio* gpio[] = { &gSys.mGpioA, &gSys.mGpioB, &gSys.mGpioC, &gSys.mGpioD, &gSys.mGpioE, &gSys.mGpioF, &gSys.mGpioG, &gSys.mGpioH, &gSys.mGpioI };
@@ -96,11 +110,13 @@ int main()
 
     interpreter.start();
 
+    gSys.mIWdg.enable(2000000);
     System::Event* event;
     while (true)
     {
         if (gSys.waitForEvent(event) && event != nullptr)
         {
+            gSys.mIWdg.service();
             gSys.mGpioD.set(Gpio::Index::Pin13);
             event->callback();
             gSys.mGpioD.reset(Gpio::Index::Pin13);

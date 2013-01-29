@@ -24,7 +24,7 @@
 #include "Dma.h"
 
 template<typename T>
-class Stream
+class Stream : public System::Event::Callback
 {
 public:
     Stream();
@@ -58,10 +58,13 @@ protected:
     bool write(T& data);
     void writeDmaBuffer(const T*& data, unsigned int& count);
 
+    virtual void eventCallback(System::Event *event);
+
 private:
     T* mReadData;
     unsigned int mReadCount;
     System::Event* mReadCompleteEvent;
+    System::Event mReadEvent;
     const T* mWriteData;
     int mWriteCount;
     System::Event* mWriteCompleteEvent;

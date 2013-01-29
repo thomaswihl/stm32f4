@@ -78,6 +78,13 @@ void ClockControl::reset()
     System::setRegister(&mBase->SSCGR, 0x00000000);
 }
 
+ClockControl::Reset::Reason ClockControl::resetReason()
+{
+    ClockControl::Reset::Reason rr = static_cast<Reset::Reason>(mBase->CSR.v & 0xfe000000);
+    mBase->CSR.CSR.RMVF = 1;
+    return rr;
+}
+
 void ClockControl::enable(ClockControl::Function function, bool inLowPower)
 {
     uint32_t index = static_cast<uint32_t>(function);
@@ -95,6 +102,13 @@ void ClockControl::disable(ClockControl::Function function)
     index /= 32;
     mBase->Enable[index] &= ~(1 << offset);
     mBase->LowPowerEnable[index] &= ~(1 << offset);
+}
+
+void ClockControl::enableRtc(RtcClock clock)
+{
+    mBase->BDCR.RTCSEL = static_cast<uint32_t>(clock);
+    if (clock == RtcClock::HighSpeedExternal) mBase->CR.HSEON = 1;
+    mBase->BDCR.RTCEN = 1;
 }
 
 bool ClockControl::setSystemClock(uint32_t clock)
@@ -215,7 +229,6 @@ void ClockControl::setPrescaler(RtcHsePrescaler prescaler)
 {
     // =1MHz
     mBase->CFGR.RTCPRE = static_cast<uint32_t>(prescaler);
-    mBase->BDCR.RTCEN = 1;
 }
 
 template<>
