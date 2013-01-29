@@ -138,8 +138,7 @@ bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandIn
 {
     if (strcmp("ns", argv[1].value.s) == 0)
     {
-        uint64_t ns = mSystem.ns();
-        printf("%llu\n", ns);
+        printf("%llu\n", mSystem.ns());
     }
     else
     {

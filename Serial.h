@@ -33,7 +33,7 @@ class Serial : public Device, public ClockControl::Callback, public Stream<char>
 {
 public:
     enum class WordLength { Eight, Nine };
-    enum class Parity { None = 0, Even = 2, Odd = 3 };
+    enum class Parity { None, Even, Odd };
     enum class StopBits { One, Half, Two, OneAndHalf };
     enum class HardwareFlowControl { None, Cts, Rts, CtsRts };
 
@@ -46,7 +46,7 @@ public:
     void setStopBits(StopBits stopBits);
     void setHardwareFlowControl(HardwareFlowControl hardwareFlow);
 
-    void config(uint32_t speed, WordLength dataBits = WordLength::Eight, Parity parity = Parity::None, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
+    void config(uint32_t speed, Parity parity = Parity::None, WordLength dataBits = WordLength::Eight, StopBits stopBits = StopBits::One, HardwareFlowControl hardwareFlow = HardwareFlowControl::None);
 
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);

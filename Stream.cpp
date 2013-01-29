@@ -148,7 +148,7 @@ bool Stream<T>::read(T data)
 {
     if (mReadFifo != nullptr)
     {
-        mReadFifo->push(data);
+        if (!mReadFifo->push(data)) readResult(System::Event::Result::OverrunError);
         System::instance()->postEvent(&mReadEvent);
         return true;
     }

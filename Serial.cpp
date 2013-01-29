@@ -53,8 +53,22 @@ void Serial::setWordLength(Serial::WordLength dataBits)
 
 void Serial::setParity(Serial::Parity parity)
 {
-    mBase->CR1.PCE = (static_cast<uint32_t>(parity) & 2) >> 1;
-    mBase->CR1.PS = static_cast<uint32_t>(parity) & 1;
+    switch (parity)
+    {
+    case Parity::None:
+        mBase->CR1.PCE = 0;
+        mBase->CR1.PS = 0;
+        break;
+    case Parity::Odd:
+        mBase->CR1.PCE = 1;
+        mBase->CR1.PS = 1;
+        break;
+    case Parity::Even:
+        mBase->CR1.PCE = 1;
+        mBase->CR1.PS = 0;
+        break;
+    }
+
 }
 
 void Serial::setStopBits(Serial::StopBits stopBits)
@@ -93,12 +107,12 @@ void Serial::disable(Device::Part part)
     }
 }
 
-void Serial::config(uint32_t speed, Serial::WordLength dataBits, Serial::Parity parity, Serial::StopBits stopBits, HardwareFlowControl hardwareFlow)
+void Serial::config(uint32_t speed, Serial::Parity parity, Serial::WordLength dataBits, Serial::StopBits stopBits, HardwareFlowControl hardwareFlow)
 {
     disable(Device::Part::All);
     setSpeed(speed);
-    setWordLength(dataBits);
     setParity(parity);
+    setWordLength(dataBits);
     setStopBits(stopBits);
     setHardwareFlowControl(hardwareFlow);
 }
@@ -136,14 +150,27 @@ void Serial::interruptCallback(InterruptController::Index index)
     __SR* sr = reinterpret_cast<__SR*>(&v);
     if (sr->ORE)
     {
+        System::instance()->printError("USART", "Overrun Error");
         Stream<char>::readResult(System::Event::Result::OverrunError);
     }
     if (sr->FE)
     {
+        System::instance()->printError("USART", "Framing Error");
         Stream<char>::readResult(System::Event::Result::FramingError);
     }
     if (sr->PE)
     {
+        System::instance()->printError("USART", "Parity Error");
+        Stream<char>::readResult(System::Event::Result::ParityError);
+    }
+    if (sr->LBD)
+    {
+        System::instance()->printError("USART", "Line break");
+        Stream<char>::readResult(System::Event::Result::ParityError);
+    }
+    if (sr->NF)
+    {
+        System::instance()->printError("USART", "Noise Error");
         Stream<char>::readResult(System::Event::Result::ParityError);
     }
     if (sr->RXNE && mBase->CR1.RXNEIE)
@@ -152,6 +179,7 @@ void Serial::interruptCallback(InterruptController::Index index)
         if (!Stream<char>::read(static_cast<char>(mBase->DR)))
         {
             mBase->CR1.RXNEIE = 0;
+            printf("Disable I\n");
         }
     }
     if (sr->TC && mBase->CR1.TCIE)

@@ -110,13 +110,13 @@ int main()
 
     interpreter.start();
 
-    gSys.mIWdg.enable(2000000);
+    //gSys.mIWdg.enable(2000000);
     System::Event* event;
     while (true)
     {
         if (gSys.waitForEvent(event) && event != nullptr)
         {
-            gSys.mIWdg.service();
+            //gSys.mIWdg.service();
             gSys.mGpioD.set(Gpio::Index::Pin13);
             event->callback();
             gSys.mGpioD.reset(Gpio::Index::Pin13);
