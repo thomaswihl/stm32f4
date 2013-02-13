@@ -124,7 +124,7 @@ void Serial::configDma(Dma::Stream *write, Dma::Stream *read)
     {
         mDmaWrite->config(Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Byte, Dma::Stream::DataSize::Byte, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
         mDmaWrite->setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(&mBase->DR));
-        mDmaWrite->configFifo(Dma::Stream::FifoThreshold::Quater);
+        mDmaWrite->configFifo(Dma::Stream::FifoThreshold::ThreeQuater);
         mBase->CR3.DMAT = 1;
     }
     else
@@ -301,11 +301,14 @@ void Serial::writeTrigger()
     }
     else if (mInterrupt != 0)
     {
-        mBase->CR1.TCIE = 1;
-        // send first bye, to start transmission
-        char c;
-        if (Stream<char>::write(c)) mBase->DR = c;
-        else mBase->CR1.TCIE = 0;
+        if (mBase->CR1.TCIE != 1)
+        {
+            mBase->CR1.TCIE = 1;
+            // send first bye, to start transmission
+            char c;
+            if (Stream<char>::write(c)) mBase->DR = c;
+            else mBase->CR1.TCIE = 0;
+        }
     }
     else
     {

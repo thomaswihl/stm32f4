@@ -81,6 +81,7 @@ public:
     virtual void handleInterrupt(uint32_t index) = 0;
     virtual void debugRead(char *msg, unsigned int len) = 0;
     virtual void debugWrite(const char *msg, unsigned int len) = 0;
+    virtual void debugMsg(const char *msg, unsigned int len) = 0;
     virtual void handleSysTick() = 0;
     virtual void usleep(unsigned int us) = 0;
     virtual uint64_t ns() = 0;

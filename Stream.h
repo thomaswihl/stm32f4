@@ -62,18 +62,18 @@ protected:
 
 private:
     T* mReadData;
-    unsigned int mReadCount;
+    volatile unsigned int mReadCount;
     System::Event* mReadCompleteEvent;
     System::Event mReadEvent;
     const T* mWriteData;
-    int mWriteCount;
+    volatile int mWriteCount;
     System::Event* mWriteCompleteEvent;
     CircularBuffer<T>* mReadFifo;
     CircularBuffer<T>* mWriteFifo;
 
     bool readProlog(T* data, unsigned int count);
     void readEpilog();
-    void readFromFifo(T*& data, unsigned int& count);
+    void readFromFifo(T*& data, volatile unsigned int& count);
 
     bool writeProlog(const T* data, unsigned int count);
     void writeEpilog();

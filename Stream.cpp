@@ -279,7 +279,7 @@ void Stream<T>::readEpilog()
 }
 
 template<typename T>
-void Stream<T>::readFromFifo(T *&data, unsigned int &count)
+void Stream<T>::readFromFifo(T *&data, volatile unsigned int &count)
 {
     if (mReadFifo != nullptr && data != nullptr && count != 0)
     {
@@ -333,7 +333,7 @@ void Stream<T>::writeToFifo(const T *&data, unsigned int &count)
         unsigned int len = mWriteFifo->write(data, count);
         count -= len;
         data += len;
-        if (mWriteFifo->used() == len) writeTrigger();
+        writeTrigger();
     }
 }
 

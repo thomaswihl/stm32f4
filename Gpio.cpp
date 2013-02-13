@@ -35,7 +35,7 @@ bool Gpio::get(Index index)
 
 void Gpio::set(Gpio::Index index)
 {
-    mBase->ODR |= (1 << static_cast<int>(index));
+    mBase->BSRR.BS = (1 << static_cast<int>(index));
 }
 
 void Gpio::set(uint16_t indices)
@@ -50,7 +50,7 @@ void Gpio::setValue(uint16_t value)
 
 void Gpio::reset(Gpio::Index index)
 {
-    mBase->ODR &= ~(1 << static_cast<int>(index));
+    mBase->BSRR.BR = (1 << static_cast<int>(index));
 }
 
 void Gpio::reset(uint16_t indices)
@@ -111,9 +111,10 @@ Gpio::Pin::Pin(Gpio &gpio, Gpio::Index index) :
 {
 }
 
-void Gpio::Pin::set()
+void Gpio::Pin::set(bool set)
 {
-    mGpio.set(mIndex);
+    if (set) mGpio.set(mIndex);
+    else mGpio.reset(mIndex);
 }
 
 void Gpio::Pin::reset()

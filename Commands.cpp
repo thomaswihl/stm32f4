@@ -180,6 +180,9 @@ void CmdLis::eventCallback(System::Event *event)
     float a = x * x + y * y + z * z;
     a = std::sqrt(a / 2500);
     printf("\x1b[s\x1b[2;H%3i %3i %3i = %.2fg\x1b[K\x1b[u", x, y, z, a);
+    char buf[32];
+    int len = sprintf(buf, "%3i %3i %3i = %.2fg", x, y, z, a);
+    System::instance()->debugMsg(buf, len);
     fflush(nullptr);
 }
 

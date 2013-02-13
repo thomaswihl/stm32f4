@@ -51,7 +51,15 @@ StmSystem::StmSystem() :
 //    mSpi3(BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
     mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
     mFpu(BaseAddress::FPU),
-    mIWdg(BaseAddress::IWDG)
+    mIWdg(BaseAddress::IWDG),
+    mDisplayRs(mGpioB, Gpio::Index::Pin6),
+    mDisplayRw(mGpioB, Gpio::Index::Pin5),
+    mDisplayE(mGpioB, Gpio::Index::Pin4),
+    mDisplayDb4(mGpioB, Gpio::Index::Pin0),
+    mDisplayDb5(mGpioB, Gpio::Index::Pin1),
+    mDisplayDb6(mGpioB, Gpio::Index::Pin2),
+    mDisplayDb7(mGpioB, Gpio::Index::Pin3),
+    mDisplay(mDisplayE, mDisplayRs, mDisplayDb4, mDisplayDb5, mDisplayDb6, mDisplayDb7)
 {
     init();
 }
@@ -105,6 +113,17 @@ void StmSystem::init()
     //mFlash.set(Flash::Feature::Prefetch, true);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
     mSysTick.enable();
+
+    mRcc.enable(ClockControl::Function::GpioB);
+    mGpioB.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioB.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioB.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioB.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioB.configOutput(Gpio::Index::Pin4, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioB.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mGpioB.configOutput(Gpio::Index::Pin6, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mDisplay.init();
+
 }
 
 void StmSystem::debugRead(char *msg, unsigned int len)
@@ -115,6 +134,14 @@ void StmSystem::debugRead(char *msg, unsigned int len)
 void StmSystem::debugWrite(const char *msg, unsigned int len)
 {
     mDebug.write(msg, len);
+}
+
+void StmSystem::debugMsg(const char *msg, unsigned int len)
+{
+    static unsigned line = 0;
+    mDisplay.write(line, msg, len);
+    line += 0x40;
+    if (line >= 0x80) line = 0;
 }
 
 void StmSystem::printInfo()

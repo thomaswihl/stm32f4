@@ -72,7 +72,7 @@ public:
     {
     public:
         Pin(Gpio& gpio, Index index);
-        void set();
+        void set(bool set = true);
         void reset();
         bool get();
     private:

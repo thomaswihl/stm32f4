@@ -33,6 +33,7 @@
 #include "FpuControl.h"
 #include "Spi.h"
 #include "IndependentWatchdog.h"
+#include "hw/adm1602.h"
 
 class StmSystem : public System
 {
@@ -207,6 +208,15 @@ public:
     FpuControl mFpu;
     IndependentWatchdog mIWdg;
 
+    Gpio::Pin mDisplayRs;
+    Gpio::Pin mDisplayRw;
+    Gpio::Pin mDisplayE;
+    Gpio::Pin mDisplayDb4;
+    Gpio::Pin mDisplayDb5;
+    Gpio::Pin mDisplayDb6;
+    Gpio::Pin mDisplayDb7;
+    Adm1602 mDisplay;
+
 
     StmSystem();
     virtual ~StmSystem();
@@ -221,6 +231,7 @@ public:
 protected:
     virtual void debugRead(char *msg, unsigned int len);
     virtual void debugWrite(const char *msg, unsigned int len);
+    virtual void debugMsg(const char *msg, unsigned int len);
 
 private:
     void init();
