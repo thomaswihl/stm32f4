@@ -18,14 +18,13 @@ Adm1602::Adm1602(Gpio::Pin &enable, Gpio::Pin& rs, Gpio::Pin &d4, Gpio::Pin &d5,
 
 void Adm1602::init()
 {
+    System::instance()->usleep(15000);
+    write(0x3); // Switch to 8bit so we can find or start
+    write(0x3); // Switch to 8bit so we can find or start
+    write(0x3); // Switch to 8bit so we can find or start
     write(0x28); // DL = 0 -> 4bit, N = 1 -> 2 line, F = 0 -> 5x8
-    System::instance()->usleep(40);
     write(0x06); // Increase, no shift
-    System::instance()->usleep(40);
     write(0x0c); // Display on, cursor off
-    System::instance()->usleep(40);
-    write(0x01); // clear display
-    System::instance()->usleep(40);
 }
 
 void Adm1602::write(int addr, const char* str, unsigned len)
@@ -39,25 +38,40 @@ void Adm1602::write(int addr, const char* str, unsigned len)
     }
 }
 
+void Adm1602::clear()
+{
+    write(0x01);
+    System::instance()->usleep(1600);
+}
+
+void Adm1602::home()
+{
+    write(0x02);
+    System::instance()->usleep(1600);
+}
+
+void Adm1602::cursor(bool on, bool blink)
+{
+    write(0x0c | (on ? 2 : 0) | (blink ? 1 : 0));
+}
+
 void Adm1602::write(uint8_t data, bool rs)
 {
-    mRs.set(rs);
+    if (mRs.get() != rs)
+    {
+        mRs.set(rs);
+        System::instance()->nspin(100);
+    }
     mEnable.set();
     for (int i = 0; i < 4; ++i) mData[i]->set((data & (16 << i)) != 0);
-    debug();
-    System::instance()->usleep(40);
+    System::instance()->nspin(300); // Eneable set -> reset > 300ns, Data valid -> Enable reset > 60ns
     mEnable.reset();
-    debug();
-    System::instance()->usleep(40);
+    System::instance()->nspin(200); // Enable cycle > 500ns
     mEnable.set();
     for (int i = 0; i < 4; ++i) mData[i]->set((data & (1 << i)) != 0);
-    debug();
-    System::instance()->usleep(40);
+    System::instance()->nspin(300); // Eneable set -> reset > 300ns, Data valid -> Enable reset > 60ns
     mEnable.reset();
-    debug();
     System::instance()->usleep(40);
-    mEnable.set();
-    mRs.reset();
 }
 
 void Adm1602::debug()

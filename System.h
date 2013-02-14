@@ -117,6 +117,7 @@ public:
 
     void updateBogoMips();
     uint32_t bogoMips() { return mBogoMips; }
+    void nspin(uint16_t ns);
 
 protected:
     System(BaseAddress base);

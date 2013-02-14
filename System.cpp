@@ -349,6 +349,14 @@ void System::updateBogoMips()
     mBogoMips = 100000000000000ul / (end - start);
 }
 
+void System::nspin(uint16_t ns)
+{
+    for (unsigned int i = mBogoMips / 100000 * ns / 1000; i != 0; --i)
+    {
+        __asm("");
+    }
+}
+
 System::System(BaseAddress base) :
     mBase(reinterpret_cast<volatile SCB*>(base)),
     mBogoMips(0),

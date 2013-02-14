@@ -123,7 +123,8 @@ void StmSystem::init()
     mGpioB.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
     mGpioB.configOutput(Gpio::Index::Pin6, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
     mDisplay.init();
-
+    mDisplay.clear();
+    System::instance()->debugMsg("READY:", 6);
 }
 
 void StmSystem::debugRead(char *msg, unsigned int len)
@@ -140,8 +141,9 @@ void StmSystem::debugMsg(const char *msg, unsigned int len)
 {
     static unsigned line = 0;
     mDisplay.write(line, msg, len);
-    line += 0x40;
-    if (line >= 0x80) line = 0;
+    line += len;
+    if (line >= 0x50) line = 0;
+    if (line >= 0x10 && line < 0x40) line = 0x40;
 }
 
 void StmSystem::printInfo()

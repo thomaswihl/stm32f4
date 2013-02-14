@@ -152,26 +152,31 @@ void Serial::interruptCallback(InterruptController::Index index)
     {
         System::instance()->printError("USART", "Overrun Error");
         Stream<char>::readResult(System::Event::Result::OverrunError);
+        System::instance()->debugMsg("O", 1);
     }
     if (sr->FE)
     {
         System::instance()->printError("USART", "Framing Error");
         Stream<char>::readResult(System::Event::Result::FramingError);
+        System::instance()->debugMsg("F", 1);
     }
     if (sr->PE)
     {
         System::instance()->printError("USART", "Parity Error");
         Stream<char>::readResult(System::Event::Result::ParityError);
+        System::instance()->debugMsg("P", 1);
     }
     if (sr->LBD)
     {
         System::instance()->printError("USART", "Line break");
         Stream<char>::readResult(System::Event::Result::ParityError);
+        System::instance()->debugMsg("L", 1);
     }
     if (sr->NF)
     {
         System::instance()->printError("USART", "Noise Error");
         Stream<char>::readResult(System::Event::Result::ParityError);
+        System::instance()->debugMsg("N", 1);
     }
     if (sr->RXNE && mBase->CR1.RXNEIE)
     {
@@ -179,7 +184,6 @@ void Serial::interruptCallback(InterruptController::Index index)
         if (!Stream<char>::read(static_cast<char>(mBase->DR)))
         {
             mBase->CR1.RXNEIE = 0;
-            printf("Disable I\n");
         }
     }
     if (sr->TC && mBase->CR1.TCIE)

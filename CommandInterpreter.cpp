@@ -352,6 +352,7 @@ void CommandInterpreter::eventCallback(System::Event* event)
                    te / 1000, te % 1000,
                    ti / 1000, ti % 1000);
             fflush(nullptr);
+            System::instance()->debugMsg(((s % 64) < 32) ? "#" : ".", 1);
         }
     }
 }

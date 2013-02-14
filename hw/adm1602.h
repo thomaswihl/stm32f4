@@ -11,6 +11,9 @@ public:
     Adm1602(Gpio::Pin& enable, Gpio::Pin& rs, Gpio::Pin& d4, Gpio::Pin& d5, Gpio::Pin& d6, Gpio::Pin& d7);
     void init();
     void write(int addr, const char *str, unsigned len);
+    void clear();
+    void home();
+    void cursor(bool on, bool blink);
 private:
     Gpio::Pin& mEnable;
     Gpio::Pin& mRs;
