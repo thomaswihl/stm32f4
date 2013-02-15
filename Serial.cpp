@@ -146,39 +146,36 @@ void Serial::configDma(Dma::Stream *write, Dma::Stream *read)
 
 void Serial::interruptCallback(InterruptController::Index index)
 {
-    uint32_t v = mBase->SR.v;
-    __SR* sr = reinterpret_cast<__SR*>(&v);
-    if (sr->ORE)
+    __SR sr;
+    sr.value = mBase->SR.value;
+    if (sr.bits.ORE)
     {
-        System::instance()->printError("USART", "Overrun Error");
+        static const char* const digit = "0123456789abcdef";
         Stream<char>::readResult(System::Event::Result::OverrunError);
-        System::instance()->debugMsg("O", 1);
+        // we have to read the data even though the STM tells us that there is nothing to read (RXNE = 0)
+        (void)mBase->DR;
     }
-    if (sr->FE)
+    if (sr.bits.FE)
     {
-        System::instance()->printError("USART", "Framing Error");
         Stream<char>::readResult(System::Event::Result::FramingError);
-        System::instance()->debugMsg("F", 1);
+        System::instance()->debugMsg("!F", 2);
     }
-    if (sr->PE)
+    if (sr.bits.PE)
     {
-        System::instance()->printError("USART", "Parity Error");
         Stream<char>::readResult(System::Event::Result::ParityError);
-        System::instance()->debugMsg("P", 1);
+        System::instance()->debugMsg("!P", 2);
     }
-    if (sr->LBD)
+    if (sr.bits.LBD)
     {
-        System::instance()->printError("USART", "Line break");
         Stream<char>::readResult(System::Event::Result::ParityError);
-        System::instance()->debugMsg("L", 1);
+        System::instance()->debugMsg("!L", 2);
     }
-    if (sr->NF)
+    if (sr.bits.NF)
     {
-        System::instance()->printError("USART", "Noise Error");
         Stream<char>::readResult(System::Event::Result::ParityError);
-        System::instance()->debugMsg("N", 1);
+        System::instance()->debugMsg("!N", 2);
     }
-    if (sr->RXNE && mBase->CR1.RXNEIE)
+    if (sr.bits.RXNE && mBase->CR1.RXNEIE)
     {
         // check if we need to read another byte, if not disable the interrupt
         if (!Stream<char>::read(static_cast<char>(mBase->DR)))
@@ -186,7 +183,7 @@ void Serial::interruptCallback(InterruptController::Index index)
             mBase->CR1.RXNEIE = 0;
         }
     }
-    if (sr->TC && mBase->CR1.TCIE)
+    if (sr.bits.TC && mBase->CR1.TCIE)
     {
         // check if we need to write another byte, if not disable the interrupt
         char c;
@@ -219,14 +216,14 @@ void Serial::clockCallback(ClockControl::Callback::Reason reason, uint32_t newCl
 
 void Serial::waitTransmitComplete()
 {
-    while (!mBase->SR.SR.TC)
+    while (!mBase->SR.bits.TC)
     {
     }
 }
 
 void Serial::waitReceiveNotEmpty()
 {
-    while (!mBase->SR.SR.RXNE)
+    while (!mBase->SR.bits.RXNE)
     {
     }
 }
@@ -299,7 +296,7 @@ void Serial::writeTrigger()
         {
             mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
             mDmaWrite->setTransferCount(len);
-            mBase->SR.SR.TC = 0;
+            mBase->SR.bits.TC = 0;
             mDmaWrite->start();
         }
     }

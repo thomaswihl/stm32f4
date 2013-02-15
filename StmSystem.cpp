@@ -80,7 +80,7 @@ void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
 
 void StmSystem::init()
 {
-    mRcc.setSystemClock(168000000);
+    //mRcc.setSystemClock(168000000);
     mRcc.enable(ClockControl::Function::Usart2);
     mRcc.enable(ClockControl::Function::GpioA);
     mRcc.enable(ClockControl::Function::Dma1);
@@ -140,10 +140,21 @@ void StmSystem::debugWrite(const char *msg, unsigned int len)
 void StmSystem::debugMsg(const char *msg, unsigned int len)
 {
     static unsigned line = 0;
-    mDisplay.write(line, msg, len);
-    line += len;
-    if (line >= 0x50) line = 0;
-    if (line >= 0x10 && line < 0x40) line = 0x40;
+    for (unsigned i = 0; i < len; ++i)
+    {
+        mDisplay.write(msg++, 1);
+        ++line;
+        if (line >= 0x50)
+        {
+            line = 0;
+            mDisplay.moveTo(line);
+        }
+        if (line >= 0x10 && line < 0x40)
+        {
+            line = 0x40;
+            mDisplay.moveTo(line);
+        }
+    }
 }
 
 void StmSystem::printInfo()

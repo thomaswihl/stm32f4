@@ -27,15 +27,19 @@ void Adm1602::init()
     write(0x0c); // Display on, cursor off
 }
 
-void Adm1602::write(int addr, const char* str, unsigned len)
+void Adm1602::write(const char* str, unsigned len)
 {
-    write(addr | 0x80);
     if (len > 0x20) len = 0x20;
     while (len > 0)
     {
         write(*str++, true);
         --len;
     }
+}
+
+void Adm1602::moveTo(int addr)
+{
+    write(addr | 0x80);
 }
 
 void Adm1602::clear()

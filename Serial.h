@@ -60,28 +60,28 @@ protected:
     virtual void dmaWriteComplete();
 
 private:
-    struct __SR
+    union __SR
     {
-        uint32_t PE : 1;
-        uint32_t FE : 1;
-        uint32_t NF : 1;
-        uint32_t ORE : 1;
-        uint32_t IDLE : 1;
-        uint32_t RXNE : 1;
-        uint32_t TC : 1;
-        uint32_t TXE : 1;
-        uint32_t LBD : 1;
-        uint32_t CTS : 1;
-        uint32_t __RESERVED0 : 22;
+        struct
+        {
+            uint32_t PE : 1;
+            uint32_t FE : 1;
+            uint32_t NF : 1;
+            uint32_t ORE : 1;
+            uint32_t IDLE : 1;
+            uint32_t RXNE : 1;
+            uint32_t TC : 1;
+            uint32_t TXE : 1;
+            uint32_t LBD : 1;
+            uint32_t CTS : 1;
+            uint32_t __RESERVED0 : 22;
+        }   bits;
+        uint32_t value;
     };
 
     struct USART
     {
-        union
-        {
-            __SR SR;
-            uint32_t v;
-        }   SR;
+        __SR SR;
         uint32_t DR;
         struct __BRR
         {
