@@ -47,7 +47,7 @@ StmSystem::StmSystem() :
 //    mUsart6(BaseAddress::USART6, &mRcc, ClockControl::Clock::APB2),
     mDebug(mUsart2),
     mSpi1(BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
-//    mSpi2(BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
+    mSpi2(BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
 //    mSpi3(BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
     mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
     mFpu(BaseAddress::FPU),

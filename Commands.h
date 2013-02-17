@@ -4,6 +4,7 @@
 #include "CommandInterpreter.h"
 #include "StmSystem.h"
 #include "hw/lis302dl.h"
+#include "hw/ws2801.h"
 #include "System.h"
 
 #include <cstdio>
@@ -119,6 +120,18 @@ private:
     Timer& mTimer;
     System::Event mEvent;
     unsigned mCount;
+};
+
+class CmdRgb : public CommandInterpreter::Command
+{
+public:
+    CmdRgb(Ws2801& ws);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Set RGB led values."; }
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    Ws2801& mWs;
 };
 
 

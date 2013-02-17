@@ -27,6 +27,9 @@ char const * const CmdPin::ARGV[] = { "Ps:pin", "Vob:value" };
 char const * const CmdMeasureClock::NAME[] = { "clock" };
 char const * const CmdMeasureClock::ARGV[] = { };
 
+char const * const CmdRgb::NAME[] = { "rgb" };
+char const * const CmdRgb::ARGV[] = { "Vu:index", "Vu:red", "Vu:green", "Vu:blue" };
+
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
 }
@@ -272,4 +275,15 @@ void CmdMeasureClock::eventCallback(System::Event *event)
         mCount = 0;
     }
     printf("%lu\n", mTimer.captureCompare(Timer::CaptureCompareIndex::Index1));
+}
+
+
+CmdRgb::CmdRgb(Ws2801 &ws) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mWs(ws)
+{
+}
+
+bool CmdRgb::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    mWs.set(argv[1].value.u, argv[2].value.u, argv[3].value.u, argv[4].value.u);
+    return true;
 }

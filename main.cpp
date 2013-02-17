@@ -20,6 +20,7 @@
 #include "CommandInterpreter.h"
 #include "Commands.h"
 #include "hw/lis302dl.h"
+#include "hw/ws2801.h"
 #include "Power.h"
 
 #include <cstdio>
@@ -97,6 +98,7 @@ int main()
     interpreter.add(new CmdWrite());
     interpreter.add(new CmdLis(lis));
 
+    // clock command
     InterruptController::Line timer11Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_TRG_COM_TIM11);
     Timer timer11(StmSystem::BaseAddress::TIM11, timer11Irq);
     Power pwr(StmSystem::BaseAddress::PWR);
@@ -105,8 +107,29 @@ int main()
     pwr.backupDomainWp(true);
     interpreter.add(new CmdMeasureClock(gSys.mRcc, timer11));
 
+    // pin command
     Gpio* gpio[] = { &gSys.mGpioA, &gSys.mGpioB, &gSys.mGpioC, &gSys.mGpioD, &gSys.mGpioE, &gSys.mGpioF, &gSys.mGpioG, &gSys.mGpioH, &gSys.mGpioI };
     interpreter.add(new CmdPin(gpio, sizeof(gpio) / sizeof(gpio[0])));
+
+    // rgb command
+    gSys.mRcc.enable(ClockControl::Function::Spi2);
+    gSys.mRcc.enable(ClockControl::Function::GpioB);
+    // SCK
+    gSys.mGpioB.configOutput(Gpio::Index::Pin13, Gpio::OutputType::PushPull);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin13, Gpio::AltFunc::SPI2);
+    // MOSI
+    gSys.mGpioB.configOutput(Gpio::Index::Pin15, Gpio::OutputType::PushPull);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin15, Gpio::AltFunc::SPI2);
+
+    gSys.mSpi2.configDma(new Dma::Stream(gSys.mDma1, Dma::Stream::StreamIndex::Stream4, Dma::Stream::ChannelIndex::Channel0,
+                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream4)),
+                         new Dma::Stream(gSys.mDma1, Dma::Stream::StreamIndex::Stream3, Dma::Stream::ChannelIndex::Channel0,
+                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream3))
+                         );
+
+    Ws2801 ws(gSys.mSpi2, 4);
+    ws.enable();
+    interpreter.add(new CmdRgb(ws));
 
     interpreter.start();
 

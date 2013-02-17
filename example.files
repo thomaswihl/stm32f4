@@ -52,3 +52,5 @@ Power.h
 Power.cpp
 hw/adm1602.h
 hw/adm1602.cpp
+hw/ws2801.h
+hw/ws2801.cpp
