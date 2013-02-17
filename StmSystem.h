@@ -209,7 +209,6 @@ public:
     IndependentWatchdog mIWdg;
 
     Gpio::Pin mDisplayRs;
-    Gpio::Pin mDisplayRw;
     Gpio::Pin mDisplayE;
     Gpio::Pin mDisplayDb4;
     Gpio::Pin mDisplayDb5;
@@ -229,8 +228,8 @@ public:
     virtual uint64_t ns() { return mSysTick.ns(); }
     virtual void handleSysTick() { mSysTick.tick(); }
 protected:
-    virtual void debugRead(char *msg, unsigned int len);
-    virtual void debugWrite(const char *msg, unsigned int len);
+    virtual void consoleRead(char *msg, unsigned int len);
+    virtual void consoleWrite(const char *msg, unsigned int len);
     virtual void debugMsg(const char *msg, unsigned int len);
 
 private:

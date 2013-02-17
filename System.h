@@ -47,7 +47,7 @@ public:
     class Event
     {
     public:
-        enum class Result { Success, ParityError, FramingError, OverrunError };
+        enum class Result { Success, ParityError, FramingError, NoiseDetected, OverrunError, LineBreak };
         class Callback
         {
         public:
@@ -79,8 +79,8 @@ public:
     typedef unsigned long BaseAddress;
 
     virtual void handleInterrupt(uint32_t index) = 0;
-    virtual void debugRead(char *msg, unsigned int len) = 0;
-    virtual void debugWrite(const char *msg, unsigned int len) = 0;
+    virtual void consoleRead(char *msg, unsigned int len) = 0;
+    virtual void consoleWrite(const char *msg, unsigned int len) = 0;
     virtual void debugMsg(const char *msg, unsigned int len) = 0;
     virtual void handleSysTick() = 0;
     virtual void usleep(unsigned int us) = 0;
@@ -100,6 +100,8 @@ public:
 
     void printWarning(const char* component, const char* message);
     void printError(const char* component, const char* message);
+    template<typename T>
+    void debugHex(T value);
 
     uint32_t memFree();
     uint32_t memUsed();

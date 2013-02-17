@@ -52,13 +52,12 @@ StmSystem::StmSystem() :
     mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
     mFpu(BaseAddress::FPU),
     mIWdg(BaseAddress::IWDG),
-    mDisplayRs(mGpioB, Gpio::Index::Pin6),
-    mDisplayRw(mGpioB, Gpio::Index::Pin5),
-    mDisplayE(mGpioB, Gpio::Index::Pin4),
-    mDisplayDb4(mGpioB, Gpio::Index::Pin0),
-    mDisplayDb5(mGpioB, Gpio::Index::Pin1),
-    mDisplayDb6(mGpioB, Gpio::Index::Pin2),
-    mDisplayDb7(mGpioB, Gpio::Index::Pin3),
+    mDisplayRs(mGpioE, Gpio::Index::Pin7),
+    mDisplayE(mGpioE, Gpio::Index::Pin8),
+    mDisplayDb4(mGpioE, Gpio::Index::Pin9),
+    mDisplayDb5(mGpioE, Gpio::Index::Pin10),
+    mDisplayDb6(mGpioE, Gpio::Index::Pin11),
+    mDisplayDb7(mGpioE, Gpio::Index::Pin12),
     mDisplay(mDisplayE, mDisplayRs, mDisplayDb4, mDisplayDb5, mDisplayDb6, mDisplayDb7)
 {
     init();
@@ -80,7 +79,7 @@ void StmSystem::handleTrap(System::TrapIndex index, unsigned int* stackPointer)
 
 void StmSystem::init()
 {
-    //mRcc.setSystemClock(168000000);
+    mRcc.setSystemClock(168000000);
     mRcc.enable(ClockControl::Function::Usart2);
     mRcc.enable(ClockControl::Function::GpioA);
     mRcc.enable(ClockControl::Function::Dma1);
@@ -114,25 +113,24 @@ void StmSystem::init()
     mFpu.enable(FpuControl::AccessPrivileges::Full);
     mSysTick.enable();
 
-    mRcc.enable(ClockControl::Function::GpioB);
-    mGpioB.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioB.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioB.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioB.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioB.configOutput(Gpio::Index::Pin4, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioB.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
-    mGpioB.configOutput(Gpio::Index::Pin6, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
+    mRcc.enable(ClockControl::Function::GpioE);
+    mGpioE.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    mGpioE.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    mGpioE.configOutput(Gpio::Index::Pin9, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    mGpioE.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    mGpioE.configOutput(Gpio::Index::Pin11, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    mGpioE.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
     mDisplay.init();
     mDisplay.clear();
     System::instance()->debugMsg("READY:", 6);
 }
 
-void StmSystem::debugRead(char *msg, unsigned int len)
+void StmSystem::consoleRead(char *msg, unsigned int len)
 {
     mDebug.read(msg, len);
 }
 
-void StmSystem::debugWrite(const char *msg, unsigned int len)
+void StmSystem::consoleWrite(const char *msg, unsigned int len)
 {
     mDebug.write(msg, len);
 }

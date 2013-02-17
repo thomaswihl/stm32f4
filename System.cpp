@@ -146,7 +146,7 @@ int _close(int file)
 
 int _read(int file, char *ptr, int len)
 {
-    System::instance()->debugRead(ptr, len);
+    System::instance()->consoleRead(ptr, len);
     return len;
 }
 
@@ -164,7 +164,7 @@ int _kill(int pid, int sig)
 
 int _write(int file, const char *ptr, int len)
 {
-    System::instance()->debugWrite(ptr, len);
+    System::instance()->consoleWrite(ptr, len);
     return len;
 }
 
@@ -492,4 +492,24 @@ void System::printError(const char *component, const char *message)
 {
     printf("\nERROR in %s: %s\n", component, message);
 }
+
+template<typename T>
+void System::debugHex(T value)
+{
+    static const char* const digit = "0123456789abcdef";
+    char buf[sizeof(T) * 2 + 2];
+    int index = 0;
+    buf[index++] = '0';
+    buf[index++] = 'x';
+    for (int i = sizeof(T) * 2 - 1; i >= 0; --i)
+    {
+        buf[index++] = digit[(value >> (4 * i)) & 0xf];
+    }
+    debugMsg(buf, sizeof(T) * 2 + 2);
+}
+
+template void System::debugHex(uint8_t value);
+template void System::debugHex(uint16_t value);
+template void System::debugHex(uint32_t value);
+template void System::debugHex(uint64_t value);
 

@@ -80,12 +80,15 @@ void Adm1602::write(uint8_t data, bool rs)
 
 void Adm1602::debug()
 {
-    return;
-    char buf[3];
+    char buf[10];
     char table[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    uint8_t data = *((uint8_t*)0x40020410);
+    uint8_t data = (*((uint32_t*)0x40021010)) >> 7;
     buf[0] = table[data >> 4];
     buf[1] = table[data & 0x0f];
-    buf[2] = ' ';
-    System::instance()->debugWrite(buf, 3);
+    buf[2] = '=';
+    data = (*((uint32_t*)0x40021014)) >> 7;
+    buf[3] = table[data >> 4];
+    buf[4] = table[data & 0x0f];
+    buf[5] = ' ';
+    System::instance()->consoleWrite(buf, 6);
 }

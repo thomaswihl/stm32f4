@@ -209,6 +209,11 @@ void Dma::Stream::setFlowControl(Dma::Stream::FlowControl flowControl)
     mStreamConfig.PFCTRL = (flowControl == FlowControl::Dma) ? 0 : 1;
 }
 
+void Dma::Stream::setCircular(bool circular)
+{
+    mDma.mBase->STREAM[mStream].CR.CIRC = circular ? 1 : 0;
+}
+
 
 void Dma::Stream::configFifo(Dma::Stream::FifoThreshold threshold)
 {

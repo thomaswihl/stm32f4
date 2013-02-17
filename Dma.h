@@ -133,6 +133,7 @@ public:
         void setTransferCount(uint16_t count);
         uint16_t transferCount();
         void setFlowControl(FlowControl flowControl);
+        void setCircular(bool circular);
 
         void config(Direction direction, bool peripheralIncrement, bool memoryIncrement, DataSize peripheralDataSize, DataSize memoryDataSize, BurstLength peripheralBurst, BurstLength memoryBurst);
         void configFifo(FifoThreshold threshold);

@@ -150,7 +150,6 @@ void Serial::interruptCallback(InterruptController::Index index)
     sr.value = mBase->SR.value;
     if (sr.bits.ORE)
     {
-        static const char* const digit = "0123456789abcdef";
         Stream<char>::readResult(System::Event::Result::OverrunError);
         // we have to read the data even though the STM tells us that there is nothing to read (RXNE = 0)
         (void)mBase->DR;
@@ -158,22 +157,27 @@ void Serial::interruptCallback(InterruptController::Index index)
     if (sr.bits.FE)
     {
         Stream<char>::readResult(System::Event::Result::FramingError);
-        System::instance()->debugMsg("!F", 2);
+        // we have to read the data even though the STM tells us that there is nothing to read (RXNE = 0)
+        (void)mBase->DR;
     }
     if (sr.bits.PE)
     {
         Stream<char>::readResult(System::Event::Result::ParityError);
-        System::instance()->debugMsg("!P", 2);
+        // we have to wait for the RXNE flag
     }
     if (sr.bits.LBD)
     {
-        Stream<char>::readResult(System::Event::Result::ParityError);
-        System::instance()->debugMsg("!L", 2);
+        Stream<char>::readResult(System::Event::Result::LineBreak);
+        // we have to manually clear the bit
+        __SR clear;
+        clear.bits.LBD = 1;
+        mBase->SR.value = clear.value;
     }
     if (sr.bits.NF)
     {
-        Stream<char>::readResult(System::Event::Result::ParityError);
-        System::instance()->debugMsg("!N", 2);
+        Stream<char>::readResult(System::Event::Result::NoiseDetected);
+        // we have to read the data even though the STM tells us that there is nothing to read (RXNE = 0)
+        (void)mBase->DR;
     }
     if (sr.bits.RXNE && mBase->CR1.RXNEIE)
     {
