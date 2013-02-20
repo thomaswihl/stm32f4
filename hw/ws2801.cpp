@@ -12,7 +12,7 @@ Ws2801::Ws2801(Spi<char> &spi, unsigned count) :
 void Ws2801::enable()
 {
     mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::LowWhenIdle, Spi<char>::ClockPhase::FirstTransition, Spi<char>::Endianess::MsbFirst);
-    mSpi.setSpeed(1000000);
+    mSpi.setSpeed(25 * 1000* 1000);
     mSpi.enable(Device::All);
 }
 

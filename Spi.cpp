@@ -29,7 +29,29 @@ uint32_t Spi<T>::setSpeed(uint32_t maxSpeed)
 template<typename T>
 void Spi<T>::setMasterSlave(Spi::MasterSlave masterSlave)
 {
-    mBase->CR1.MSTR = static_cast<uint32_t>(masterSlave);
+    switch (masterSlave)
+    {
+    case Spi::MasterSlave::Master:
+        mBase->CR1.SSM = 1;
+        mBase->CR1.SSI = 1;
+        mBase->CR1.MSTR = 1;
+        break;
+    case Spi::MasterSlave::Slave:
+        mBase->CR1.SSM = 1;
+        mBase->CR1.SSI = 0;
+        mBase->CR1.MSTR = 1;
+        break;
+    case Spi::MasterSlave::MasterNssOut:
+        mBase->CR1.SSM = 0;
+        mBase->CR2.SSOE = 1;
+        mBase->CR1.MSTR = 1;
+        break;
+    case Spi::MasterSlave::MasterNssIn:
+        mBase->CR1.SSM = 0;
+        mBase->CR2.SSOE = 0;
+        mBase->CR1.MSTR = 1;
+        break;
+    }
 }
 
 template<typename T>
@@ -59,16 +81,6 @@ void Spi<T>::configChipSelect(Gpio::Pin *chipSelect, bool activeLow)
     mChipSelect = chipSelect;
     mActiveLow = activeLow;
     deselect();
-    if (mChipSelect != nullptr)
-    {
-        mBase->CR1.SSM = 1;
-        mBase->CR1.SSI = 1;
-    }
-    else
-    {
-        mBase->CR1.SSM = 0;
-        mBase->CR1.SSI = 0;
-    }
 }
 
 template<typename T>

@@ -13,7 +13,7 @@ class Spi : public Device, public ClockControl::Callback, public Stream<T>
 {
 public:
     Spi(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
-    enum class MasterSlave { Master = 1, Slave = 0 };
+    enum class MasterSlave { Master, Slave, MasterNssOut, MasterNssIn };
     enum class ClockPolarity { LowWhenIdle = 0, HighWhenIdle = 1 };
     // Selects the transition for data capture
     enum class ClockPhase { FirstTransition = 0, SecondTransition = 1 };
