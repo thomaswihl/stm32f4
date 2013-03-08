@@ -78,6 +78,28 @@ private:
         uint8_t CCMR_INPUT;
     };
 
+    union __SR
+    {
+        struct
+        {
+            uint16_t UIF : 1;
+            uint16_t CC1IF : 1;
+            uint16_t CC2IF : 1;
+            uint16_t CC3IF : 1;
+            uint16_t CC4IF : 1;
+            uint16_t COMIF : 1;
+            uint16_t TIF : 1;
+            uint16_t BIF : 1;
+            uint16_t __RESERVED0 : 1;
+            uint16_t CC1OF : 1;
+            uint16_t CC2OF : 1;
+            uint16_t CC3OF : 1;
+            uint16_t CC4OF : 1;
+            uint16_t __RESERVED1 : 3;
+        }   bits;
+        uint16_t value;
+    };
+
     struct TIMER
     {
         struct __CR1
@@ -143,23 +165,7 @@ private:
             uint16_t __RESERVED0 : 1;
         }   DIER;
         uint16_t __RESERVED3;
-        struct __SR
-        {
-            uint16_t UIF : 1;
-            uint16_t CC1IF : 1;
-            uint16_t CC2IF : 1;
-            uint16_t CC3IF : 1;
-            uint16_t CC4IF : 1;
-            uint16_t COMIF : 1;
-            uint16_t TIF : 1;
-            uint16_t BIF : 1;
-            uint16_t __RESERVED0 : 1;
-            uint16_t CC1OF : 1;
-            uint16_t CC2OF : 1;
-            uint16_t CC3OF : 1;
-            uint16_t CC4OF : 1;
-            uint16_t __RESERVED1 : 3;
-        }   SR;
+        __SR SR;
         uint16_t __RESERVED4;
         struct __EGR
         {

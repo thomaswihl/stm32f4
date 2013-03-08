@@ -30,6 +30,11 @@ char const * const CmdMeasureClock::ARGV[] = { };
 char const * const CmdRgb::NAME[] = { "rgb" };
 char const * const CmdRgb::ARGV[] = { "Vu:index", "Vu:red", "Vu:green", "Vu:blue" };
 
+char const * const CmdLightSensor::NAME[] = { "ls" };
+char const * const CmdLightSensor::ARGV[] = { };
+
+
+
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
 }
@@ -287,3 +292,69 @@ bool CmdRgb::execute(CommandInterpreter &interpreter, int argc, const CommandInt
     mWs.set(argv[1].value.u, argv[2].value.u, argv[3].value.u, argv[4].value.u);
     return true;
 }
+
+
+CmdLightSensor::CmdLightSensor(Gpio::Pin &led, Gpio::Pin &s2, Gpio::Pin &s3, Timer &timer, Ws2801 &ws) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mLed(led), mS2(s2), mS3(s3), mTimer(timer), mWs(ws), mEvent(*this)
+{
+}
+
+bool CmdLightSensor::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    mLed.set();
+
+    mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::CapturePrescaler::EveryEdge, Timer::CaptureFilter::F1N1, Timer::CaptureEdge::Rising);
+    mTimer.setEvent(Timer::EventType::CaptureCompare1, &mEvent);
+    mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
+    mTimer.setPrescaler(10);
+    mTimer.enable();
+    //while (true)
+    {
+        mS2.set(false);
+        mS3.set(false);
+        uint32_t r = get();
+        mS2.set(true);
+        mS3.set(true);
+        uint32_t g = get();
+        mS2.set(false);
+        mS3.set(true);
+        uint32_t b = get();
+        mS2.set(true);
+        mS3.set(false);
+        uint32_t w = get();
+        mWs.set(0, 65535 / r, 65535 / g, 65535 / b);
+        printf("%lu, %lu, %lu, %lu -> %lu, %lu, %lu\n", r, g, b, w, 1000 * w / r, 1000 * w / g, 1000 * w / b);
+    }
+    mTimer.disable();
+    return true;
+}
+
+void CmdLightSensor::eventCallback(System::Event *event)
+{
+    static int count = 0;
+    ++count;
+    if (count > 8)
+    {
+        mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::None);
+        mTimer.disable();
+        count = 0;
+    }
+    printf("%lu\n", mTimer.captureCompare(Timer::CaptureCompareIndex::Index1));
+}
+
+uint32_t CmdLightSensor::get()
+{
+    uint32_t delta;
+    for (int i = 0; i < 2; ++i)
+    {
+        uint32_t first = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+        uint32_t second;
+        do
+        {
+            second = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+        }   while (second == first);
+        if (second > first) delta = second - first;
+        else delta = 65536 + second - first;
+    }
+    return delta;
+}
+

@@ -134,5 +134,26 @@ private:
     Ws2801& mWs;
 };
 
+class CmdLightSensor : public CommandInterpreter::Command, public System::Event::Callback
+{
+public:
+    CmdLightSensor(Gpio::Pin& led, Gpio::Pin& s2, Gpio::Pin& s3, Timer& timer, Ws2801 &ws);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Read RGB values."; }
+protected:
+    virtual void eventCallback(System::Event* event);
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    Gpio::Pin& mLed;
+    Gpio::Pin& mS2;
+    Gpio::Pin& mS3;
+    Timer& mTimer;
+    Ws2801& mWs;
+    System::Event mEvent;
+
+    uint32_t get();
+};
+
 
 #endif // COMMANDS_H

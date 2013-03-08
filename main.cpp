@@ -131,6 +131,22 @@ int main()
     ws.enable();
     interpreter.add(new CmdRgb(ws));
 
+    gSys.mRcc.enable(ClockControl::Function::GpioE);
+    gSys.mRcc.enable(ClockControl::Function::GpioA);
+    gSys.mRcc.enable(ClockControl::Function::Tim1);
+    gSys.mGpioE.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull);
+    gSys.mGpioE.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
+    gSys.mGpioE.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull);
+    gSys.mGpioA.configInput(Gpio::Index::Pin8);
+    gSys.mGpioA.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM1);
+    Gpio::Pin led(gSys.mGpioE, Gpio::Index::Pin0);
+    Gpio::Pin s2(gSys.mGpioE, Gpio::Index::Pin1);
+    Gpio::Pin s3(gSys.mGpioE, Gpio::Index::Pin2);
+    InterruptController::Line timer1Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
+    Timer timer1(StmSystem::BaseAddress::TIM1, timer1Irq);
+    interpreter.add(new CmdLightSensor(led, s2, s3, timer1, ws));
+
+
     interpreter.start();
 
     //gSys.mIWdg.enable(2000000);

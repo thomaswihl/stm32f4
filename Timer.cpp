@@ -110,8 +110,15 @@ void Timer::enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable
 
 void Timer::interruptCallback(InterruptController::Index index)
 {
-    if (mBase->SR.UIF) postEvent(EventType::Update);
-    if (mBase->SR.CC1IF) postEvent(EventType::CaptureCompare1);
+    __SR sr;
+    sr.value = mBase->SR.value;
+
+    if (sr.bits.UIF) postEvent(EventType::Update);
+    if (sr.bits.CC1IF) postEvent(EventType::CaptureCompare1);
+    if (sr.bits.CC2IF) postEvent(EventType::CaptureCompare2);
+    if (sr.bits.CC3IF) postEvent(EventType::CaptureCompare3);
+    if (sr.bits.CC4IF) postEvent(EventType::CaptureCompare4);
+    mBase->SR.value = sr.value;
 }
 
 void Timer::postEvent(Timer::EventType type)
