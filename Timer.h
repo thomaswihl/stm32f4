@@ -35,7 +35,9 @@ public:
     enum class CaptureCompareEnable { None = 0, Output = 1, ComplementeryOuput = 4, All = 5 };
     enum class Option { Timer11_Input1_Gpio = 0, Timer11_Input1_Hse_Rtc = 2 };
     enum class EventType { Update, CaptureCompare1, CaptureCompare2, CaptureCompare3, CaptureCompare4 };
-    Timer(System::BaseAddress base, InterruptController::Line& line);
+    enum class InterruptType { Update, CaptureCompare, Commutation, Trigger, Break };
+
+    Timer(System::BaseAddress base);
 
     void enable();
     void disable();
@@ -50,6 +52,7 @@ public:
     void setOption(Option option);
     void setEvent(EventType type, System::Event* event);
     uint32_t captureCompare(CaptureCompareIndex index);
+    void setInterrupt(InterruptType interruptType, InterruptController::Line* line);
 
     void configCapture(CaptureCompareIndex index, CapturePrescaler prescaler, CaptureFilter filter, CaptureEdge edge);
     void enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable enable);
@@ -58,7 +61,7 @@ protected:
     virtual void interruptCallback(InterruptController::Index index);
 
 private:
-    enum { EVENT_COUNT = 5 };
+    enum { EVENT_COUNT = 5, LINE_COUNT = 5 };
     struct CCMR_OUTPUT
     {
         uint8_t CCS : 2;
@@ -220,7 +223,7 @@ private:
         uint16_t __RESERVEDE;
     };
     volatile TIMER* mBase;
-    InterruptController::Line& mLine;
+    InterruptController::Line* mLine[LINE_COUNT];
     System::Event* mEvent[EVENT_COUNT];
 
     void postEvent(EventType type);

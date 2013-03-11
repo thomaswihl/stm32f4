@@ -20,24 +20,29 @@
 
 #include <cassert>
 
-Timer::Timer(System::BaseAddress base, InterruptController::Line &line) :
-    mBase(reinterpret_cast<volatile TIMER*>(base)),
-    mLine(line)
+Timer::Timer(System::BaseAddress base) :
+    mBase(reinterpret_cast<volatile TIMER*>(base))
 {
     static_assert(sizeof(TIMER) == 0x54, "Struct has wrong size, compiler problem.");
+    for (unsigned i = 0; i < LINE_COUNT; ++i) mLine[i] = nullptr;
     for (unsigned i = 0; i < EVENT_COUNT; ++i) mEvent[i] = nullptr;
-    mLine.setCallback(this);
 }
 
 void Timer::enable()
 {
+    if (mLine[static_cast<int>(InterruptType::Update)] != nullptr)
+    {
+        mLine[static_cast<int>(InterruptType::Update)]->enable();
+    }
     mBase->CR1.CEN = 1;
-    mLine.enable();
 }
 
 void Timer::disable()
 {
-    mLine.disable();
+    if (mLine[static_cast<int>(InterruptType::Update)] != nullptr)
+    {
+        mLine[static_cast<int>(InterruptType::Update)]->disable();
+    }
     mBase->CR1.CEN = 0;
 }
 
@@ -84,6 +89,14 @@ uint32_t Timer::captureCompare(Timer::CaptureCompareIndex index)
     return mBase->CCR[static_cast<int>(index)];
 }
 
+void Timer::setInterrupt(Timer::InterruptType interruptType, InterruptController::Line* line)
+{
+    int index = static_cast<int>(interruptType);
+    if (mLine[index] != nullptr) mLine[index]->disable();
+    mLine[index] = line;
+    mLine[index]->setCallback(this);
+}
+
 void Timer::configCapture(Timer::CaptureCompareIndex index, Timer::CapturePrescaler prescaler, Timer::CaptureFilter filter, Timer::CaptureEdge edge)
 {
     CCMR_INPUT mr;
@@ -102,6 +115,8 @@ void Timer::configCapture(Timer::CaptureCompareIndex index, Timer::CapturePresca
 
 void Timer::enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable enable)
 {
+    if (enable == CaptureCompareEnable::None) mLine[static_cast<int>(InterruptType::CaptureCompare)]->disable();
+    else mLine[static_cast<int>(InterruptType::CaptureCompare)]->enable();
     int shift = static_cast<uint16_t>(index) * 4;
     uint16_t andmask = ~(static_cast<uint16_t>(CaptureCompareEnable::All) << shift);
     uint16_t ormask = static_cast<uint16_t>(enable) << shift;

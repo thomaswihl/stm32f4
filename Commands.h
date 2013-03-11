@@ -145,6 +145,7 @@ protected:
 private:
     static char const * const NAME[];
     static char const * const ARGV[];
+    enum class Color { Red, Green, Blue, White };
     Gpio::Pin& mLed;
     Gpio::Pin& mS2;
     Gpio::Pin& mS3;
@@ -152,7 +153,10 @@ private:
     Ws2801& mWs;
     System::Event mEvent;
 
-    uint32_t get();
+    uint32_t mLastValue;
+    bool mFirstTime;
+
+    void setColor(Color color);
 };
 
 

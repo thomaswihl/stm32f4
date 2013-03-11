@@ -100,7 +100,8 @@ int main()
 
     // clock command
     InterruptController::Line timer11Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_TRG_COM_TIM11);
-    Timer timer11(StmSystem::BaseAddress::TIM11, timer11Irq);
+    Timer timer11(StmSystem::BaseAddress::TIM11);
+    timer11.setInterrupt(Timer::InterruptType::CaptureCompare, &timer11Irq);
     Power pwr(StmSystem::BaseAddress::PWR);
     pwr.backupDomainWp(false);
     gSys.mRcc.enableRtc(ClockControl::RtcClock::HighSpeedExternal);
@@ -143,7 +144,8 @@ int main()
     Gpio::Pin s2(gSys.mGpioE, Gpio::Index::Pin1);
     Gpio::Pin s3(gSys.mGpioE, Gpio::Index::Pin2);
     InterruptController::Line timer1Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
-    Timer timer1(StmSystem::BaseAddress::TIM1, timer1Irq);
+    Timer timer1(StmSystem::BaseAddress::TIM1);
+    timer1.setInterrupt(Timer::InterruptType::CaptureCompare, &timer1Irq);
     interpreter.add(new CmdLightSensor(led, s2, s3, timer1, ws));
 
 
