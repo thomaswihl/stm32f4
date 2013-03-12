@@ -153,10 +153,8 @@ private:
     Ws2801& mWs;
     System::Event mEvent;
 
-    uint32_t mLastValue;
-    bool mFirstTime;
-
     void setColor(Color color);
+    Color nextColor(Color color);
 };
 
 

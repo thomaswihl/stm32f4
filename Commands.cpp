@@ -294,47 +294,82 @@ bool CmdRgb::execute(CommandInterpreter &interpreter, int argc, const CommandInt
 }
 
 
-CmdLightSensor::CmdLightSensor(Gpio::Pin &led, Gpio::Pin &s2, Gpio::Pin &s3, Timer &timer, Ws2801 &ws) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mLed(led), mS2(s2), mS3(s3), mTimer(timer), mWs(ws), mEvent(*this), mLastValue(0), mFirstTime(true)
+CmdLightSensor::CmdLightSensor(Gpio::Pin &led, Gpio::Pin &s2, Gpio::Pin &s3, Timer &timer, Ws2801 &ws) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mLed(led), mS2(s2), mS3(s3), mTimer(timer), mWs(ws), mEvent(*this)
 {
 }
 
 bool CmdLightSensor::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
+    setColor(Color::Red);
     mLed.set();
-
     mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::CapturePrescaler::EveryEdge, Timer::CaptureFilter::F1N1, Timer::CaptureEdge::Rising);
     mTimer.setEvent(Timer::EventType::CaptureCompare1, &mEvent);
-    mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
     mTimer.setPrescaler(10);
-    setColor(Color::Red);
     mTimer.enable();
+    mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
     return true;
 }
 
 void CmdLightSensor::eventCallback(System::Event *event)
 {
     static int count = 0;
+    static int lastValue = 0;
+    static int lastDelta = 0;
+    static Color color = Color::Red;
+    static int r, g, b, w;
+    static int rd = 0, gd = 0, bd = 0, wd = 0;
+    static int rc, gc, bc, wc;
+
+
     ++count;
-    if (count > 8)
+    int delta;
+    int thisValue = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+    if (thisValue >= lastValue) delta = thisValue - lastValue;
+    else delta = 65536 + thisValue - lastValue;
+    if (count > 20 || (delta > 5 && std::abs(delta - lastDelta) < (delta / 200 + 5)))
     {
-        mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::None);
-        mTimer.disable();
+        switch (color)
+        {
+        case Color::Red: r = delta; rc = count; break;
+        case Color::Green: g = delta; gc = count; break;
+        case Color::Blue: b = delta; bc = count; break;
+        case Color::White: w = delta; wc = count; break;
+        }
+        color = nextColor(color);
+        if (color == Color::Red)
+        {
+            if (rd == 0 && gd == 0 && bd == 0 && wd == 0)
+            {
+                rd = r;
+                gd = g;
+                bd = b;
+                wd = w;
+            }
+            else
+            {
+                mTimer.disable();
+                mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::None);
+                r = rd - r;
+                g = gd - g;
+                b = bd - b;
+                w = wd - w;
+                printf("r = %5i, g = %5i, b = %5i, w = %5i, rc = %2i, gc = %2i, bc = %2i, wc = %2i\n", r, g, b, w, rc, gc, bc, wc);
+                r = r / 2;
+                g = g / 2;
+                b = b / 2;
+                r = std::min(255, std::max(r, 0));
+                g = std::min(255, std::max(g, 0));
+                b = std::min(255, std::max(b, 0));
+                mWs.set(0, r, g, b);
+                mLed.reset();
+            }
+        }
+        setColor(color);
         count = 0;
+        lastValue = lastDelta = 0;
     }
-    if (mFirstTime)
-    {
-        mFirstTime = false;
-        mLastValue = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
-    }
-    else
-    {
-        uint32_t delta;
-        uint32_t thisValue = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
-        if (thisValue > mLastValue) delta = thisValue - mLastValue;
-        else delta = 65536 + thisValue - mLastValue;
-        mLastValue = thisValue;
-        printf("%lu\n", delta);
-    }
+    lastValue = thisValue;
+    lastDelta = delta;
 }
 
 void CmdLightSensor::setColor(Color color)
@@ -358,4 +393,16 @@ void CmdLightSensor::setColor(Color color)
         mS3.set(false);
         break;
     }
+}
+
+CmdLightSensor::Color CmdLightSensor::nextColor(CmdLightSensor::Color color)
+{
+    switch (color)
+    {
+    case Color::Red: return Color::Green;
+    case Color::Green: return Color::Blue;
+    case Color::Blue: return Color::White;
+    case Color::White: return Color::Red;
+    }
+    return Color::Red;
 }

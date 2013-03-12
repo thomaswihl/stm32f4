@@ -30,19 +30,13 @@ Timer::Timer(System::BaseAddress base) :
 
 void Timer::enable()
 {
-    if (mLine[static_cast<int>(InterruptType::Update)] != nullptr)
-    {
-        mLine[static_cast<int>(InterruptType::Update)]->enable();
-    }
+    mBase->DIER.UIE = 1;
     mBase->CR1.CEN = 1;
 }
 
 void Timer::disable()
 {
-    if (mLine[static_cast<int>(InterruptType::Update)] != nullptr)
-    {
-        mLine[static_cast<int>(InterruptType::Update)]->disable();
-    }
+    mBase->DIER.UIE = 0;
     mBase->CR1.CEN = 0;
 }
 
@@ -95,6 +89,7 @@ void Timer::setInterrupt(Timer::InterruptType interruptType, InterruptController
     if (mLine[index] != nullptr) mLine[index]->disable();
     mLine[index] = line;
     mLine[index]->setCallback(this);
+    mLine[index]->enable();
 }
 
 void Timer::configCapture(Timer::CaptureCompareIndex index, Timer::CapturePrescaler prescaler, Timer::CaptureFilter filter, Timer::CaptureEdge edge)
@@ -115,8 +110,14 @@ void Timer::configCapture(Timer::CaptureCompareIndex index, Timer::CapturePresca
 
 void Timer::enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable enable)
 {
-    if (enable == CaptureCompareEnable::None) mLine[static_cast<int>(InterruptType::CaptureCompare)]->disable();
-    else mLine[static_cast<int>(InterruptType::CaptureCompare)]->enable();
+    int value = (enable != CaptureCompareEnable::None) ? 1 : 0;
+    switch (index)
+    {
+    case CaptureCompareIndex::Index1: mBase->DIER.CC1IE = value; break;
+    case CaptureCompareIndex::Index2: mBase->DIER.CC2IE = value; break;
+    case CaptureCompareIndex::Index3: mBase->DIER.CC3IE = value; break;
+    case CaptureCompareIndex::Index4: mBase->DIER.CC4IE = value; break;
+    }
     int shift = static_cast<uint16_t>(index) * 4;
     uint16_t andmask = ~(static_cast<uint16_t>(CaptureCompareEnable::All) << shift);
     uint16_t ormask = static_cast<uint16_t>(enable) << shift;
@@ -133,7 +134,7 @@ void Timer::interruptCallback(InterruptController::Index index)
     if (sr.bits.CC2IF) postEvent(EventType::CaptureCompare2);
     if (sr.bits.CC3IF) postEvent(EventType::CaptureCompare3);
     if (sr.bits.CC4IF) postEvent(EventType::CaptureCompare4);
-    mBase->SR.value = sr.value;
+    mBase->SR.value = ~sr.value;
 }
 
 void Timer::postEvent(Timer::EventType type)

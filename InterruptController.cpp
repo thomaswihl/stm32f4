@@ -38,7 +38,7 @@ void InterruptController::handle(Index index)
     }
     else
     {
-        System::instance() ->printError("NVIC", "Unhandled Interrupt");
+        System::instance()->printError("NVIC", "Unhandled Interrupt");
         mBase->ICER[index / 32] = 1 << (index % 32);
     }
 }
