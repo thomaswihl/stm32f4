@@ -1,4 +1,5 @@
 #include "Commands.h"
+#include "hw/ds18b20.h"
 
 #include <cmath>
 #include <strings.h>
@@ -147,6 +148,15 @@ bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandIn
     if (strcmp("ns", argv[1].value.s) == 0)
     {
         printf("%llu\n", mSystem.ns());
+    }
+    else if (strcmp("temp", argv[1].value.s) == 0)
+    {
+        mSystem.mRcc.enable(ClockControl::Function::GpioE);
+        Gpio::Pin pin(mSystem.mGpioE, Gpio::Index::Pin4);
+        mSystem.mGpioE.configOutput(Gpio::Index::Pin4, Gpio::OutputType::OpenDrain, Gpio::Pull::Up);
+        Ds18b20 temp(pin);
+        int t = temp.temp();
+        printf("%u.%u\n", t / 16, 1000 * (t % 16) / 16);
     }
     else
     {
