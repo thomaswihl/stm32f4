@@ -21,6 +21,7 @@
 #include "Commands.h"
 #include "hw/lis302dl.h"
 #include "hw/ws2801.h"
+#include "hw/ssd1306.h"
 #include "Power.h"
 
 #include <cstdio>
@@ -131,6 +132,15 @@ int main()
     Ws2801 ws(gSys.mSpi2, 4);
     ws.enable();
     interpreter.add(new CmdRgb(ws));
+
+    Gpio::Pin dataCommand(gSys.mGpioB, Gpio::Index::Pin11);
+    Gpio::Pin cs(gSys.mGpioB, Gpio::Index::Pin12);
+    Gpio::Pin reset(gSys.mGpioB, Gpio::Index::Pin14);
+    gSys.mGpioB.configOutput(Gpio::Index::Pin11, Gpio::OutputType::PushPull);
+    gSys.mGpioB.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
+    gSys.mGpioB.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
+    Ssd1306 oled(gSys.mSpi2, cs, dataCommand, reset);
+    oled.init();
 
     gSys.mRcc.enable(ClockControl::Function::GpioE);
     gSys.mRcc.enable(ClockControl::Function::GpioA);
