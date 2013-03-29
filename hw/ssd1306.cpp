@@ -7,16 +7,18 @@ Ssd1306::Ssd1306(Spi<char> &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pi
     mReset(reset)
 {
     mCs.set();
-    for (unsigned i = 0; i < sizeof(mFb) / sizeof(mFb[0]); ++i) mFb[i] = i;
+    std::memset(mFb, 0, sizeof(mFb));
     mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::LowWhenIdle, Spi<char>::ClockPhase::FirstTransition, Spi<char>::Endianess::MsbFirst);
-    mSpi.setSpeed(1 * 1000* 1000);
+    mSpi.setSpeed(10 * 1000* 1000);
     mSpi.enable(Device::All);
 }
 
 void Ssd1306::init()
 {
+    mReset.set();
+    System::instance()->usleep(100000);
     mReset.reset();
-    System::instance()->usleep(10000);
+    System::instance()->usleep(100000);
     mReset.set();
     sendCommand(Command::DisplayOff);
     sendCommand(Command::ClockDivide);
@@ -44,6 +46,12 @@ void Ssd1306::init()
     sendCommand(Command::DisplayNormal);
     sendCommand(Command::DisplayOn);
     sendData();
+}
+
+void Ssd1306::setPixel(int x, int y, bool on)
+{
+    if (on) mFb[x + (y / 8) * DISPLAY_WIDTH] |= 1 << (y % 8);
+    else mFb[x + (y / 8) * DISPLAY_WIDTH] &= ~(1 << (y % 8));
 }
 
 void Ssd1306::sendCommand(Ssd1306::Command cmd)

@@ -11,7 +11,12 @@ public:
 
     void init();
 
+    void setPixel(int x, int y, bool on = true);
+    void sendData();
+
 private:
+    static const int DISPLAY_WIDTH = 128;
+    static const int DISPLAY_HEIGHT = 64;
     enum class Command : uint8_t
     {
         DisplayOn = 0xaf,
@@ -23,15 +28,15 @@ private:
         MemoryAddressing = 0x20,
         SegRemap0 = 0xa0,
         SegRemap127 = 0xa1,
-        ComScanInc = 0xd0,
-        ComScanDec = 0xd8,
+        ComScanInc = 0xc0,
+        ComScanDec = 0xc8,
         ComPins = 0xda,
         Contrast = 0x81,
         ChargePump = 0x8d,
         PreCharge = 0xd9,
         DeselectLevel = 0xdb,
-        EntireDisplayOn = 0xa4,
-        EntireDisplayOnResume = 0xa5,
+        EntireDisplayOnResume = 0xa4,
+        EntireDisplayOn = 0xa5,
         DisplayNormal = 0xa6,
         DisplayInverse = 0xa7,
         LowColumn0 = 0x00,
@@ -43,11 +48,10 @@ private:
     Gpio::Pin& mDc;
     Gpio::Pin& mReset;
 
-    char mFb[128 * 64 / 8];
+    char mFb[DISPLAY_WIDTH * DISPLAY_HEIGHT / 8];
 
     void sendCommand(Command cmd);
     void sendCommand(uint8_t cmd);
-    void sendData();
 };
 
 #endif // SSD1306_H
