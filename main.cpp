@@ -22,6 +22,7 @@
 #include "hw/lis302dl.h"
 #include "hw/ws2801.h"
 #include "hw/ssd1306.h"
+#include "hw/tlc5940.h"
 #include "Power.h"
 
 #include <cstdio>
@@ -133,14 +134,40 @@ int main()
     ws.enable();
     interpreter.add(new CmdRgb(ws));
 
-    Gpio::Pin dataCommand(gSys.mGpioB, Gpio::Index::Pin11);
-    Gpio::Pin cs(gSys.mGpioB, Gpio::Index::Pin12);
-    Gpio::Pin reset(gSys.mGpioB, Gpio::Index::Pin14);
+    Gpio::Pin xlat(gSys.mGpioB, Gpio::Index::Pin11);
+    Gpio::Pin blank(gSys.mGpioB, Gpio::Index::Pin12);
+    Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin14);
     gSys.mGpioB.configOutput(Gpio::Index::Pin11, Gpio::OutputType::PushPull);
     gSys.mGpioB.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
     gSys.mGpioB.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
-    Ssd1306 oled(gSys.mSpi2, cs, dataCommand, reset);
-    oled.init();
+    //gSys.mGpioB.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
+    Timer gsclkTimer(StmSystem::BaseAddress::TIM1);
+    InterruptController::Line timer1IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_UP_TIM10);
+    gsclkTimer.setInterrupt(Timer::InterruptType::Update, &timer1IrqUpdate);
+    InterruptController::Line timer1IrqCc(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
+    gsclkTimer.setInterrupt(Timer::InterruptType::CaptureCompare, &timer1IrqCc);
+    Tlc5940 tlc(gSys.mSpi2, xlat, blank, gsclkTimer);
+    tlc.setOutput(0, 0xfff);
+    tlc.setOutput(1, 0xfff);
+    tlc.setOutput(2, 0xfff);
+    tlc.setOutput(3, 0xfff);
+    tlc.send();
+    gsclk.set();
+    gSys.nspin(100);
+    gsclk.reset();
+    gSys.nspin(100);
+    gsclk.set();
+    gSys.nspin(100);
+    gsclk.reset();
+    gSys.nspin(100);
+//    Gpio::Pin dataCommand(gSys.mGpioB, Gpio::Index::Pin11);
+//    Gpio::Pin cs(gSys.mGpioB, Gpio::Index::Pin12);
+//    Gpio::Pin reset(gSys.mGpioB, Gpio::Index::Pin14);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin11, Gpio::OutputType::PushPull);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
+//    Ssd1306 oled(gSys.mSpi2, cs, dataCommand, reset);
+//    oled.init();
 
     gSys.mRcc.enable(ClockControl::Function::GpioE);
     gSys.mRcc.enable(ClockControl::Function::GpioA);

@@ -58,3 +58,5 @@ hw/ds18b20.h
 hw/ds18b20.cpp
 hw/ssd1306.h
 hw/ssd1306.cpp
+hw/tlc5940.h
+hw/tlc5940.cpp
