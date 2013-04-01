@@ -63,7 +63,7 @@ public:
     void removeChangeHandler(Callback* changeHandler);
 
     bool setSystemClock(uint32_t clock);
-    uint32_t clock(Clock clock);
+    uint32_t clock(Clock clock) const;
     template<class T>
     void setPrescaler(T prescaler);
 
@@ -496,7 +496,7 @@ private:
     void resetClock(bool notify);
     void notify(Callback::Reason reason, uint32_t clock);
 
-    uint32_t rtcClock();
+    uint32_t rtcClock() const;
 
     friend void testClockControl();
 };

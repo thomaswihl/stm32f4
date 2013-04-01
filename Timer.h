@@ -22,25 +22,43 @@
 #include "System.h"
 #include "Device.h"
 #include "InterruptController.h"
+#include "ClockControl.h"
 
 #include <stdint.h>
+
+/* TIM IT0 IT1 IT2 IT3
+ *  1   5   2   3   4
+ *  2   1   8   3   4
+ *  3   1   2   5   4
+ *  4   1   2   3   8
+ *  5   2   3   4   8
+ *  8   1   2   4   5
+ *  9   2   3   10  11
+ *  12  4   5   13  14
+ */
 
 class Timer : public InterruptController::Callback
 {
 public:
-    enum class CapturePrescaler { EveryEdge = 0, Every2 = 1, Every4 = 2, Every8 = 3 };
-    enum class CaptureFilter { F1N1, F1N2, F1N4, F1N8, F2N6, F2N8, F4N6, F4N8, F8N6, F8N8, F16N5, F16N6, F16N8, F32N5, F32N6, F32N8 };
+    enum class Prescaler { EveryEdge = 0, Every2 = 1, Every4 = 2, Every8 = 3 };
+    enum class Filter { F1N1, F1N2, F1N4, F1N8, F2N6, F2N8, F4N6, F4N8, F8N6, F8N8, F16N5, F16N6, F16N8, F32N5, F32N6, F32N8 };
     enum class CaptureEdge { Rising = 0, Falling = 2, Both = 10 };
+    enum class CompareMode { Inactive, ActiveWhenEqual, InactiveWhenEqual, ToggleWhenEqual, ForcedInactive, ForcedActive, PwmActiveWhenLower, PwmActiveWhenHigher };
+    enum class CompareOutput { Disabled = 0, ActiveHigh = 1, ActiveLow = 3 };
     enum class CaptureCompareIndex { Index1 = 0, Index2 = 1, Index3 = 2, Index4 = 3 };
-    enum class CaptureCompareEnable { None = 0, Output = 1, ComplementeryOuput = 4, All = 5 };
     enum class Option { Timer11_Input1_Gpio = 0, Timer11_Input1_Hse_Rtc = 2 };
     enum class EventType { Update, CaptureCompare1, CaptureCompare2, CaptureCompare3, CaptureCompare4 };
     enum class InterruptType { Update, CaptureCompare, Commutation, Trigger, Break };
+    enum class CountMode { Up, Down, CenterAlignedDown, CenterAlignedUp, CenterAlignedUpDown };
+    enum class MasterMode { Reset = 0, Enable, Update, ComparePulse, Compare1, Compare2, Comapre3, Comapre4 };
+    enum class SlaveMode { Disabled = 0, Encoder1, Encoder2, Encoder3, Reset, Gated, Trigger, ExternalClock };
+    enum class Trigger { Internal0, Internal1, Internal2, Internal3, EdgeDetector, FilteredInput1, FilteredInput2, External };
 
-    Timer(System::BaseAddress base);
+    Timer(System::BaseAddress base, ClockControl::Clock clock);
 
     void enable();
     void disable();
+    ClockControl::Clock clock() { return mClock; }
 
     virtual void dmaReadComplete();
     virtual void dmaWriteComplete();
@@ -48,27 +66,39 @@ public:
     void setCounter(uint32_t counter);
     uint32_t counter();
     void setPrescaler(uint16_t prescaler);
+    uint32_t prescaler() const { return mBase->PSC; }
     void setReload(uint32_t reload);
+    uint32_t reload() const { return mBase->ARR; }
+    void setFrequency(const ClockControl& cc, uint32_t hz);
     void setOption(Option option);
     void setEvent(EventType type, System::Event* event);
-    uint32_t captureCompare(CaptureCompareIndex index);
+    uint32_t capture(CaptureCompareIndex index);
+    void setCompare(CaptureCompareIndex index, uint32_t compare);
+    void setCountMode(CountMode mode);
     void setInterrupt(InterruptType interruptType, InterruptController::Line* line);
+    void setMaster(MasterMode mode);
+    void setSlave(SlaveMode mode, Trigger trigger, Prescaler inputPrescaler = Prescaler::EveryEdge, Filter inputFilter = Filter::F1N1, bool inputInvert = false);
 
-    void configCapture(CaptureCompareIndex index, CapturePrescaler prescaler, CaptureFilter filter, CaptureEdge edge);
-    void enableCaptureCompare(CaptureCompareIndex index, CaptureCompareEnable enable);
+    void configCapture(CaptureCompareIndex index, Prescaler prescaler, Filter filter, CaptureEdge edge);
+    void configCompare(CaptureCompareIndex index, CompareMode mode, CompareOutput output, CompareOutput complementaryOutput, bool latchCcr = true, bool fast = false, bool clearOnEtr = false);
+    void enableCaptureCompareIrq(CaptureCompareIndex index, bool enable);
 
 protected:
     virtual void interruptCallback(InterruptController::Index index);
 
 private:
     enum { EVENT_COUNT = 5, LINE_COUNT = 5 };
-    struct CCMR_OUTPUT
+    union CCMR_OUTPUT
     {
-        uint8_t CCS : 2;
-        uint8_t OCFE : 1;
-        uint8_t OCPE : 1;
-        uint8_t OCM : 3;
-        uint8_t OCCE : 1;
+        struct
+        {
+            uint8_t CCS : 2;
+            uint8_t OCFE : 1;
+            uint8_t OCPE : 1;
+            uint8_t OCM : 3;
+            uint8_t OCCE : 1;
+        }   bits;
+        uint8_t value;
     };
     union CCMR_INPUT
     {
@@ -77,8 +107,8 @@ private:
             uint8_t CCS : 2;
             uint8_t ICPSC : 2;
             uint8_t ICF : 4;
-        };
-        uint8_t CCMR_INPUT;
+        }   bits;
+        uint8_t value;
     };
 
     union __SR
@@ -223,6 +253,7 @@ private:
         uint16_t __RESERVEDE;
     };
     volatile TIMER* mBase;
+    ClockControl::Clock mClock;
     InterruptController::Line* mLine[LINE_COUNT];
     System::Event* mEvent[EVENT_COUNT];
 

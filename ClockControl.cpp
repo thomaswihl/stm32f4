@@ -167,7 +167,7 @@ bool ClockControl::setSystemClock(uint32_t clock)
     return true;
 }
 
-uint32_t ClockControl::clock(Clock clock)
+uint32_t ClockControl::clock(Clock clock) const
 {
     uint32_t systemClock = 0;
     switch (mBase->CFGR.SWS)
@@ -304,7 +304,7 @@ void ClockControl::notify(ClockControl::Callback::Reason reason, uint32_t clock)
     for (Callback*& handler : mCallback) handler->clockCallback(reason, clock);
 }
 
-uint32_t ClockControl::rtcClock()
+uint32_t ClockControl::rtcClock() const
 {
     switch (mBase->BDCR.RTCSEL)
     {

@@ -102,7 +102,7 @@ int main()
 
     // clock command
     InterruptController::Line timer11Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_TRG_COM_TIM11);
-    Timer timer11(StmSystem::BaseAddress::TIM11);
+    Timer timer11(StmSystem::BaseAddress::TIM11, ClockControl::Clock::APB2);
     timer11.setInterrupt(Timer::InterruptType::CaptureCompare, &timer11Irq);
     Power pwr(StmSystem::BaseAddress::PWR);
     pwr.backupDomainWp(false);
@@ -136,30 +136,31 @@ int main()
 
     Gpio::Pin xlat(gSys.mGpioB, Gpio::Index::Pin11);
     Gpio::Pin blank(gSys.mGpioB, Gpio::Index::Pin12);
-    Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin14);
+    //Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin14);
     gSys.mGpioB.configOutput(Gpio::Index::Pin11, Gpio::OutputType::PushPull);
     gSys.mGpioB.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
     gSys.mGpioB.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
-    //gSys.mGpioB.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
-    Timer gsclkTimer(StmSystem::BaseAddress::TIM1);
-    InterruptController::Line timer1IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_UP_TIM10);
-    gsclkTimer.setInterrupt(Timer::InterruptType::Update, &timer1IrqUpdate);
-    InterruptController::Line timer1IrqCc(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
-    gsclkTimer.setInterrupt(Timer::InterruptType::CaptureCompare, &timer1IrqCc);
-    Tlc5940 tlc(gSys.mSpi2, xlat, blank, gsclkTimer);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
+    gSys.mRcc.enable(ClockControl::Function::Tim1);
+    gSys.mRcc.enable(ClockControl::Function::Tim2);
+    Timer gsclkPwm(StmSystem::BaseAddress::TIM1, ClockControl::Clock::APB2);
+    gsclkPwm.setFrequency(gSys.mRcc, 4096 * 50);
+    Timer gsclkLatch(StmSystem::BaseAddress::TIM2, ClockControl::Clock::APB1);
+    InterruptController::Line timer2IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM2);
+    gsclkLatch.setInterrupt(Timer::InterruptType::Update, &timer2IrqUpdate);
+
+
+//    InterruptController::Line timer1IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_UP_TIM10);
+//    gsclkTimer.setInterrupt(Timer::InterruptType::Update, &timer1IrqUpdate);
+//    InterruptController::Line timer1IrqCc(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
+//    gsclkTimer.setInterrupt(Timer::InterruptType::CaptureCompare, &timer1IrqCc);
+    Tlc5940 tlc(gSys.mSpi2, xlat, blank, gsclkPwm, gsclkLatch);
     tlc.setOutput(0, 0xfff);
-    tlc.setOutput(1, 0xfff);
-    tlc.setOutput(2, 0xfff);
-    tlc.setOutput(3, 0xfff);
+    tlc.setOutput(1, 0x3ff);
+    tlc.setOutput(2, 0x1ff);
+    tlc.setOutput(3, 0x0ff);
     tlc.send();
-    gsclk.set();
-    gSys.nspin(100);
-    gsclk.reset();
-    gSys.nspin(100);
-    gsclk.set();
-    gSys.nspin(100);
-    gsclk.reset();
-    gSys.nspin(100);
+
 //    Gpio::Pin dataCommand(gSys.mGpioB, Gpio::Index::Pin11);
 //    Gpio::Pin cs(gSys.mGpioB, Gpio::Index::Pin12);
 //    Gpio::Pin reset(gSys.mGpioB, Gpio::Index::Pin14);
@@ -169,21 +170,21 @@ int main()
 //    Ssd1306 oled(gSys.mSpi2, cs, dataCommand, reset);
 //    oled.init();
 
-    gSys.mRcc.enable(ClockControl::Function::GpioE);
-    gSys.mRcc.enable(ClockControl::Function::GpioA);
-    gSys.mRcc.enable(ClockControl::Function::Tim1);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull);
-    gSys.mGpioA.configInput(Gpio::Index::Pin8);
-    gSys.mGpioA.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM1);
-    Gpio::Pin led(gSys.mGpioE, Gpio::Index::Pin0);
-    Gpio::Pin s2(gSys.mGpioE, Gpio::Index::Pin1);
-    Gpio::Pin s3(gSys.mGpioE, Gpio::Index::Pin2);
-    InterruptController::Line timer1Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
-    Timer timer1(StmSystem::BaseAddress::TIM1);
-    timer1.setInterrupt(Timer::InterruptType::CaptureCompare, &timer1Irq);
-    interpreter.add(new CmdLightSensor(led, s2, s3, timer1, ws));
+//    gSys.mRcc.enable(ClockControl::Function::GpioE);
+//    gSys.mRcc.enable(ClockControl::Function::GpioA);
+//    gSys.mRcc.enable(ClockControl::Function::Tim1);
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull);
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull);
+//    gSys.mGpioA.configInput(Gpio::Index::Pin8);
+//    gSys.mGpioA.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM1);
+//    Gpio::Pin led(gSys.mGpioE, Gpio::Index::Pin0);
+//    Gpio::Pin s2(gSys.mGpioE, Gpio::Index::Pin1);
+//    Gpio::Pin s3(gSys.mGpioE, Gpio::Index::Pin2);
+//    InterruptController::Line timer1Irq(gSys.mNvic, StmSystem::InterruptIndex::TIM1_CC);
+//    Timer timer1(StmSystem::BaseAddress::TIM1);
+//    timer1.setInterrupt(Timer::InterruptType::CaptureCompare, &timer1Irq);
+//    interpreter.add(new CmdLightSensor(led, s2, s3, timer1, ws));
 
 
     interpreter.start();

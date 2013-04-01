@@ -258,19 +258,18 @@ bool CmdMeasureClock::execute(CommandInterpreter &interpreter, int argc, const C
     mClockControl.enable(ClockControl::Function::Tim11);
     mClockControl.setPrescaler(ClockControl::RtcHsePrescaler::by16);  // HSE_RTC = HSE / 16 = 500kHz
     // Timer 11 capture input = HSE_RTC / 8 = 62500Hz
-    mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::CapturePrescaler::Every8, Timer::CaptureFilter::F1N1, Timer::CaptureEdge::Rising);
+    mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::Prescaler::Every8, Timer::Filter::F1N1, Timer::CaptureEdge::Rising);
     // So with HSI = 16MHz -> TIM_CLK = 32MHz this should give us 512 counts
     mTimer.setOption(Timer::Option::Timer11_Input1_Hse_Rtc);
     mTimer.setEvent(Timer::EventType::CaptureCompare1, &mEvent);
     mTimer.enable();
-    mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
     //for (int i = 0; i < 5; ++i)
     {
-        uint32_t first = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+        uint32_t first = mTimer.capture(Timer::CaptureCompareIndex::Index1);
         uint32_t second;
         do
         {
-            second = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+            second = mTimer.capture(Timer::CaptureCompareIndex::Index1);
         }   while (second == first);
         uint32_t delta;
         if (second > first) delta = second - first;
@@ -285,11 +284,10 @@ void CmdMeasureClock::eventCallback(System::Event *event)
     ++mCount;
     if (mCount > 8)
     {
-        mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::None);
         mTimer.disable();
         mCount = 0;
     }
-    printf("%lu\n", mTimer.captureCompare(Timer::CaptureCompareIndex::Index1));
+    printf("%lu\n", mTimer.capture(Timer::CaptureCompareIndex::Index1));
 }
 
 
@@ -312,11 +310,10 @@ bool CmdLightSensor::execute(CommandInterpreter &interpreter, int argc, const Co
 {
     setColor(Color::Red);
     mLed.set();
-    mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::CapturePrescaler::EveryEdge, Timer::CaptureFilter::F1N1, Timer::CaptureEdge::Rising);
+    mTimer.configCapture(Timer::CaptureCompareIndex::Index1, Timer::Prescaler::EveryEdge, Timer::Filter::F1N1, Timer::CaptureEdge::Rising);
     mTimer.setEvent(Timer::EventType::CaptureCompare1, &mEvent);
     mTimer.setPrescaler(10);
     mTimer.enable();
-    mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::Output);
     return true;
 }
 
@@ -333,7 +330,7 @@ void CmdLightSensor::eventCallback(System::Event *event)
 
     ++count;
     int delta;
-    int thisValue = mTimer.captureCompare(Timer::CaptureCompareIndex::Index1);
+    int thisValue = mTimer.capture(Timer::CaptureCompareIndex::Index1);
     if (thisValue >= lastValue) delta = thisValue - lastValue;
     else delta = 65536 + thisValue - lastValue;
     if (count > 20 || (delta > 5 && std::abs(delta - lastDelta) < (delta / 200 + 5)))
@@ -358,7 +355,6 @@ void CmdLightSensor::eventCallback(System::Event *event)
             else
             {
                 mTimer.disable();
-                mTimer.enableCaptureCompare(Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareEnable::None);
                 r = rd - r;
                 g = gd - g;
                 b = bd - b;
