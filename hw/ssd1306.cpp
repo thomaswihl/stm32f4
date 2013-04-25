@@ -13,13 +13,17 @@ Ssd1306::Ssd1306(Spi<char> &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pi
     mSpi.enable(Device::All);
 }
 
-void Ssd1306::init()
+void Ssd1306::reset()
 {
     mReset.set();
     System::instance()->usleep(100000);
     mReset.reset();
     System::instance()->usleep(100000);
     mReset.set();
+}
+
+void Ssd1306::init()
+{
     sendCommand(Command::DisplayOff);
     sendCommand(Command::ClockDivide);
     sendCommand(0x80);

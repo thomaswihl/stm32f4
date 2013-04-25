@@ -9,6 +9,7 @@ class Ssd1306
 public:
     Ssd1306(Spi<char>& spi, Gpio::Pin& cs, Gpio::Pin& dataCommand, Gpio::Pin& reset);
 
+    void reset();
     void init();
 
     void setPixel(int x, int y, bool on = true);

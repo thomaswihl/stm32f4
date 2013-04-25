@@ -48,7 +48,7 @@ StmSystem::StmSystem() :
     mDebug(mUsart2),
     mSpi1(BaseAddress::SPI1, &mRcc, ClockControl::Clock::APB2),
     mSpi2(BaseAddress::SPI2, &mRcc, ClockControl::Clock::APB1),
-//    mSpi3(BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
+    mSpi3(BaseAddress::SPI3, &mRcc, ClockControl::Clock::APB1),
     mFlash(BaseAddress::FLASH, mRcc, Flash::AccessSize::x32),
     mFpu(BaseAddress::FPU),
     mIWdg(BaseAddress::IWDG),
@@ -103,7 +103,7 @@ void StmSystem::init()
     mGpioA.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Low);
     mGpioA.setAlternate(Gpio::Index::Pin2, Gpio::AltFunc::USART2);
     // USART2 RX
-    mGpioA.configInput(Gpio::Index::Pin3);
+    mGpioA.configInput(Gpio::Index::Pin3, Gpio::Pull::Down);
     mGpioA.setAlternate(Gpio::Index::Pin3, Gpio::AltFunc::USART2);
 
     mFlash.set(Flash::Feature::InstructionCache, true);

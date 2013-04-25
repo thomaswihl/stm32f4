@@ -203,7 +203,7 @@ public:
     Serial& mDebug;
     Spi<char> mSpi1;
     Spi<char> mSpi2;
-//    Spi mSpi3;
+    Spi<char> mSpi3;
     Flash mFlash;
     FpuControl mFpu;
     IndependentWatchdog mIWdg;

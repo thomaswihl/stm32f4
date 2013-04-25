@@ -151,9 +151,9 @@ bool CmdFunc::execute(CommandInterpreter &interpreter, int argc, const CommandIn
     }
     else if (strcmp("temp", argv[1].value.s) == 0)
     {
-        mSystem.mRcc.enable(ClockControl::Function::GpioE);
-        Gpio::Pin pin(mSystem.mGpioE, Gpio::Index::Pin4);
-        mSystem.mGpioE.configOutput(Gpio::Index::Pin4, Gpio::OutputType::OpenDrain, Gpio::Pull::Up);
+        mSystem.mRcc.enable(ClockControl::Function::GpioB);
+        Gpio::Pin pin(mSystem.mGpioE, Gpio::Index::Pin11);
+        mSystem.mGpioB.configOutput(Gpio::Index::Pin11, Gpio::OutputType::OpenDrain, Gpio::Pull::Up);
         Ds18b20 temp(pin);
         int t = temp.temp();
         printf("%u.%u\n", t / 16, 1000 * (t % 16) / 16);
