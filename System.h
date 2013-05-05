@@ -113,6 +113,8 @@ public:
 
     uint64_t timeInInterrupt();
     uint64_t timeInEvent();
+    uint32_t interruptCount() { return mInterruptCount; }
+    uint32_t eventCount() { return mEventCount; }
 
     void postEvent(Event* event);
     bool waitForEvent(Event*& event);
@@ -262,6 +264,8 @@ private:
     CircularBuffer<Event*> mEventQueue;
     uint64_t mTimeInInterrupt;
     uint64_t mTimeIdle;
+    uint32_t mEventCount;
+    uint32_t mInterruptCount;
 };
 
 #endif

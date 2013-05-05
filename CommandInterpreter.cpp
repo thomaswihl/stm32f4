@@ -348,9 +348,11 @@ void CommandInterpreter::eventCallback(System::Event* event)
             ps = s;
             uint32_t te = mSystem.timeInEvent() / 1000000;
             uint32_t ti = mSystem.timeInInterrupt() / 1000000;
-            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus Event, %10lu.%03lus IRQ\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
-                   te / 1000, te % 1000,
-                   ti / 1000, ti % 1000);
+            uint32_t ic = mSystem.interruptCount();
+            uint32_t ec = mSystem.eventCount();
+            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus in %10lu Events, %10lu.%03lus in %10lu IRQs\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
+                   te / 1000, te % 1000, ec,
+                   ti / 1000, ti % 1000, ic);
             fflush(nullptr);
             System::instance()->debugMsg(((s % 64) < 32) ? "#" : ".", 1);
         }

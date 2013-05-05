@@ -72,8 +72,7 @@ void Timer::setReload(uint32_t reload)
 void Timer::setFrequency(const ClockControl &cc, uint32_t hz)
 {
     uint32_t clock = cc.clock(mClock);
-    uint32_t psc = 0;
-    while (clock / hz / (psc + 1) > 65535) ++psc;
+    uint32_t psc = clock / hz / 65535;
     setPrescaler(psc);
     setReload(clock / hz / (psc + 1));
 }

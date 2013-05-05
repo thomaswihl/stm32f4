@@ -144,30 +144,6 @@ int main()
     s1.reset();
 
 
-    // TLC5940: 16x PWM LED
-    gSys.mRcc.enable(ClockControl::Function::GpioD);
-    gSys.mRcc.enable(ClockControl::Function::GpioB);
-    gSys.mRcc.enable(ClockControl::Function::Tim9);
-    gSys.mRcc.enable(ClockControl::Function::Tim10);
-    Gpio::Pin xlat(gSys.mGpioD, Gpio::Index::Pin3);
-    Gpio::Pin blank(gSys.mGpioD, Gpio::Index::Pin1);
-    Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin8);
-    gSys.mGpioD.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
-    gSys.mGpioD.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
-    gSys.mGpioB.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
-    gSys.mGpioB.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM10);
-    Timer gsclkPwm(StmSystem::BaseAddress::TIM10, ClockControl::Clock::APB2);
-    gsclkPwm.setFrequency(gSys.mRcc, 4096 * 50 / 100);
-    Timer gsclkLatch(StmSystem::BaseAddress::TIM9, ClockControl::Clock::APB2);
-    InterruptController::Line timer9IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_BRK_TIM9);
-    gsclkLatch.setInterrupt(Timer::InterruptType::Update, &timer9IrqUpdate);
-    Tlc5940 tlc(gSys.mSpi3, xlat, blank, gsclkPwm, gsclkLatch);
-    tlc.setOutput(0, 0xfff);
-    tlc.setOutput(1, 0x3ff);
-    tlc.setOutput(2, 0x1ff);
-    tlc.setOutput(3, 0x0ff);
-    tlc.send();
-
     // 2 OLED displays
     gSys.mRcc.enable(ClockControl::Function::GpioC);
     Gpio::Pin dataCommand(gSys.mGpioC, Gpio::Index::Pin9);
@@ -191,6 +167,47 @@ int main()
     oled1.sendData();
     oled2.sendData();
 
+    // SPI3
+    gSys.mRcc.enable(ClockControl::Function::GpioC);
+    // SCK
+    gSys.mGpioC.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::SPI3);
+    // MISO
+    gSys.mGpioC.configInput(Gpio::Index::Pin11);
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin11, Gpio::AltFunc::SPI3);
+    // MOSI
+    gSys.mGpioC.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull);
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin10, Gpio::AltFunc::SPI3);
+
+    gSys.mRcc.enable(ClockControl::Function::Spi3);
+    gSys.mSpi3.configDma(new Dma::Stream(gSys.mDma1, Dma::Stream::StreamIndex::Stream5, Dma::Stream::ChannelIndex::Channel0,
+                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream5)),
+                         new Dma::Stream(gSys.mDma1, Dma::Stream::StreamIndex::Stream0, Dma::Stream::ChannelIndex::Channel0,
+                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream0))
+                         );
+
+    // TLC5940: 16x PWM LED
+    gSys.mRcc.enable(ClockControl::Function::GpioD);
+    gSys.mRcc.enable(ClockControl::Function::GpioB);
+    gSys.mRcc.enable(ClockControl::Function::Tim9);
+    gSys.mRcc.enable(ClockControl::Function::Tim10);
+    Gpio::Pin xlat(gSys.mGpioD, Gpio::Index::Pin1);
+    Gpio::Pin blank(gSys.mGpioD, Gpio::Index::Pin3);
+    Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin8);
+    gSys.mGpioD.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
+    gSys.mGpioD.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
+    gSys.mGpioB.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM10);
+    Timer gsclkPwm(StmSystem::BaseAddress::TIM10, ClockControl::Clock::APB2);
+    gsclkPwm.setFrequency(gSys.mRcc, 4096 * 50);
+    Timer gsclkLatch(StmSystem::BaseAddress::TIM9, ClockControl::Clock::APB2);
+    InterruptController::Line timer9IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_BRK_TIM9);
+    gsclkLatch.setInterrupt(Timer::InterruptType::Update, &timer9IrqUpdate);
+    Tlc5940 tlc(gSys.mSpi3, xlat, blank, gsclkPwm, gsclkLatch);
+    for (int i = 0; i < 16; ++i) tlc.setOutput(i, 255);
+    tlc.send();
+
+
 //    gSys.mRcc.enable(ClockControl::Function::GpioE);
 //    gSys.mRcc.enable(ClockControl::Function::GpioA);
 //    gSys.mRcc.enable(ClockControl::Function::Tim1);
@@ -209,6 +226,7 @@ int main()
 
 
     interpreter.start();
+
 
     //gSys.mIWdg.enable(2000000);
     System::Event* event;

@@ -320,6 +320,7 @@ uint64_t System::timeInEvent()
     return ns() - mTimeIdle - mTimeInInterrupt;
 }
 
+
 void System::postEvent(Event *event)
 {
     __asm("cpsid i");
@@ -334,6 +335,7 @@ bool System::waitForEvent(Event *&event)
     {
         __asm("wfi");
     }
+    ++mEventCount;
     mTimeIdle += ns() - start;
     return mEventQueue.pop(event);
 }
@@ -362,7 +364,9 @@ System::System(BaseAddress base) :
     mBogoMips(0),
     mEventQueue(16),
     mTimeInInterrupt(0),
-    mTimeIdle(0)
+    mTimeIdle(0),
+    mEventCount(0),
+    mInterruptCount(0)
 {
     static_assert(sizeof(SCB) == 0x40, "Struct has wrong size, compiler problem.");
     // Make sure we are the first and only instance
@@ -481,6 +485,7 @@ void System::handleInterrupt()
     uint64_t start = ns();
     handleInterrupt(mBase->ICSR.VECTACTIVE - 16);
     mTimeInInterrupt += ns() - start;
+    ++mInterruptCount;
 }
 
 void System::printWarning(const char *component, const char *message)
