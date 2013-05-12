@@ -9,7 +9,7 @@ class Tlc5940 : public System::Event::Callback
 {
 public:
     Tlc5940(Spi<char>& spi, Gpio::Pin& xlat, Gpio::Pin& blank, Timer& gsclkPwm, Timer& gsclkLatch);
-    void setOutput(int index, uint16_t value);
+    void setOutput(int index, int percent);
     void send();
 
 private:
