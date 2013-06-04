@@ -60,3 +60,5 @@ hw/ssd1306.h
 hw/ssd1306.cpp
 hw/tlc5940.h
 hw/tlc5940.cpp
+sdio.h
+sdio.cpp

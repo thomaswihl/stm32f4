@@ -231,6 +231,8 @@ int main()
     tlc.send();
 
 
+    gSys.mRcc.enable(ClockControl::Function::GpioC);
+    gSys.mGpioC.configInput(Gpio::Index::Pin1, Gpio::Pull::Up);
 
 
 
