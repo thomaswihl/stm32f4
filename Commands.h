@@ -6,6 +6,7 @@
 #include "hw/lis302dl.h"
 #include "hw/ws2801.h"
 #include "System.h"
+#include "sdio.h"
 
 #include <cstdio>
 
@@ -155,6 +156,21 @@ private:
 
     void setColor(Color color);
     Color nextColor(Color color);
+};
+
+class CmdSdio : public CommandInterpreter::Command, public System::Event::Callback
+{
+public:
+    CmdSdio(Sdio& sdio);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Execute SDIO commands."; }
+protected:
+    virtual void eventCallback(System::Event* event);
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    Sdio& mSdio;
+    System::Event mEvent;
 };
 
 

@@ -86,6 +86,7 @@ public:
             USART2 = 0x40004400,
             USART3 = 0x40004800,
             USART6 = 0x40011400,
+            SDIO = 0x40012c00,
         };
     };
 

@@ -34,6 +34,8 @@ char const * const CmdRgb::ARGV[] = { "Vu:index", "Vu:red", "Vu:green", "Vu:blue
 char const * const CmdLightSensor::NAME[] = { "ls" };
 char const * const CmdLightSensor::ARGV[] = { };
 
+char const * const CmdSdio::NAME[] = { "sdio" };
+char const * const CmdSdio::ARGV[] = { "s:command" };
 
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
@@ -411,4 +413,21 @@ CmdLightSensor::Color CmdLightSensor::nextColor(CmdLightSensor::Color color)
     case Color::White: return Color::Red;
     }
     return Color::Red;
+}
+
+
+CmdSdio::CmdSdio(Sdio &sdio) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSdio(sdio), mEvent(*this)
+{
+    mSdio.enable(true);
+}
+
+bool CmdSdio::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    if (strcmp("st", argv[1].value.s) == 0) mSdio.printStatus();
+
+    return true;
+}
+
+void CmdSdio::eventCallback(System::Event *event)
+{
 }

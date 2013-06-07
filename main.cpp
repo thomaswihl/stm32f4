@@ -24,6 +24,7 @@
 #include "hw/ssd1306.h"
 #include "hw/tlc5940.h"
 #include "Power.h"
+#include "sdio.h"
 
 #include <cstdio>
 #include <memory>
@@ -235,6 +236,23 @@ int main()
     gSys.mGpioC.configInput(Gpio::Index::Pin1, Gpio::Pull::Up);
 
 
+    gSys.mRcc.enable(ClockControl::Function::Sdio);
+    gSys.mRcc.enable(ClockControl::Function::GpioC);
+    gSys.mGpioC.configOutput(Gpio::Index::Pin8, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D0
+    gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D1
+    gSys.mGpioC.configOutput(Gpio::Index::Pin10, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D2
+    gSys.mGpioC.configOutput(Gpio::Index::Pin11, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D3
+    gSys.mGpioC.configOutput(Gpio::Index::Pin12, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // CK
+    gSys.mGpioD.configOutput(Gpio::Index::Pin2, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // CMD
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::SDIO);    // D0
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin9, Gpio::AltFunc::SDIO);    // D1
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin10, Gpio::AltFunc::SDIO);    // D2
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin11, Gpio::AltFunc::SDIO);    // D3
+    gSys.mGpioC.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::SDIO);    // CK
+    gSys.mGpioD.setAlternate(Gpio::Index::Pin2, Gpio::AltFunc::SDIO);    // CMD
+
+    Sdio sdio(StmSystem::BaseAddress::SDIO);
+    interpreter.add(new CmdSdio(sdio));
 
     interpreter.start();
 
