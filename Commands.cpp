@@ -34,7 +34,7 @@ char const * const CmdRgb::ARGV[] = { "Vu:index", "Vu:red", "Vu:green", "Vu:blue
 char const * const CmdLightSensor::NAME[] = { "ls" };
 char const * const CmdLightSensor::ARGV[] = { };
 
-char const * const CmdSdio::NAME[] = { "sdio" };
+char const * const CmdSdio::NAME[] = { "sd" };
 char const * const CmdSdio::ARGV[] = { "s:command" };
 
 
@@ -423,8 +423,15 @@ CmdSdio::CmdSdio(Sdio &sdio) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARG
 
 bool CmdSdio::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
-    if (strcmp("st", argv[1].value.s) == 0) mSdio.printStatus();
+    if (strcmp("st", argv[1].value.s) == 0) mSdio.printHostStatus();
+    else if (strcmp("en", argv[1].value.s) == 0) mSdio.enable(true);
+    else if (strcmp("dis", argv[1].value.s) == 0) mSdio.enable(false);
+    else if (strcmp("res", argv[1].value.s) == 0) mSdio.resetCard();
+    else if (strcmp("ic", argv[1].value.s) == 0) mSdio.interfaceCondition();
+    else if (strcmp("init", argv[1].value.s) == 0) mSdio.initCard();
+    else printf("Unknown command.");
 
+    printf("\n");
     return true;
 }
 

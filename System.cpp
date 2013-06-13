@@ -362,7 +362,7 @@ void System::nspin(uint16_t ns)
 System::System(BaseAddress base) :
     mBase(reinterpret_cast<volatile SCB*>(base)),
     mBogoMips(0),
-    mEventQueue(16),
+    mEventQueue(128),
     mTimeInInterrupt(0),
     mTimeIdle(0),
     mEventCount(0),

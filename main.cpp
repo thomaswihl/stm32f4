@@ -178,18 +178,18 @@ int main()
     gSys.mGpioC.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull);
     gSys.mGpioC.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
     gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::PushPull);
-    Ssd1306 oled1(gSys.mSpi1, cs1, dataCommand, reset);
-    Ssd1306 oled2(gSys.mSpi1, cs2, dataCommand, reset);
-    oled1.reset();
-    oled1.init();
-    oled2.init();
-    for (int x = 0; x < 64; ++x)
-    {
-        oled1.setPixel(x, x);
-        oled2.setPixel(x, x);
-    }
-    oled1.sendData();
-    oled2.sendData();
+//    Ssd1306 oled1(gSys.mSpi1, cs1, dataCommand, reset);
+//    Ssd1306 oled2(gSys.mSpi1, cs2, dataCommand, reset);
+//    oled1.reset();
+//    oled1.init();
+//    oled2.init();
+//    for (int x = 0; x < 64; ++x)
+//    {
+//        oled1.setPixel(x, x);
+//        oled2.setPixel(x, x);
+//    }
+//    oled1.sendData();
+//    oled2.sendData();
 
     // SPI3
     gSys.mRcc.enable(ClockControl::Function::GpioC);

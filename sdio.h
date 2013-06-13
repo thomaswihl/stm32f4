@@ -7,16 +7,26 @@
 class Sdio
 {
 public:
+    enum class Result { Ok, Timeout, CrcError, Error };
     Sdio(System::BaseAddress base);
 
     void enable(bool enable);
     void setClock(unsigned clock);
 
-    void printStatus();
+    void printHostStatus();
+    void resetCard();
+    void initCard();
+    Result interfaceCondition();    // CMD8
+    Result initializeCard(bool hcSupport);   // ACMD41
 
 private:
+
     static const unsigned CLOCK_IDENTIFICATION = 400000;
+    static const uint8_t CHECK_PATTERN = 0xaa;
     static const char* const STATUS_MSG[];
+
+    enum class State { Idle, Ready, Ident, Standby, Transfer, Data, Receive, Program, Disabled };
+
     struct SDIO
     {
         struct __POWER
@@ -38,8 +48,7 @@ private:
         uint32_t ARG;
         struct __CMD
         {
-            uint32_t CMDINDEX : 6;
-            uint32_t WAITRESP : 2;
+            uint32_t CMD_WAIT : 8;
             uint32_t WAITINT : 1;
             uint32_t WAITPEND : 1;
             uint32_t CPSMEN : 1;
@@ -160,6 +169,12 @@ private:
     };
 
     volatile SDIO* mBase;
+
+    Result sendCommand(uint8_t cmd, uint32_t arg, bool waitResponse = true, bool ignoreCrc = false);
+    Result sendAppCommand(uint8_t cmd, uint32_t arg, bool waitResponse, bool ignoreCrc);
+    bool checkCardStatus(bool expectAppCmd);
+    uint32_t ocrFromVoltage(int volt);
+    void printOcr();
 };
 
 #endif // SDIO_H

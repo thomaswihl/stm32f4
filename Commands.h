@@ -163,7 +163,7 @@ class CmdSdio : public CommandInterpreter::Command, public System::Event::Callba
 public:
     CmdSdio(Sdio& sdio);
     virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
-    virtual const char* helpText() const { return "Execute SDIO commands."; }
+    virtual const char* helpText() const { return "Execute SD commands."; }
 protected:
     virtual void eventCallback(System::Event* event);
 private:
