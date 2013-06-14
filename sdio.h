@@ -17,8 +17,11 @@ public:
     void printHostStatus();
     void resetCard();
     bool initCard();
-    Result interfaceCondition();    // CMD8
-    Result initializeCard(bool hcSupport);   // ACMD41
+    Result interfaceCondition();            // CMD8
+    Result initializeCard(bool hcSupport);  // ACMD41
+    Result getCardIdentifier();             // CMD2
+    Result getRelativeCardAddress();        // CMD3
+    Result getCardSpecificData();           // CMD9
 
 private:
 
@@ -174,17 +177,40 @@ private:
         uint32_t FIFO;
     };
 
+    union CID
+    {
+        struct
+        {
+            uint8_t MID;
+            uint8_t OID[2];
+            uint8_t PNM[5];
+            uint8_t PRV;
+            uint8_t PSN[4];
+            uint8_t MDT[2];
+            uint8_t CRC;
+        }   bits;
+        uint32_t value[4];
+    };
+
     volatile SDIO* mBase;
     int mVolt;
     bool mDebug;
+    CID mCid;
+    uint32_t mRca;
+    uint32_t mTaac;
+    uint32_t mNsac;
+    uint32_t mTransferRate;
+    uint32_t mCommandClass;
+    uint32_t mBlockSize;
 
     Result sendCommand(uint8_t cmd, uint32_t arg, Response response);
     Result sendAppCommand(uint8_t cmd, uint32_t arg, Response response);
-    bool checkCardStatus(bool expectAppCmd, bool printStatus);
+    bool checkCardStatus(uint32_t status);
     uint32_t ocrFromVoltage(int volt);
     void voltageFromOcr(uint32_t ocr, int& minVoltage, int& maxVoltage);
     void printOcr();
     const char* toString(Response response);
+    uint32_t getBits(uint8_t* field, int fieldSize, int highestBit, int lowestBit);
 };
 
 #endif // SDIO_H
