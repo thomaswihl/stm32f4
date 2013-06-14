@@ -8,14 +8,15 @@ class Sdio
 {
 public:
     enum class Result { Ok, Timeout, CrcError, Error };
-    Sdio(System::BaseAddress base);
+    // supplyVoltage is in 1/10 Volt, i.e. 30 for 3V, 33 for 3.3V, ...
+    Sdio(System::BaseAddress base, int supplyVoltage);
 
     void enable(bool enable);
     void setClock(unsigned clock);
 
     void printHostStatus();
     void resetCard();
-    void initCard();
+    bool initCard();
     Result interfaceCondition();    // CMD8
     Result initializeCard(bool hcSupport);   // ACMD41
 
@@ -26,6 +27,7 @@ private:
     static const char* const STATUS_MSG[];
 
     enum class State { Idle, Ready, Ident, Standby, Transfer, Data, Receive, Program, Disabled };
+    enum class Response { None, Short, Long, ShortNoCrc, LongNoCrc };
 
     struct SDIO
     {
@@ -46,17 +48,21 @@ private:
             uint32_t __RESERVED0 : 17;
         }   CLKCR;
         uint32_t ARG;
-        struct __CMD
+        union __CMD
         {
-            uint32_t CMD_WAIT : 8;
-            uint32_t WAITINT : 1;
-            uint32_t WAITPEND : 1;
-            uint32_t CPSMEN : 1;
-            uint32_t SDIO_SUSPEND : 1;
-            uint32_t EN_CMD_COMPL : 1;
-            uint32_t NIEN : 1;
-            uint32_t ATACMD : 1;
-            uint32_t __RESERVED0 : 17;
+            struct
+            {
+                uint32_t CMD_WAIT : 8;
+                uint32_t WAITINT : 1;
+                uint32_t WAITPEND : 1;
+                uint32_t CPSMEN : 1;
+                uint32_t SDIO_SUSPEND : 1;
+                uint32_t EN_CMD_COMPL : 1;
+                uint32_t NIEN : 1;
+                uint32_t ATACMD : 1;
+                uint32_t __RESERVED0 : 17;
+            }   bits;
+            uint32_t value;
         }   CMD;
         uint32_t RESPCMD;
         uint32_t RESP[4];
@@ -169,12 +175,16 @@ private:
     };
 
     volatile SDIO* mBase;
+    int mVolt;
+    bool mDebug;
 
-    Result sendCommand(uint8_t cmd, uint32_t arg, bool waitResponse = true, bool ignoreCrc = false);
-    Result sendAppCommand(uint8_t cmd, uint32_t arg, bool waitResponse, bool ignoreCrc);
-    bool checkCardStatus(bool expectAppCmd);
+    Result sendCommand(uint8_t cmd, uint32_t arg, Response response);
+    Result sendAppCommand(uint8_t cmd, uint32_t arg, Response response);
+    bool checkCardStatus(bool expectAppCmd, bool printStatus);
     uint32_t ocrFromVoltage(int volt);
+    void voltageFromOcr(uint32_t ocr, int& minVoltage, int& maxVoltage);
     void printOcr();
+    const char* toString(Response response);
 };
 
 #endif // SDIO_H

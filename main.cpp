@@ -251,7 +251,7 @@ int main()
     gSys.mGpioC.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::SDIO);    // CK
     gSys.mGpioD.setAlternate(Gpio::Index::Pin2, Gpio::AltFunc::SDIO);    // CMD
 
-    Sdio sdio(StmSystem::BaseAddress::SDIO);
+    Sdio sdio(StmSystem::BaseAddress::SDIO, 30);
     interpreter.add(new CmdSdio(sdio));
 
     interpreter.start();

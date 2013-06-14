@@ -28,10 +28,13 @@ const char* const Sdio::STATUS_MSG[] =
     "CE-ATA command completion signal received"
 };
 
-Sdio::Sdio(System::BaseAddress base) :
-    mBase(reinterpret_cast<volatile SDIO*>(base))
+Sdio::Sdio(System::BaseAddress base, int supplyVoltage) :
+    mBase(reinterpret_cast<volatile SDIO*>(base)),
+    mVolt(supplyVoltage),
+    mDebug(false)
 {
     static_assert(sizeof(SDIO) == 0x84, "Struct has wrong size, compiler problem.");
+    enable(false);
 }
 
 void Sdio::enable(bool enable)
@@ -42,12 +45,12 @@ void Sdio::enable(bool enable)
         mBase->POWER.PWRCTRL = 3;
         mBase->CLKCR.CLKEN = 1;
         mBase->CLKCR.PWRSAV = 0;
-        mBase->DTIMER = 1000000;  // 4s timeout
-        mBase->CMD.CPSMEN = 1;
+        mBase->DTIMER = 48 * 1000 * 1000;  // 1s timeout
+        mBase->CMD.bits.CPSMEN = 1;
     }
     else
     {
-        mBase->CMD.CPSMEN = 0;
+        mBase->CMD.bits.CPSMEN = 0;
         mBase->POWER.PWRCTRL = 0;
     }
 }
@@ -68,8 +71,8 @@ void Sdio::setClock(unsigned clock)
 
 void Sdio::printHostStatus()
 {
-    printf("ST:");
     uint32_t v = mBase->STA.value;
+    printf("SDIO:");
     int count = 0;
     for (unsigned i = 0; i < sizeof(STATUS_MSG) / sizeof(STATUS_MSG[0]); ++i)
     {
@@ -85,17 +88,29 @@ void Sdio::printHostStatus()
 
 void Sdio::resetCard()
 {
-    sendCommand(0, 0, false, true);
+    sendCommand(0, 0, Response::None);
 }
 
-void Sdio::initCard()
+bool Sdio::initCard()
 {
+    bool v2 = false;
     resetCard();
+    // Send CMD8
     Result result = interfaceCondition();
-    result = initializeCard(true);
+    // if the card responds it is a v2 or later
+    if (result == Result::Ok) v2 = true;
+    // Send ACMD41, to check voltage ranges
+    result = initializeCard(v2);
+    if (result != Result::Ok)
+    {
+        System::instance()->printWarning("SDIO", "Card not supported or not a SD/SDHC/SDXC card.");
+        return false;
+    }
+
+    return true;
 }
 
-Sdio::Result Sdio::interfaceCondition()
+Sdio::Result Sdio::interfaceCondition() // CMD8
 {
     union
     {
@@ -110,7 +125,7 @@ Sdio::Result Sdio::interfaceCondition()
     arg.value = 0;
     arg.bits.checkPattern = CHECK_PATTERN;
     arg.bits.voltageSupplied = 1; // 2.7 - 3.6V
-    sendCommand(8, arg.value);
+    sendCommand(8, arg.value, Response::Short);
     if (mBase->RESP[0] != arg.value) return Result::Error;
     return Result::Ok;
 }
@@ -133,50 +148,57 @@ Sdio::Result Sdio::initializeCard(bool hcSupport)
         uint32_t value;
     }   arg;
     arg.value = 0;
-    arg.bits.OCR = ocrFromVoltage(30);  // 3.0V
+    arg.bits.OCR = ocrFromVoltage(mVolt);
     arg.bits.hcSupport = hcSupport ? 1 : 0;
     Result result;
+    int timeout = 1000;
     do
     {
-        result = sendAppCommand(41, arg.value, true, true);
+        result = sendAppCommand(41, arg.value, Response::ShortNoCrc);
         if (result != Result::Ok) return result;
-        printOcr();
-    }   while ((mBase->RESP[0] & 0x80000000) == 0);
+        System::instance()->usleep(10000);
+        --timeout;
+    }   while ((mBase->RESP[0] & 0x80000000) == 0 && timeout >= 0);
+    if ((mBase->RESP[0] & 0x80000000) == 0) result = Result::Timeout;
+    if (mDebug) printOcr();
     return result;
 }
 
-Sdio::Result Sdio::sendCommand(uint8_t cmd, uint32_t arg, bool waitResponse, bool ignoreCrc)
+Sdio::Result Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response)
 {
-    Result result;
-    int retry = 5;
-    do
+    bool longResponse = response == Response::Long || response == Response::LongNoCrc;
+    bool waitResponse = response != Response::None;
+    bool ignoreCrc = response == Response::ShortNoCrc || response == Response::LongNoCrc;
+
+    Result result = Result::Ok;
+    // Wait for previous command to finish
+    while (mBase->STA.bits.CMDACT != 0) ;
+    // clear all status bits
+    mBase->ICR.value = 0x00c007ff;
+    if (mDebug) printf("SEND %i(%08lx) with %s\n", cmd, arg, toString(response));
+    mBase->ARG = arg;
+    mBase->CMD.bits.CMD_WAIT = (longResponse ? 0x80 : 0) | (waitResponse ? 0x40 : 0) | (cmd & 0x3f);
+    if (waitResponse)
     {
-        result = Result::Ok;
-        printf("SEND %i(%08x)\n", cmd, arg);
-        mBase->ARG = arg;
-        mBase->ICR.value = 0x00c007ff;
-        mBase->CMD.CMD_WAIT = (waitResponse ? 0x40 : 0) | cmd;
-        if (waitResponse)
-        {
-            while (mBase->STA.bits.CMDREND == 0 && mBase->STA.bits.CCRCFAIL == 0 && mBase->STA.bits.CTIMEOUT == 0) ;
-            if (mBase->STA.bits.CTIMEOUT) result = Result::Timeout;
-            if (mBase->STA.bits.CCRCFAIL && !ignoreCrc) result = Result::CrcError;
-        }
-        --retry;
-    }   while (result != Result::Ok && retry >= 0);
+        // Wait for command to finish or timeout or CRC fail
+        while (mBase->STA.bits.CMDREND == 0 && mBase->STA.bits.CCRCFAIL == 0 && mBase->STA.bits.CTIMEOUT == 0) ;
+        if (mBase->STA.bits.CTIMEOUT) result = Result::Timeout;
+        if (mBase->STA.bits.CCRCFAIL && !ignoreCrc) result = Result::CrcError;
+    }
     if (result != Result::Ok) printHostStatus();
+    else if (mDebug && waitResponse) printf("RESP: %08lx\n", mBase->RESP[0]);
     return result;
 }
 
-Sdio::Result Sdio::sendAppCommand(uint8_t cmd, uint32_t arg, bool waitResponse, bool ignoreCrc)
+Sdio::Result Sdio::sendAppCommand(uint8_t cmd, uint32_t arg, Response response)
 {
     mBase->ARG = 0;
-    Result result = sendCommand(55, 0);
+    Result result = sendCommand(55, 0, Response::Short);
     if (result == Result::Ok)
     {
-        if (checkCardStatus(true))
+        if (checkCardStatus(true, mDebug))
         {
-            result = sendCommand(cmd, arg, waitResponse, ignoreCrc);
+            result = sendCommand(cmd, arg, response);
         }
         else
         {
@@ -186,7 +208,7 @@ Sdio::Result Sdio::sendAppCommand(uint8_t cmd, uint32_t arg, bool waitResponse, 
     return result;
 }
 
-bool Sdio::checkCardStatus(bool expectAppCmd)
+bool Sdio::checkCardStatus(bool expectAppCmd, bool printStatus)
 {
     static const uint32_t AKE_SEQ_ERROR = 1 << 3;
     static const uint32_t APP_CMD = 1 << 5;
@@ -238,6 +260,12 @@ bool Sdio::checkCardStatus(bool expectAppCmd)
             return false;
         }
     }
+    if (printStatus) printf("SD(%s):%s%s%s%s.\n", CURRENT_STATE[(status & CURRENT_STATE_MASK) >> CURRENT_STATE_SHIFT],
+                                ((status & READY_FOR_DATA) != 0) ? " 'READY_FOR_DATA'" : "",
+                                ((status & ERASE_RESET) != 0) ? " 'ERASE_RESET'" : "",
+                                ((status & CARD_ECC_DISABLED) != 0) ? " 'CARD_ECC_DISABLED'" : "",
+                                ((status & CARD_IS_LOCKED) != 0) ? " 'CARD_IS_LOCKED'" : ""
+                           );
 
     return true;
 }
@@ -254,6 +282,19 @@ uint32_t Sdio::ocrFromVoltage(int volt)
     return ocr;
 }
 
+void Sdio::voltageFromOcr(uint32_t ocr, int& minVoltage, int& maxVoltage)
+{
+    minVoltage = 0, maxVoltage = 0;
+    for (int i = 15; i < 24; ++i)
+    {
+        if ((ocr & (1 << i)) != 0)
+        {
+            if (minVoltage == 0) minVoltage = i - 15 + 27;
+            maxVoltage = i - 15 + 28;
+        }
+    }
+}
+
 void Sdio::printOcr()
 {
     uint32_t ocr = mBase->RESP[0];
@@ -261,18 +302,24 @@ void Sdio::printOcr()
     if ((ocr & 0x80000000) == 0) printf("BUSY\n");
     else
     {
-        printf("READY, capacity is ");
+        printf("READY, type is ");
         if (ocr & 0x40000000) printf("HC/XC");
         else printf("SC");
-        int first = 0, last = 0;
-        for (int i = 15; i < 24; ++i)
-        {
-            if ((ocr & (1 << i)) != 0)
-            {
-                if (first == 0) first = i - 15 + 27;
-                last = i - 15 + 28;
-            }
-        }
-        printf(" and supports %i.%i-%i.%iV\n", first / 10, first % 10, last / 10, last % 10);
+        int min, max;
+        voltageFromOcr(ocr, min, max);
+        printf(" and supports %i.%i-%i.%iV.\n", min / 10, min % 10, max / 10, max % 10);
     }
+}
+
+const char *Sdio::toString(Sdio::Response response)
+{
+    switch (response)
+    {
+    case Sdio::Response::None:          return "None";
+    case Sdio::Response::Short:         return "Short";
+    case Sdio::Response::Long:          return "Long";
+    case Sdio::Response::ShortNoCrc:    return "ShortNoCrc";
+    case Sdio::Response::LongNoCrc:     return "LongNoCrc";
+    }
+    return "UNKNOWN_RESPONSE";
 }
