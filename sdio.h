@@ -13,6 +13,7 @@ public:
 
     void enable(bool enable);
     void setClock(unsigned clock);
+    uint32_t clock();
 
     void printHostStatus();
     void resetCard();
@@ -22,11 +23,13 @@ public:
     Result getCardIdentifier();             // CMD2
     Result getRelativeCardAddress();        // CMD3
     Result getCardSpecificData();           // CMD9
+    Result selectCard(bool select = true);  // CMD7
 
 private:
 
     static const unsigned CLOCK_IDENTIFICATION = 400000;
     static const uint8_t CHECK_PATTERN = 0xaa;
+    static const unsigned PLL_CLOCK = 48000000;
     static const char* const STATUS_MSG[];
 
     enum class State { Idle, Ready, Ident, Standby, Transfer, Data, Receive, Program, Disabled };
@@ -39,16 +42,20 @@ private:
             uint32_t PWRCTRL : 2;
             uint32_t __RESERVED0 : 30;
         }   POWER;
-        struct __CLKCR
+        union __CLKCR
         {
-            uint32_t CLKDIV : 8;
-            uint32_t CLKEN : 1;
-            uint32_t PWRSAV : 1;
-            uint32_t BYPASS : 1;
-            uint32_t WIDBUS : 2;
-            uint32_t NEGEDGE : 1;
-            uint32_t HWFC_EN : 1;
-            uint32_t __RESERVED0 : 17;
+            struct
+            {
+                uint32_t CLKDIV : 8;
+                uint32_t CLKEN : 1;
+                uint32_t PWRSAV : 1;
+                uint32_t BYPASS : 1;
+                uint32_t WIDBUS : 2;
+                uint32_t NEGEDGE : 1;
+                uint32_t HWFC_EN : 1;
+                uint32_t __RESERVED0 : 17;
+            }   bits;
+            uint32_t value;
         }   CLKCR;
         uint32_t ARG;
         union __CMD
@@ -196,12 +203,36 @@ private:
     int mVolt;
     bool mDebug;
     CID mCid;
-    uint32_t mRca;
-    uint32_t mTaac;
-    uint32_t mNsac;
-    uint32_t mTransferRate;
-    uint32_t mCommandClass;
-    uint32_t mBlockSize;
+    unsigned mRca;
+    struct
+    {
+        unsigned mTaac;
+        unsigned mNsac;
+        unsigned mTransferRate;
+        unsigned mCommandClass;
+        unsigned mBlockCount;
+        unsigned mReadBlockSize;
+        bool mPartialBlockRead;
+        bool mReadBlockMisalign;
+        unsigned mWriteBlockSize;
+        bool mPartialBlockWrite;
+        bool mWriteBlockMisalign;
+        bool mDriverStageImplemented;
+        unsigned mReadCurrentMin;
+        unsigned mReadCurrentMax;
+        unsigned mWriteCurrentMin;
+        unsigned mWriteCurrentMax;
+        bool mEraseSingleBlock;
+        unsigned mEraseBlockSize;
+        unsigned mWriteProtectGroupSize;
+        bool mWriteProtectGroupEnabled;
+        unsigned mReadToWriteFactor;
+        bool mCopy;
+        bool mPermanentlyWriteProtected;
+        bool mTemporarilyWriteProtected;
+        bool mFileFormatGroup;
+        unsigned mFileFormat;
+    }   mCsd;
 
     Result sendCommand(uint8_t cmd, uint32_t arg, Response response);
     Result sendAppCommand(uint8_t cmd, uint32_t arg, Response response);
