@@ -37,7 +37,7 @@ Sdio::Sdio(System::BaseAddress base, int supplyVoltage) :
     mDebug(true),
     mRca(0)
 {
-    static_assert(sizeof(SDIO) == 0x84, "Struct has wrong size, compiler problem.");
+    static_assert(sizeof(SDIO) == 0x100, "Struct has wrong size, compiler problem.");
     enable(false);
 }
 
@@ -146,6 +146,11 @@ bool Sdio::initCard()
     if (selectCard() != Result::Ok)
     {
         System::instance()->printWarning("SDIO", "Can't select card.");
+        return false;
+    }
+    if (getCardStatus() != Result::Ok)
+    {
+        System::instance()->printWarning("SDIO", "Can't read status.");
         return false;
     }
     return true;
@@ -371,6 +376,23 @@ Sdio::Result Sdio::selectCard(bool select)
 {
     Result result = sendCommand(7, mRca, Response::ShortNoCrc);;
     if (result == Result::Ok) checkCardStatus(mBase->RESP[0]);
+    return result;
+}
+
+Sdio::Result Sdio::getCardStatus()
+{
+    Result result = sendCommand(13, mRca, Response::Short);;
+    if (result == Result::Ok) checkCardStatus(mBase->RESP[0]);
+    return result;
+}
+
+Sdio::Result Sdio::getCardConfiguration()
+{
+    Result result = sendAppCommand(51, 0, Response::Short);
+    if (result == Result::Ok)
+    {
+
+    }
     return result;
 }
 

@@ -24,6 +24,8 @@ public:
     Result getRelativeCardAddress();        // CMD3
     Result getCardSpecificData();           // CMD9
     Result selectCard(bool select = true);  // CMD7
+    Result getCardStatus();                 // CMD13
+    Result getCardConfiguration();          // ACMD51
 
 private:
 
@@ -181,7 +183,7 @@ private:
         uint32_t __RESERVED0[2];
         uint32_t FIFOCNT;
         uint32_t __RESERVED1[13];
-        uint32_t FIFO;
+        uint32_t FIFO[32];
     };
 
     union CID

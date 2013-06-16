@@ -238,12 +238,13 @@ int main()
 
     gSys.mRcc.enable(ClockControl::Function::Sdio);
     gSys.mRcc.enable(ClockControl::Function::GpioC);
-    gSys.mGpioC.configOutput(Gpio::Index::Pin8, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D0
-    gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D1
-    gSys.mGpioC.configOutput(Gpio::Index::Pin10, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D2
-    gSys.mGpioC.configOutput(Gpio::Index::Pin11, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // D3
-    gSys.mGpioC.configOutput(Gpio::Index::Pin12, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // CK
-    gSys.mGpioD.configOutput(Gpio::Index::Pin2, Gpio::OutputType::OpenDrain, Gpio::Pull::Up, Gpio::Speed::Fast);    // CMD
+    gSys.mRcc.enable(ClockControl::Function::GpioD);
+    gSys.mGpioC.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Fast);    // D0
+    gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Fast);    // D1
+    gSys.mGpioC.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Fast);    // D2
+    gSys.mGpioC.configOutput(Gpio::Index::Pin11, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Fast);    // D3
+    gSys.mGpioC.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);    // CK
+    gSys.mGpioD.configOutput(Gpio::Index::Pin2, Gpio::OutputType::PushPull, Gpio::Pull::Up, Gpio::Speed::Fast);    // CMD
     gSys.mGpioC.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::SDIO);    // D0
     gSys.mGpioC.setAlternate(Gpio::Index::Pin9, Gpio::AltFunc::SDIO);    // D1
     gSys.mGpioC.setAlternate(Gpio::Index::Pin10, Gpio::AltFunc::SDIO);    // D2
