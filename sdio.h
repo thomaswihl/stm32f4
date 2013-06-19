@@ -12,7 +12,7 @@ public:
     Sdio(System::BaseAddress base, int supplyVoltage);
 
     void enable(bool enable);
-    void setClock(unsigned clock);
+    void setClock(unsigned speed);
     uint32_t clock();
 
     void printHostStatus();
@@ -26,6 +26,7 @@ public:
     Result selectCard(bool select = true);  // CMD7
     Result getCardStatus();                 // CMD13
     Result getCardConfiguration();          // ACMD51
+    Result setBusWidth();                   // ACMD6
 
 private:
 
@@ -36,6 +37,7 @@ private:
 
     enum class State { Idle, Ready, Ident, Standby, Transfer, Data, Receive, Program, Disabled };
     enum class Response { None, Short, Long, ShortNoCrc, LongNoCrc };
+    enum class Direction { Read, Write };
 
     struct SDIO
     {
@@ -80,18 +82,22 @@ private:
         uint32_t RESP[4];
         uint32_t DTIMER;
         uint32_t DLEN;
-        struct __DCTRL
+        union __DCTRL
         {
-            uint32_t DTEN : 1;
-            uint32_t DTDIR : 1;
-            uint32_t DTMODE : 1;
-            uint32_t DMAEN : 1;
-            uint32_t DBLOCKSIZE : 4;
-            uint32_t RWSTART : 1;
-            uint32_t RWSTOP : 1;
-            uint32_t RWMOD : 1;
-            uint32_t SDIOEN : 1;
-            uint32_t __RESERVED0 : 20;
+            struct
+            {
+                uint32_t DTEN : 1;
+                uint32_t DTDIR : 1;
+                uint32_t DTMODE : 1;
+                uint32_t DMAEN : 1;
+                uint32_t DBLOCKSIZE : 4;
+                uint32_t RWSTART : 1;
+                uint32_t RWSTOP : 1;
+                uint32_t RWMOD : 1;
+                uint32_t SDIOEN : 1;
+                uint32_t __RESERVED0 : 20;
+            }   bits;
+            uint32_t value;
         }   DCTRL;
         uint32_t DCOUNT;
         union __STA
@@ -206,6 +212,9 @@ private:
     bool mDebug;
     CID mCid;
     unsigned mRca;
+    unsigned mNAC;
+    bool mHc;
+    int mDCtrlBlockSize;
     struct
     {
         unsigned mTaac;
@@ -234,6 +243,11 @@ private:
         bool mTemporarilyWriteProtected;
         bool mFileFormatGroup;
         unsigned mFileFormat;
+        unsigned mBusWidth;
+        bool mDataStatusAfterErase;
+        unsigned mSpecVersion;
+        bool mSetBlockCountSupport;
+        bool mSpeedClassControlSupport;
     }   mCsd;
 
     Result sendCommand(uint8_t cmd, uint32_t arg, Response response);
@@ -244,6 +258,8 @@ private:
     void printOcr();
     const char* toString(Response response);
     uint32_t getBits(uint8_t* field, int fieldSize, int highestBit, int lowestBit);
+    Result prepareTransfer(Direction direction, unsigned byteCount);
+    Result setBlockSize(uint32_t blockSize);
 };
 
 #endif // SDIO_H

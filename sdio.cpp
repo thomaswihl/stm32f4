@@ -6,7 +6,7 @@
 const char* const Sdio::STATUS_MSG[] =
 {
     "Command response CRC error",
-    "Data CDC error",
+    "Data CRC error",
     "Command response timeout",
     "Data timeout",
     "Transmit FIFO underrun",
@@ -35,7 +35,10 @@ Sdio::Sdio(System::BaseAddress base, int supplyVoltage) :
     mBase(reinterpret_cast<volatile SDIO*>(base)),
     mVolt(supplyVoltage),
     mDebug(true),
-    mRca(0)
+    mRca(0),
+    mNAC(150 * 24 * 1000),   // 150ms for standard SD card
+    mHc(false),
+    mDCtrlBlockSize(9)            // 512 byte default block size
 {
     static_assert(sizeof(SDIO) == 0x100, "Struct has wrong size, compiler problem.");
     enable(false);
@@ -47,7 +50,6 @@ void Sdio::enable(bool enable)
     {
         setClock(CLOCK_IDENTIFICATION);
         mBase->POWER.PWRCTRL = 3;
-        mBase->DTIMER = 48 * 1000 * 1000;  // 1s timeout
         mBase->CMD.bits.CPSMEN = 1;
         SDIO::__CLKCR clkcr;
         clkcr.value = mBase->CLKCR.value;
@@ -62,9 +64,9 @@ void Sdio::enable(bool enable)
     }
 }
 
-void Sdio::setClock(unsigned clock)
+void Sdio::setClock(unsigned speed)
 {
-    unsigned div = (PLL_CLOCK + clock - 1) / clock;
+    unsigned div = (PLL_CLOCK + speed - 1) / speed;
     if (div <= 1)
     {
         mBase->CLKCR.bits.BYPASS = 1;
@@ -77,7 +79,8 @@ void Sdio::setClock(unsigned clock)
         clkcr.bits.CLKDIV = div - 2;
         mBase->CLKCR.value = clkcr.value;
     }
-    if (mDebug) printf("Setting clock to %luHz.\n", this->clock());
+    mNAC = 100 * ((static_cast<float>(mCsd.mTaac) * static_cast<float>(clock()) / 1000000000.0f) + (100 * mCsd.mNsac));
+    if (mDebug) printf("Setting clock to %luHz.\n", clock());
 }
 
 uint32_t Sdio::clock()
@@ -143,6 +146,7 @@ bool Sdio::initCard()
         System::instance()->printWarning("SDIO", "Can't read CSD.");
         return false;
     }
+    setClock(mCsd.mTransferRate);
     if (selectCard() != Result::Ok)
     {
         System::instance()->printWarning("SDIO", "Can't select card.");
@@ -151,6 +155,16 @@ bool Sdio::initCard()
     if (getCardStatus() != Result::Ok)
     {
         System::instance()->printWarning("SDIO", "Can't read status.");
+        return false;
+    }
+    if (getCardConfiguration() != Result::Ok)
+    {
+        System::instance()->printWarning("SDIO", "Can't read configuration.");
+        return false;
+    }
+    if (setBusWidth() != Result::Ok)
+    {
+        System::instance()->printWarning("SDIO", "Can't set bus width.");
         return false;
     }
     return true;
@@ -206,6 +220,7 @@ Sdio::Result Sdio::initializeCard(bool hcSupport)
         --timeout;
     }   while ((mBase->RESP[0] & 0x80000000) == 0 && timeout >= 0);
     if ((mBase->RESP[0] & 0x80000000) == 0) result = Result::Timeout;
+    else mHc = (mBase->RESP[0] & 0x40000000) != 0;
     if (mDebug) printOcr();
     return result;
 }
@@ -266,13 +281,11 @@ Sdio::Result Sdio::getCardSpecificData()
         // N_AC(max) = 100 * ((TAAC * f_interface) + (100 * NSAC))
         mCsd.mTaac = pow10(getBits(csd, CSD_LEN, 114, 112) - 3) * TIME_TABLE[getBits(csd, CSD_LEN, 118, 115)];
         mCsd.mNsac = getBits(csd, CSD_LEN, 111, 104);
-        int NAC = 100 * ((static_cast<float>(mCsd.mTaac) * static_cast<float>(clock()) / 1000000000.0f) + (100 * mCsd.mNsac));
-        if (mDebug) printf("T_AAC is %uns, N_SAC is %u, N_AC is %i clocks = %lums.\n", mCsd.mTaac, mCsd.mNsac, NAC, 1000 * NAC / clock());
+        if (mDebug) printf("T_AAC is %uns, N_SAC is %u.\n", mCsd.mTaac, mCsd.mNsac);
 
         // TRAN_SPEED
         mCsd.mTransferRate = 100 * pow10(getBits(csd, CSD_LEN, 98, 96)) * TIME_TABLE[getBits(csd, CSD_LEN, 102, 99)];
         if (mDebug) printf("Maximum transfer rate is %u Hz.\n", mCsd.mTransferRate);
-        setClock(mCsd.mTransferRate);
 
         // CCC
         mCsd.mCommandClass = getBits(csd, CSD_LEN, 95, 84);
@@ -388,10 +401,64 @@ Sdio::Result Sdio::getCardStatus()
 
 Sdio::Result Sdio::getCardConfiguration()
 {
-    Result result = sendAppCommand(51, 0, Response::Short);
+    static const int SCR_LEN = 8;
+    if (setBlockSize(SCR_LEN) != Result::Ok) return Result::Error;
+    if (sendCommand(55, mRca, Response::Short) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
+    if (prepareTransfer(Direction::Read, SCR_LEN) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
+    if (sendCommand(51, 0, Response::Short) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
+
+    uint8_t data[SCR_LEN];
+    unsigned count = 0;
+    while (mBase->STA.bits.DBCKEND == 0 && mBase->STA.bits.DCRCFAIL == 0 && mBase->STA.bits.DTIMEOUT == 0 && mBase->STA.bits.STBITERR == 0)
+    {
+        while (mBase->STA.bits.RXDVAL != 0)
+        {
+            uint32_t d = mBase->FIFO[0];
+            for (int i = 0; i < 4; ++i) data[count++] = d >> (8 * i);
+        }
+    }
+    if (mBase->STA.bits.DCRCFAIL != 0) return Result::CrcError;
+    if (mBase->STA.bits.DTIMEOUT != 0) return Result::Timeout;
+    if (mBase->STA.bits.STBITERR != 0) return Result::Error;
+    if (mBase->STA.bits.DBCKEND == 0) return Result::Error;
+    if (getBits(data, SCR_LEN, 63, 60) == 0)
+    {
+        uint32_t sdSpec = getBits(data, SCR_LEN, 59, 56);
+        mCsd.mDataStatusAfterErase = getBits(data, SCR_LEN, 55, 55);
+        //uint32_t security = getBits(data, SCR_LEN, 54, 52);
+        uint32_t busWidth = getBits(data, SCR_LEN, 51, 48);
+        uint32_t sdSpec3 = getBits(data, SCR_LEN, 47, 47);
+        //uint32_t extendedSecurity = getBits(data, SCR_LEN, 46, 43);
+        mCsd.mSetBlockCountSupport = getBits(data, SCR_LEN, 33, 33);
+        mCsd.mSpeedClassControlSupport = getBits(data, SCR_LEN, 32, 32);
+
+        if (sdSpec == 0) mCsd.mSpecVersion = 100;
+        else if (sdSpec == 1) mCsd.mSpecVersion = 110;
+        else if (sdSpec == 2)
+        {
+            if (sdSpec3 == 0) mCsd.mSpecVersion = 200;
+            else mCsd.mSpecVersion = 300;
+        }
+        else if (sdSpec == 3) mCsd.mSpecVersion = 400;
+        else mCsd.mSpecVersion = 400;
+
+        printf("busWidth = %i\n", busWidth);
+        if ((busWidth & 4) == 4) mCsd.mBusWidth = 4;
+        else mCsd.mBusWidth = 1;
+        if (mDebug) printf("Card supports spec v%i.%02i and %i bit data bus.\n", mCsd.mSpecVersion / 100, mCsd.mSpecVersion % 100, mCsd.mBusWidth);
+    }
+    return Result::Ok;
+}
+
+Sdio::Result Sdio::setBusWidth()
+{
+    Result result = sendAppCommand(6, (mCsd.mBusWidth == 4) ? 2 : 0, Response::Short);
     if (result == Result::Ok)
     {
-
+        if (!checkCardStatus(mBase->RESP[0])) return Result::Error;
+        if (mCsd.mBusWidth == 1) mBase->CLKCR.bits.WIDBUS = 0;
+        else if (mCsd.mBusWidth == 4) mBase->CLKCR.bits.WIDBUS = 1;
+        else if (mCsd.mBusWidth == 8) mBase->CLKCR.bits.WIDBUS = 2;
     }
     return result;
 }
@@ -425,7 +492,7 @@ Sdio::Result Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response)
 Sdio::Result Sdio::sendAppCommand(uint8_t cmd, uint32_t arg, Response response)
 {
     mBase->ARG = 0;
-    Result result = sendCommand(55, 0, Response::Short);
+    Result result = sendCommand(55, mRca, Response::Short);
     if (result == Result::Ok)
     {
         if (checkCardStatus(mBase->RESP[0]))
@@ -566,4 +633,34 @@ uint32_t Sdio::getBits(uint8_t *field, int fieldSize, int highestBit, int lowest
     }
     ret &= 0xffffffff >> (31 - highestBit + lowestBit);
     return ret;
+}
+
+Sdio::Result Sdio::prepareTransfer(Direction direction, unsigned byteCount)
+{
+    mBase->DTIMER = mNAC;
+    mBase->DLEN = byteCount;
+    SDIO::__DCTRL dctrl;
+    dctrl.value = 0;
+    dctrl.bits.DTDIR = direction == Direction::Read ? 1 : 0;
+    dctrl.bits.DTEN = 1;
+    dctrl.bits.DTMODE = 0;
+    dctrl.bits.DBLOCKSIZE = mDCtrlBlockSize;
+    mBase->DCTRL.value = dctrl.value;
+    return Result::Ok;
+}
+
+Sdio::Result Sdio::setBlockSize(uint32_t blockSize)
+{
+    int bs;
+    for (bs = 14; bs >= 0; --bs)
+    {
+        if (blockSize == (1 << bs)) break;
+    }
+    if (bs < 0) return Result::Error;
+    if (mDCtrlBlockSize == bs) return Result::Ok;
+    if (mHc) return Result::Ok;
+    mDCtrlBlockSize = bs;
+    Result result = sendCommand(16, blockSize, Response::Short);
+    if (result == Result::Ok && !checkCardStatus(mBase->RESP[0])) result = Result::Error;
+    return result;
 }
