@@ -209,14 +209,14 @@ private:
 
     volatile SDIO* mBase;
     int mVolt;
-    bool mDebug;
-    CID mCid;
-    unsigned mRca;
-    unsigned mNAC;
-    bool mHc;
-    int mDCtrlBlockSize;
+    int mDebugLevel;
     struct
     {
+        CID mCid;
+        unsigned mRca;
+        unsigned mNAC;
+        bool mHc;
+        int mDCtrlBlockSize;
         unsigned mTaac;
         unsigned mNsac;
         unsigned mTransferRate;

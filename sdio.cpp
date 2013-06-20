@@ -34,11 +34,7 @@ const char* const Sdio::STATUS_MSG[] =
 Sdio::Sdio(System::BaseAddress base, int supplyVoltage) :
     mBase(reinterpret_cast<volatile SDIO*>(base)),
     mVolt(supplyVoltage),
-    mDebug(true),
-    mRca(0),
-    mNAC(150 * 24 * 1000),   // 150ms for standard SD card
-    mHc(false),
-    mDCtrlBlockSize(9)            // 512 byte default block size
+    mDebugLevel(1)
 {
     static_assert(sizeof(SDIO) == 0x100, "Struct has wrong size, compiler problem.");
     enable(false);
@@ -46,13 +42,14 @@ Sdio::Sdio(System::BaseAddress base, int supplyVoltage) :
 
 void Sdio::enable(bool enable)
 {
+    memset(&mCsd, 0, sizeof(mCsd));
     if (enable)
     {
         setClock(CLOCK_IDENTIFICATION);
         mBase->POWER.PWRCTRL = 3;
         mBase->CMD.bits.CPSMEN = 1;
         SDIO::__CLKCR clkcr;
-        clkcr.value = mBase->CLKCR.value;
+        clkcr.value = 0;
         clkcr.bits.CLKEN = 1;
         clkcr.bits.PWRSAV = 0;
         mBase->CLKCR.value = clkcr.value;
@@ -79,8 +76,8 @@ void Sdio::setClock(unsigned speed)
         clkcr.bits.CLKDIV = div - 2;
         mBase->CLKCR.value = clkcr.value;
     }
-    mNAC = 100 * ((static_cast<float>(mCsd.mTaac) * static_cast<float>(clock()) / 1000000000.0f) + (100 * mCsd.mNsac));
-    if (mDebug) printf("Setting clock to %luHz.\n", clock());
+    mCsd.mNAC = 100 * ((static_cast<float>(mCsd.mTaac) * static_cast<float>(clock()) / 1000000000.0f) + (100 * mCsd.mNsac));
+    if (mDebugLevel > 1) printf("Setting clock to %luHz.\n", clock());
 }
 
 uint32_t Sdio::clock()
@@ -115,6 +112,7 @@ void Sdio::printHostStatus()
 void Sdio::resetCard()
 {
     sendCommand(0, 0, Response::None);
+    memset(&mCsd, 0, sizeof(mCsd));
 }
 
 bool Sdio::initCard()
@@ -211,7 +209,7 @@ Sdio::Result Sdio::initializeCard(bool hcSupport)
     arg.bits.OCR = ocrFromVoltage(mVolt);
     arg.bits.hcSupport = hcSupport ? 1 : 0;
     Result result;
-    int timeout = 1000;
+    int timeout = 100;  // max of 100 * 10ms = 1s
     do
     {
         result = sendAppCommand(41, arg.value, Response::ShortNoCrc);
@@ -220,8 +218,8 @@ Sdio::Result Sdio::initializeCard(bool hcSupport)
         --timeout;
     }   while ((mBase->RESP[0] & 0x80000000) == 0 && timeout >= 0);
     if ((mBase->RESP[0] & 0x80000000) == 0) result = Result::Timeout;
-    else mHc = (mBase->RESP[0] & 0x40000000) != 0;
-    if (mDebug) printOcr();
+    else mCsd.mHc = (mBase->RESP[0] & 0x40000000) != 0;
+    if (mDebugLevel > 1) printOcr();
     return result;
 }
 
@@ -230,15 +228,15 @@ Sdio::Result Sdio::getCardIdentifier()
     Result result = sendCommand(2, 0, Response::Long);
     if (result == Result::Ok)
     {
-        for (int i = 0; i < 4; ++i) mCid.value[i] = mBase->RESP[i];
-        if (mDebug)
+        for (int i = 0; i < 4; ++i) mCsd.mCid.value[i] = mBase->RESP[i];
+        if (mDebugLevel > 0)
         {
-            printf("   Manufacturer ID : %u\n", mCid.bits.MID);
-            printf("OEM/Application ID : %c%c\n", mCid.bits.OID[1], mCid.bits.OID[0]);
-            printf("      Product name : %c%c%c%c%c\n", mCid.bits.PNM[4], mCid.bits.PNM[3], mCid.bits.PNM[2], mCid.bits.PNM[1], mCid.bits.PNM[0]);
-            printf("  Product revision : %i.%i\n", mCid.bits.PRV >> 4, mCid.bits.PRV & 0xf);
-            printf("    Product serial : %u\n", mCid.bits.PSN[3] << 24 | mCid.bits.PSN[2] << 16 | mCid.bits.PSN[1] << 8 | mCid.bits.PSN[0]);
-            printf("Manufacturing Date : %u.%u\n", mCid.bits.MDT[0] & 0xf, ((mCid.bits.MDT[0] >> 4) | ((mCid.bits.MDT[1] & 0x0f) << 4)) + 2000);
+            printf("   Manufacturer ID : %u\n", mCsd.mCid.bits.MID);
+            printf("OEM/Application ID : %c%c\n", mCsd.mCid.bits.OID[1], mCsd.mCid.bits.OID[0]);
+            printf("      Product name : %c%c%c%c%c\n", mCsd.mCid.bits.PNM[4], mCsd.mCid.bits.PNM[3], mCsd.mCid.bits.PNM[2], mCsd.mCid.bits.PNM[1], mCsd.mCid.bits.PNM[0]);
+            printf("  Product revision : %i.%i\n", mCsd.mCid.bits.PRV >> 4, mCsd.mCid.bits.PRV & 0xf);
+            printf("    Product serial : %u\n", mCsd.mCid.bits.PSN[3] << 24 | mCsd.mCid.bits.PSN[2] << 16 | mCsd.mCid.bits.PSN[1] << 8 | mCsd.mCid.bits.PSN[0]);
+            printf("Manufacturing Date : %u.%u\n", mCsd.mCid.bits.MDT[0] & 0xf, ((mCsd.mCid.bits.MDT[0] >> 4) | ((mCsd.mCid.bits.MDT[1] & 0x0f) << 4)) + 2000);
         }
     }
     return result;
@@ -249,8 +247,8 @@ Sdio::Result Sdio::getRelativeCardAddress()
     Result result = sendCommand(3, 0, Response::Short);
     if (result == Result::Ok)
     {
-        mRca = mBase->RESP[0] & 0xffff0000;
-        if (mDebug) printf("RCA is %04x\n", mRca);
+        mCsd.mRca = mBase->RESP[0] & 0xffff0000;
+        if (mDebugLevel > 1) printf("RCA is %04x\n", mCsd.mRca);
         checkCardStatus(mBase->RESP[0] & 0x0000ffff);
     }
     return result;
@@ -264,7 +262,7 @@ Sdio::Result Sdio::getCardSpecificData()
     static const int CURRENT_MAX[8] = { 1, 5, 10, 25, 35, 45, 80, 200 };
     static const char* const FILE_FORMAT[4] = { "HDD", "Floppy", "Universal", "Others/Unknown" };
 
-    Result result = sendCommand(9, mRca, Response::Long);
+    Result result = sendCommand(9, mCsd.mRca, Response::Long);
     if (result == Result::Ok)
     {
         uint8_t csd[16];
@@ -276,20 +274,20 @@ Sdio::Result Sdio::getCardSpecificData()
 
         // CSD_STRUCTURE
         int csdVersion = getBits(csd, CSD_LEN, 127, 126) + 1;
-        if (mDebug) printf("\nCSD (v%i):\n---------\n", csdVersion);
+        if (mDebugLevel > 1) printf("\nCSD (v%i):\n---------\n", csdVersion);
 
         // N_AC(max) = 100 * ((TAAC * f_interface) + (100 * NSAC))
         mCsd.mTaac = pow10(getBits(csd, CSD_LEN, 114, 112) - 3) * TIME_TABLE[getBits(csd, CSD_LEN, 118, 115)];
         mCsd.mNsac = getBits(csd, CSD_LEN, 111, 104);
-        if (mDebug) printf("T_AAC is %uns, N_SAC is %u.\n", mCsd.mTaac, mCsd.mNsac);
+        if (mDebugLevel > 1) printf("T_AAC is %uns, N_SAC is %u.\n", mCsd.mTaac, mCsd.mNsac);
 
         // TRAN_SPEED
         mCsd.mTransferRate = 100 * pow10(getBits(csd, CSD_LEN, 98, 96)) * TIME_TABLE[getBits(csd, CSD_LEN, 102, 99)];
-        if (mDebug) printf("Maximum transfer rate is %u Hz.\n", mCsd.mTransferRate);
+        if (mDebugLevel > 0) printf("Maximum transfer rate is %u Hz.\n", mCsd.mTransferRate);
 
         // CCC
         mCsd.mCommandClass = getBits(csd, CSD_LEN, 95, 84);
-        if (mDebug)
+        if (mDebugLevel > 1)
         {
             static const char* const COMMAND_CLASS[] = { "basic", 0, "block read", 0, "block write", "erase", "write protection", "lock card", "application specific", "I/O mode", "switch", "extension" };
             printf("Supported command classes:");
@@ -316,7 +314,7 @@ Sdio::Result Sdio::getCardSpecificData()
         mCsd.mPartialBlockWrite = getBits(csd, CSD_LEN, 21, 21);
         // WRITE_BL_MISALIGN
         mCsd.mWriteBlockMisalign = getBits(csd, CSD_LEN, 78, 78);
-        if (mDebug)
+        if (mDebugLevel > 1)
         {
             printf("Max block size is %u for reading and %u for writing.\n", mCsd.mReadBlockSize, mCsd.mWriteBlockSize);
             printf("Partial reading is %ssupported, partial writing is %ssupported.\n", mCsd.mPartialBlockRead ? "" : "NOT ", mCsd.mPartialBlockWrite ? "" : "NOT ");
@@ -336,7 +334,7 @@ Sdio::Result Sdio::getCardSpecificData()
 
             mCsd.mBlockCount = (getBits(csd, CSD_LEN, 69, 48) + 1) * 1024;
         }
-        if (mDebug) printf("Card has %u blocks with size %u and is therefore %luMB.\n", mCsd.mBlockCount, mCsd.mReadBlockSize, static_cast<uint32_t>(((static_cast<uint64_t>(mCsd.mBlockCount) * static_cast<uint64_t>(mCsd.mReadBlockSize)) >> 20)));
+        if (mDebugLevel > 0) printf("Size: %u blocks x %u = %luMB.\n", mCsd.mBlockCount, mCsd.mReadBlockSize, static_cast<uint32_t>(((static_cast<uint64_t>(mCsd.mBlockCount) * static_cast<uint64_t>(mCsd.mReadBlockSize)) >> 20)));
         if (csdVersion == 1)
         {
             // VDD_R_CURR_MIN
@@ -347,39 +345,39 @@ Sdio::Result Sdio::getCardSpecificData()
             mCsd.mWriteCurrentMin = CURRENT_MIN[getBits(csd, CSD_LEN, 55, 53)];
             // VDD_W_CURR_MAX
             mCsd.mWriteCurrentMax = CURRENT_MAX[getBits(csd, CSD_LEN, 52, 50)];
-            if (mDebug) printf("Card requires [%u, %u]mA for reading and [%u, %u]mA for writing.\n", mCsd.mReadCurrentMin, mCsd.mReadCurrentMax, mCsd.mWriteCurrentMin, mCsd.mWriteCurrentMax);
+            if (mDebugLevel > 1) printf("Card requires [%u, %u]mA for reading and [%u, %u]mA for writing.\n", mCsd.mReadCurrentMin, mCsd.mReadCurrentMax, mCsd.mWriteCurrentMin, mCsd.mWriteCurrentMax);
         }
         // ERASE_BLK_EN
         mCsd.mEraseSingleBlock = getBits(csd, CSD_LEN, 46, 46);
         // SECTOR_SIZE = number of write blocks
         mCsd.mEraseBlockSize = (getBits(csd, CSD_LEN, 45, 39) + 1) * mCsd.mWriteBlockSize;
-        if (mDebug) printf("Card can erase sectors in multiple of %u bytes.\n", mCsd.mEraseSingleBlock ? 512 : mCsd.mEraseBlockSize);
+        if (mDebugLevel > 1) printf("Card can erase sectors in multiple of %u bytes.\n", mCsd.mEraseSingleBlock ? 512 : mCsd.mEraseBlockSize);
         // WP_GRP_SIZE
         mCsd.mWriteProtectGroupSize = (getBits(csd, CSD_LEN, 38, 32) + 1) * mCsd.mEraseBlockSize;
         // WP_GRP_ENABLE
         mCsd.mWriteProtectGroupEnabled = getBits(csd, CSD_LEN, 31, 31);
-        if (mDebug)
+        if (mDebugLevel > 1)
         {
             if (mCsd.mWriteProtectGroupEnabled) printf("Card can write protect groups of size %i.\n", mCsd.mWriteProtectGroupSize);
             else printf("Card can NOT write protect groups.\n");
         }
         // R2W_FACTOR
         mCsd.mReadToWriteFactor = 1 << getBits(csd, CSD_LEN, 28, 26);
-        if (mDebug) printf("Writing is %i times slower than reading.\n", mCsd.mReadToWriteFactor);
+        if (mDebugLevel > 1) printf("Writing is %i times slower than reading.\n", mCsd.mReadToWriteFactor);
         // FILE_FORMAT_GRP
         mCsd.mFileFormatGroup = getBits(csd, CSD_LEN, 15, 15);
         // COPY
         mCsd.mCopy = getBits(csd, CSD_LEN, 14, 14);
-        if (mDebug) printf("Card is %s.\n", mCsd.mCopy ? "copy" : "original");
+        if (mDebugLevel > 1) printf("Card is %s.\n", mCsd.mCopy ? "copy" : "original");
         // PERM_WRITE_PROTECT
         mCsd.mPermanentlyWriteProtected = getBits(csd, CSD_LEN, 13, 13);
-        if (mDebug) printf("Card is %spermanently write protected.\n", mCsd.mPermanentlyWriteProtected ? "" : "NOT ");
+        if (mDebugLevel > 1) printf("Card is %spermanently write protected.\n", mCsd.mPermanentlyWriteProtected ? "" : "NOT ");
         // TMP_WRITE_PROTECT
         mCsd.mTemporarilyWriteProtected = getBits(csd, CSD_LEN, 12, 12);
-        if (mDebug) printf("Card is %stemporaily write protected.\n", mCsd.mTemporarilyWriteProtected ? "" : "NOT ");
+        if (mDebugLevel > 1) printf("Card is %stemporaily write protected.\n", mCsd.mTemporarilyWriteProtected ? "" : "NOT ");
         // FILE_FORMAT
         mCsd.mFileFormat = getBits(csd, CSD_LEN, 11, 10);
-        if (mDebug) printf("File format is %s.\n", mCsd.mFileFormatGroup ? "Reserved" : FILE_FORMAT[mCsd.mFileFormat]);
+        if (mDebugLevel > 1) printf("File format is %s.\n", mCsd.mFileFormatGroup ? "Reserved" : FILE_FORMAT[mCsd.mFileFormat]);
 
     }
     return result;
@@ -387,14 +385,14 @@ Sdio::Result Sdio::getCardSpecificData()
 
 Sdio::Result Sdio::selectCard(bool select)
 {
-    Result result = sendCommand(7, mRca, Response::ShortNoCrc);;
+    Result result = sendCommand(7, mCsd.mRca, Response::ShortNoCrc);;
     if (result == Result::Ok) checkCardStatus(mBase->RESP[0]);
     return result;
 }
 
 Sdio::Result Sdio::getCardStatus()
 {
-    Result result = sendCommand(13, mRca, Response::Short);;
+    Result result = sendCommand(13, mCsd.mRca, Response::Short);;
     if (result == Result::Ok) checkCardStatus(mBase->RESP[0]);
     return result;
 }
@@ -403,26 +401,30 @@ Sdio::Result Sdio::getCardConfiguration()
 {
     static const int SCR_LEN = 8;
     if (setBlockSize(SCR_LEN) != Result::Ok) return Result::Error;
-    if (sendCommand(55, mRca, Response::Short) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
+    if (sendCommand(55, mCsd.mRca, Response::Short) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
     if (prepareTransfer(Direction::Read, SCR_LEN) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
     if (sendCommand(51, 0, Response::Short) != Result::Ok || !checkCardStatus(mBase->RESP[0])) return Result::Error;
 
     uint8_t data[SCR_LEN];
-    unsigned count = 0;
+    int count = 0;
     while (mBase->STA.bits.DBCKEND == 0 && mBase->STA.bits.DCRCFAIL == 0 && mBase->STA.bits.DTIMEOUT == 0 && mBase->STA.bits.STBITERR == 0)
     {
-        while (mBase->STA.bits.RXDVAL != 0)
-        {
-            uint32_t d = mBase->FIFO[0];
-            for (int i = 0; i < 4; ++i) data[count++] = d >> (8 * i);
-        }
+    }
+    while (mBase->STA.bits.RXDVAL != 0 && count < SCR_LEN)
+    {
+        uint32_t d = mBase->FIFO[0];
+        for (int i = 0; i < 4; ++i) data[count++] = d >> (8 * i);
     }
     if (mBase->STA.bits.DCRCFAIL != 0) return Result::CrcError;
     if (mBase->STA.bits.DTIMEOUT != 0) return Result::Timeout;
     if (mBase->STA.bits.STBITERR != 0) return Result::Error;
     if (mBase->STA.bits.DBCKEND == 0) return Result::Error;
+    if (count != SCR_LEN || mBase->STA.bits.RXDVAL != 0) return Result::Error;
     if (getBits(data, SCR_LEN, 63, 60) == 0)
     {
+//        printf("SCR:");
+//        for (int i = 0; i < SCR_LEN; ++i) printf(" %02x",data[i]);
+//        printf("\n");
         uint32_t sdSpec = getBits(data, SCR_LEN, 59, 56);
         mCsd.mDataStatusAfterErase = getBits(data, SCR_LEN, 55, 55);
         //uint32_t security = getBits(data, SCR_LEN, 54, 52);
@@ -442,10 +444,9 @@ Sdio::Result Sdio::getCardConfiguration()
         else if (sdSpec == 3) mCsd.mSpecVersion = 400;
         else mCsd.mSpecVersion = 400;
 
-        printf("busWidth = %i\n", busWidth);
         if ((busWidth & 4) == 4) mCsd.mBusWidth = 4;
         else mCsd.mBusWidth = 1;
-        if (mDebug) printf("Card supports spec v%i.%02i and %i bit data bus.\n", mCsd.mSpecVersion / 100, mCsd.mSpecVersion % 100, mCsd.mBusWidth);
+        if (mDebugLevel > 0) printf("Card supports spec v%i.%02i and %i bit data bus.\n", mCsd.mSpecVersion / 100, mCsd.mSpecVersion % 100, mCsd.mBusWidth);
     }
     return Result::Ok;
 }
@@ -474,7 +475,7 @@ Sdio::Result Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response)
     while (mBase->STA.bits.CMDACT != 0) ;
     // clear all status bits
     mBase->ICR.value = 0x00c007ff;
-    if (mDebug) printf("SEND %i(%08lx) with %s\n", cmd, arg, toString(response));
+    if (mDebugLevel > 2) printf("SEND %i(%08lx) with %s\n", cmd, arg, toString(response));
     mBase->ARG = arg;
     mBase->CMD.bits.CMD_WAIT = (longResponse ? 0x80 : 0) | (waitResponse ? 0x40 : 0) | (cmd & 0x3f);
     if (waitResponse)
@@ -485,14 +486,14 @@ Sdio::Result Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response)
         if (mBase->STA.bits.CCRCFAIL && !ignoreCrc) result = Result::CrcError;
     }
     if (result != Result::Ok) printHostStatus();
-    else if (mDebug && waitResponse) printf("RESP: %08lx\n", mBase->RESP[0]);
+    else if (mDebugLevel > 2 && waitResponse) printf("RESP: %08lx\n", mBase->RESP[0]);
     return result;
 }
 
 Sdio::Result Sdio::sendAppCommand(uint8_t cmd, uint32_t arg, Response response)
 {
     mBase->ARG = 0;
-    Result result = sendCommand(55, mRca, Response::Short);
+    Result result = sendCommand(55, mCsd.mRca, Response::Short);
     if (result == Result::Ok)
     {
         if (checkCardStatus(mBase->RESP[0]))
@@ -550,7 +551,7 @@ bool Sdio::checkCardStatus(uint32_t status)
         return false;
     }
     bool isAppCmd = (status & APP_CMD) != 0;
-    if (mDebug) printf("SD(%s):%s:%s%s%s%s.\n", CURRENT_STATE[(status & CURRENT_STATE_MASK) >> CURRENT_STATE_SHIFT],
+    if (mDebugLevel > 1) printf("SD(%s):%s:%s%s%s%s.\n", CURRENT_STATE[(status & CURRENT_STATE_MASK) >> CURRENT_STATE_SHIFT],
                                 isAppCmd ? "APP_CMD" : "REGULAR_CMD",
                                 ((status & READY_FOR_DATA) != 0) ? " 'READY_FOR_DATA'" : "",
                                 ((status & ERASE_RESET) != 0) ? " 'ERASE_RESET'" : "",
@@ -637,14 +638,14 @@ uint32_t Sdio::getBits(uint8_t *field, int fieldSize, int highestBit, int lowest
 
 Sdio::Result Sdio::prepareTransfer(Direction direction, unsigned byteCount)
 {
-    mBase->DTIMER = mNAC;
+    mBase->DTIMER = mCsd.mNAC;
     mBase->DLEN = byteCount;
     SDIO::__DCTRL dctrl;
     dctrl.value = 0;
     dctrl.bits.DTDIR = direction == Direction::Read ? 1 : 0;
     dctrl.bits.DTEN = 1;
     dctrl.bits.DTMODE = 0;
-    dctrl.bits.DBLOCKSIZE = mDCtrlBlockSize;
+    dctrl.bits.DBLOCKSIZE = mCsd.mDCtrlBlockSize;
     mBase->DCTRL.value = dctrl.value;
     return Result::Ok;
 }
@@ -657,9 +658,9 @@ Sdio::Result Sdio::setBlockSize(uint32_t blockSize)
         if (blockSize == (1 << bs)) break;
     }
     if (bs < 0) return Result::Error;
-    if (mDCtrlBlockSize == bs) return Result::Ok;
-    if (mHc) return Result::Ok;
-    mDCtrlBlockSize = bs;
+    if (mCsd.mDCtrlBlockSize == bs) return Result::Ok;
+    //if (mCsd.mHc) return Result::Ok;
+    mCsd.mDCtrlBlockSize = bs;
     Result result = sendCommand(16, blockSize, Response::Short);
     if (result == Result::Ok && !checkCardStatus(mBase->RESP[0])) result = Result::Error;
     return result;
