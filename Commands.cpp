@@ -416,19 +416,14 @@ CmdLightSensor::Color CmdLightSensor::nextColor(CmdLightSensor::Color color)
 }
 
 
-CmdSdio::CmdSdio(Sdio &sdio) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSdio(sdio), mEvent(*this)
+CmdSdio::CmdSdio(SdCard &sdCard) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSdCard(sdCard), mEvent(*this)
 {
-    mSdio.enable(true);
+    mSdCard.reset();
 }
 
 bool CmdSdio::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
-    if (strcmp("st", argv[1].value.s) == 0) mSdio.printHostStatus();
-    else if (strcmp("en", argv[1].value.s) == 0) mSdio.enable(true);
-    else if (strcmp("dis", argv[1].value.s) == 0) mSdio.enable(false);
-    else if (strcmp("res", argv[1].value.s) == 0) mSdio.resetCard();
-    else if (strcmp("ic", argv[1].value.s) == 0) mSdio.interfaceCondition();
-    else if (strcmp("init", argv[1].value.s) == 0) mSdio.initCard();
+    if (strcmp("init", argv[1].value.s) == 0) mSdCard.init();
     else printf("Unknown command.");
 
     printf("\n");

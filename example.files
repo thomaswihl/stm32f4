@@ -62,3 +62,5 @@ hw/tlc5940.h
 hw/tlc5940.cpp
 sdio.h
 sdio.cpp
+sw/sdcard.h
+sw/sdcard.cpp

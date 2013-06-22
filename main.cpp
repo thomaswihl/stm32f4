@@ -25,6 +25,7 @@
 #include "hw/tlc5940.h"
 #include "Power.h"
 #include "sdio.h"
+#include "sw/sdcard.h"
 
 #include <cstdio>
 #include <memory>
@@ -252,8 +253,15 @@ int main()
     gSys.mGpioC.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::SDIO);    // CK
     gSys.mGpioD.setAlternate(Gpio::Index::Pin2, Gpio::AltFunc::SDIO);    // CMD
 
-    Sdio sdio(StmSystem::BaseAddress::SDIO, 30);
-    interpreter.add(new CmdSdio(sdio));
+
+
+    InterruptController::Line sdioIrq(gSys.mNvic, StmSystem::InterruptIndex::SDIO);
+    Dma::Stream sdioDma(gSys.mDma2, Dma::Stream::StreamIndex::Stream3, Dma::Stream::ChannelIndex::Channel4,
+        new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream3));
+
+    Sdio sdio(StmSystem::BaseAddress::SDIO, sdioIrq, sdioDma);
+    SdCard sdCard(sdio, 30);
+    interpreter.add(new CmdSdio(sdCard));
 
     interpreter.start();
 

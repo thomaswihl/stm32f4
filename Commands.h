@@ -6,7 +6,7 @@
 #include "hw/lis302dl.h"
 #include "hw/ws2801.h"
 #include "System.h"
-#include "sdio.h"
+#include "sw/sdcard.h"
 
 #include <cstdio>
 
@@ -161,7 +161,7 @@ private:
 class CmdSdio : public CommandInterpreter::Command, public System::Event::Callback
 {
 public:
-    CmdSdio(Sdio& sdio);
+    CmdSdio(SdCard &sdCard);
     virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
     virtual const char* helpText() const { return "Execute SD commands."; }
 protected:
@@ -169,7 +169,7 @@ protected:
 private:
     static char const * const NAME[];
     static char const * const ARGV[];
-    Sdio& mSdio;
+    SdCard& mSdCard;
     System::Event mEvent;
 };
 

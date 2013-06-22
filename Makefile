@@ -29,13 +29,16 @@ VERSION_FILE = version.cpp
 
 SRC  = $(wildcard *.cpp)
 SRC += $(wildcard hw/*.cpp)
+SRC += $(wildcard sw/*.cpp)
 # make sure we have the version file included (in case of a clean build it doesn't exist right now)
 ifeq (,$(findstring $(VERSION_FILE),$(SRC)))
   SRC  += $(VERSION_FILE)
 endif
 OBJ    = $(SRC:.cpp=.o)
 
-INCLUDE_FILES = $(wildcard *.h)
+INCLUDE_FILES  = $(wildcard *.h)
+INCLUDE_FILES += $(wildcard hw/*.h)
+INCLUDE_FILES += $(wildcard sw/*.h)
 
 .PHONY: proj
 	make elf-dump

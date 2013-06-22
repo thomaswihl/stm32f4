@@ -2,42 +2,41 @@
 #define SDIO_H
 
 #include "System.h"
+#include "InterruptController.h"
+#include "Dma.h"
 #include "ClockControl.h"
 
 class Sdio
 {
 public:
-    enum class Result { Ok, Timeout, CrcError, Error };
-    // supplyVoltage is in 1/10 Volt, i.e. 30 for 3V, 33 for 3.3V, ...
-    Sdio(System::BaseAddress base, int supplyVoltage);
+    enum class Response { None, Short, Long, ShortNoCrc, LongNoCrc };
+    enum class Direction { Read, Write };
+    enum class BusWidth { OneDataLine, FourDataLines, EightDataLines };
+    Sdio(System::BaseAddress base, InterruptController::Line& irq, Dma::Stream& dma);
 
     void enable(bool enable);
     void setClock(unsigned speed);
     uint32_t clock();
 
+    void reset();
     void printHostStatus();
-    void resetCard();
-    bool initCard();
-    Result interfaceCondition();            // CMD8
-    Result initializeCard(bool hcSupport);  // ACMD41
-    Result getCardIdentifier();             // CMD2
-    Result getRelativeCardAddress();        // CMD3
-    Result getCardSpecificData();           // CMD9
-    Result selectCard(bool select = true);  // CMD7
-    Result getCardStatus();                 // CMD13
-    Result getCardConfiguration();          // ACMD51
-    Result setBusWidth();                   // ACMD6
 
+    bool sendCommand(uint8_t cmd, uint32_t arg, Response response);
+    uint32_t shortResponse();
+    void longResponse(uint8_t* response);
+
+    void prepareTransfer(Direction direction, uint32_t *data, unsigned byteCount);
+    bool setBlockSize(uint16_t blockSize);
+    void setDataTimeout(uint32_t clocks);
+
+    void setBusWidth(BusWidth width);
 private:
 
-    static const unsigned CLOCK_IDENTIFICATION = 400000;
-    static const uint8_t CHECK_PATTERN = 0xaa;
     static const unsigned PLL_CLOCK = 48000000;
+    static const unsigned IC_MASK = 0x00c007ff;
     static const char* const STATUS_MSG[];
 
     enum class State { Idle, Ready, Ident, Standby, Transfer, Data, Receive, Program, Disabled };
-    enum class Response { None, Short, Long, ShortNoCrc, LongNoCrc };
-    enum class Direction { Read, Write };
 
     struct SDIO
     {
@@ -192,74 +191,12 @@ private:
         uint32_t FIFO[32];
     };
 
-    union CID
-    {
-        struct
-        {
-            uint8_t MID;
-            uint8_t OID[2];
-            uint8_t PNM[5];
-            uint8_t PRV;
-            uint8_t PSN[4];
-            uint8_t MDT[2];
-            uint8_t CRC;
-        }   bits;
-        uint32_t value[4];
-    };
-
     volatile SDIO* mBase;
-    int mVolt;
+    InterruptController::Line& mIrq;
+    Dma::Stream& mDma;
     int mDebugLevel;
-    struct
-    {
-        CID mCid;
-        unsigned mRca;
-        unsigned mNAC;
-        bool mHc;
-        int mDCtrlBlockSize;
-        unsigned mTaac;
-        unsigned mNsac;
-        unsigned mTransferRate;
-        unsigned mCommandClass;
-        unsigned mBlockCount;
-        unsigned mReadBlockSize;
-        bool mPartialBlockRead;
-        bool mReadBlockMisalign;
-        unsigned mWriteBlockSize;
-        bool mPartialBlockWrite;
-        bool mWriteBlockMisalign;
-        bool mDriverStageImplemented;
-        unsigned mReadCurrentMin;
-        unsigned mReadCurrentMax;
-        unsigned mWriteCurrentMin;
-        unsigned mWriteCurrentMax;
-        bool mEraseSingleBlock;
-        unsigned mEraseBlockSize;
-        unsigned mWriteProtectGroupSize;
-        bool mWriteProtectGroupEnabled;
-        unsigned mReadToWriteFactor;
-        bool mCopy;
-        bool mPermanentlyWriteProtected;
-        bool mTemporarilyWriteProtected;
-        bool mFileFormatGroup;
-        unsigned mFileFormat;
-        unsigned mBusWidth;
-        bool mDataStatusAfterErase;
-        unsigned mSpecVersion;
-        bool mSetBlockCountSupport;
-        bool mSpeedClassControlSupport;
-    }   mCsd;
 
-    Result sendCommand(uint8_t cmd, uint32_t arg, Response response);
-    Result sendAppCommand(uint8_t cmd, uint32_t arg, Response response);
-    bool checkCardStatus(uint32_t status);
-    uint32_t ocrFromVoltage(int volt);
-    void voltageFromOcr(uint32_t ocr, int& minVoltage, int& maxVoltage);
-    void printOcr();
     const char* toString(Response response);
-    uint32_t getBits(uint8_t* field, int fieldSize, int highestBit, int lowestBit);
-    Result prepareTransfer(Direction direction, unsigned byteCount);
-    Result setBlockSize(uint32_t blockSize);
 };
 
 #endif // SDIO_H
