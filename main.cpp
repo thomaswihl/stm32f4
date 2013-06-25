@@ -255,6 +255,7 @@ int main()
 
 
 
+    gSys.mRcc.enable(ClockControl::Function::Dma2);
     InterruptController::Line sdioIrq(gSys.mNvic, StmSystem::InterruptIndex::SDIO);
     Dma::Stream sdioDma(gSys.mDma2, Dma::Stream::StreamIndex::Stream3, Dma::Stream::ChannelIndex::Channel4,
         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream3));

@@ -6,7 +6,7 @@
 #include "Dma.h"
 #include "ClockControl.h"
 
-class Sdio
+class Sdio : public Dma::Stream::Callback, public InterruptController::Callback
 {
 public:
     enum class Response { None, Short, Long, ShortNoCrc, LongNoCrc };
@@ -21,7 +21,7 @@ public:
     void reset();
     void printHostStatus();
 
-    bool sendCommand(uint8_t cmd, uint32_t arg, Response response);
+    bool sendCommand(uint8_t cmd, uint32_t arg, Response response, System::Event& completeEvent);
     uint32_t shortResponse();
     void longResponse(uint8_t* response);
 
@@ -33,7 +33,35 @@ public:
 private:
 
     static const unsigned PLL_CLOCK = 48000000;
+
+    static const uint32_t CCRCFAIL  = 0x00000001;
+    static const uint32_t DCRCFAIL  = 0x00000002;
+    static const uint32_t CTIMEOUT  = 0x00000004;
+    static const uint32_t DTIMEOUT  = 0x00000008;
+    static const uint32_t TXUNDERR  = 0x00000010;
+    static const uint32_t RXOVERR   = 0x00000020;
+    static const uint32_t CMDREND   = 0x00000040;
+    static const uint32_t CMDSENT   = 0x00000080;
+    static const uint32_t DATAEND   = 0x00000100;
+    static const uint32_t STBITERR  = 0x00000200;
+    static const uint32_t DBCKEND   = 0x00000400;
+    static const uint32_t CMDACT    = 0x00000800;
+    static const uint32_t TXACT     = 0x00001000;
+    static const uint32_t RXACT     = 0x00002000;
+    static const uint32_t TXFIFOHE  = 0x00004000;
+    static const uint32_t RXFIFOHF  = 0x00008000;
+    static const uint32_t TXFIFOOF  = 0x00010000;
+    static const uint32_t RXFIFOOF  = 0x00020000;
+    static const uint32_t TXFIFOOE  = 0x00040000;
+    static const uint32_t RXFIFOOE  = 0x00080000;
+    static const uint32_t TXDVAL    = 0x00100000;
+    static const uint32_t RXDVAL    = 0x00200000;
+    static const uint32_t SDIOIT    = 0x00400000;
+    static const uint32_t CEATAEND  = 0x00800000;
+
     static const unsigned IC_MASK = 0x00c007ff;
+    static const unsigned IM_MASK = CCRCFAIL | DCRCFAIL | CTIMEOUT | DTIMEOUT | TXUNDERR | RXOVERR | CMDREND | CMDSENT | DATAEND | STBITERR;
+
     static const char* const STATUS_MSG[];
 
     enum class State { Idle, Ready, Ident, Standby, Transfer, Data, Receive, Program, Disabled };
@@ -99,92 +127,9 @@ private:
             uint32_t value;
         }   DCTRL;
         uint32_t DCOUNT;
-        union __STA
-        {
-            struct
-            {
-                uint32_t CCRCFAIL : 1;
-                uint32_t DCRCFAIL : 1;
-                uint32_t CTIMEOUT : 1;
-                uint32_t DTIMEOUT : 1;
-                uint32_t TXUNDERR : 1;
-                uint32_t RXOVERR : 1;
-                uint32_t CMDREND : 1;
-                uint32_t CMDSENT : 1;
-                uint32_t DATAEND : 1;
-                uint32_t STBITERR : 1;
-                uint32_t DBCKEND : 1;
-                uint32_t CMDACT : 1;
-                uint32_t TXACT : 1;
-                uint32_t RXACT : 1;
-                uint32_t TXFIFOHE : 1;
-                uint32_t RXFIFOHF : 1;
-                uint32_t TXFIFOOF : 1;
-                uint32_t RXFIFOOF : 1;
-                uint32_t TXFIFOOE : 1;
-                uint32_t RXFIFOOE : 1;
-                uint32_t TXDVAL : 1;
-                uint32_t RXDVAL : 1;
-                uint32_t SDIOIT : 1;
-                uint32_t CEATAEND : 1;
-                uint32_t __RESERVED0 : 8;
-            }   bits;
-            uint32_t value;
-        }   STA;
-        union __ICR
-        {
-            struct
-            {
-                uint32_t CCRCFAILC : 1;
-                uint32_t DCRCFAILC : 1;
-                uint32_t CTIMEOUTC : 1;
-                uint32_t DTIMEOUTC : 1;
-                uint32_t TXUNDERRC : 1;
-                uint32_t RXOVERRC : 1;
-                uint32_t CMDRENDC : 1;
-                uint32_t CMDSENTC : 1;
-                uint32_t DATAENDC : 1;
-                uint32_t STBITERRC : 1;
-                uint32_t DBCKENDC : 1;
-                uint32_t __RESERVED : 11;
-                uint32_t SDIOITC : 1;
-                uint32_t CEATAENDC : 1;
-                uint32_t __RESERVED0 : 8;
-            }   bits;
-            uint32_t value;
-        }   ICR;
-        union __MASK
-        {
-            struct
-            {
-                uint32_t CCRCFAILIE : 1;
-                uint32_t DCRCFAILIE : 1;
-                uint32_t CTIMEOUTIE : 1;
-                uint32_t DTIMEOUTIE : 1;
-                uint32_t TXUNDERRIE : 1;
-                uint32_t RXOVERRIE : 1;
-                uint32_t CMDRENDIE : 1;
-                uint32_t CMDSENTIE : 1;
-                uint32_t DATAENDIE : 1;
-                uint32_t STBITERRIE : 1;
-                uint32_t DBCKENDIE : 1;
-                uint32_t CMDACTIE : 1;
-                uint32_t TXACTIE : 1;
-                uint32_t RXACTIE : 1;
-                uint32_t TXFIFOHEIE : 1;
-                uint32_t RXFIFOHFIE : 1;
-                uint32_t TXFIFOOFIE : 1;
-                uint32_t RXFIFOOFIE : 1;
-                uint32_t TXFIFOOEIE : 1;
-                uint32_t RXFIFOOEIE : 1;
-                uint32_t TXDVALIE : 1;
-                uint32_t RXDVALIE : 1;
-                uint32_t SDIOITIE : 1;
-                uint32_t CEATAENDIE : 1;
-                uint32_t __RESERVED0 : 8;
-            }   bits;
-            uint32_t value;
-        }   MASK;
+        uint32_t STA;
+        uint32_t ICR;
+        uint32_t MASK;
         uint32_t __RESERVED0[2];
         uint32_t FIFOCNT;
         uint32_t __RESERVED1[13];
@@ -195,6 +140,12 @@ private:
     InterruptController::Line& mIrq;
     Dma::Stream& mDma;
     int mDebugLevel;
+    bool mIgnoreCrc;
+    uint8_t mLastCommand;
+    System::Event* mCompleteEvent;
+
+    virtual void dmaCallback(Dma::Stream* stream, Dma::Stream::Callback::Reason reason);
+    virtual void interruptCallback(InterruptController::Index index);
 
     const char* toString(Response response);
 };

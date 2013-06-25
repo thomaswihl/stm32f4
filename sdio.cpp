@@ -39,6 +39,9 @@ Sdio::Sdio(System::BaseAddress base, InterruptController::Line& irq, Dma::Stream
 {
     static_assert(sizeof(SDIO) == 0x100, "Struct has wrong size, compiler problem.");
     enable(false);
+    mDma.setCallback(this);
+    mIrq.setCallback(this);
+    mIrq.enable();
 }
 
 void Sdio::enable(bool enable)
@@ -52,9 +55,11 @@ void Sdio::enable(bool enable)
         clkcr.bits.CLKEN = 1;
         clkcr.bits.PWRSAV = 0;
         mBase->CLKCR.value = clkcr.value;
+        mBase->MASK = IM_MASK;
     }
     else
     {
+        mBase->MASK = 0;
         reset();
     }
 }
@@ -99,8 +104,8 @@ void Sdio::reset()
     mBase->DTIMER = 0;
     mBase->DLEN = 0;
     mBase->DCTRL.value = 0;
-    mBase->MASK.value = 0;
-    mBase->ICR.value = IC_MASK;
+    mBase->MASK = 0;
+    mBase->ICR = IC_MASK;
     while (mBase->FIFOCNT > 0)
     {
         uint32_t data = mBase->FIFO[0];
@@ -109,7 +114,7 @@ void Sdio::reset()
 
 void Sdio::printHostStatus()
 {
-    uint32_t v = mBase->STA.value;
+    uint32_t v = mBase->STA;
     printf("SDIO: %cCMD%i(%08lx), ", (mBase->RESP[0] & 0x00000020) ? 'A' : ' ', mBase->CMD.bits.CMD_WAIT & 0x3f, mBase->ARG);
     int count = 0;
     for (unsigned i = 0; i < sizeof(STATUS_MSG) / sizeof(STATUS_MSG[0]); ++i)
@@ -131,35 +136,69 @@ void Sdio::setBusWidth(BusWidth width)
     else if (width == BusWidth::EightDataLines) mBase->CLKCR.bits.WIDBUS = 2;
 }
 
-bool Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response)
+void Sdio::dmaCallback(Dma::Stream* stream, Dma::Stream::Callback::Reason reason)
+{
+}
+
+void Sdio::interruptCallback(InterruptController::Index index)
+{
+    uint32_t status = mBase->STA;
+    if (status & (CMDSENT | CMDREND | CCRCFAIL | CTIMEOUT))
+    {
+        // command complete, one way or the other
+        if (mCompleteEvent != nullptr)
+        {
+            if (status & (CCRCFAIL | CTIMEOUT)) mCompleteEvent->setResult(System::Event::Result::CommandFail);
+            else mCompleteEvent->setResult(System::Event::Result::CommandSuccess);
+            System::instance()->postEvent(mCompleteEvent);
+            mCompleteEvent = nullptr;
+        }
+    }
+    if (status & (DCRCFAIL | DTIMEOUT | TXUNDERR | RXOVERR | DATAEND | STBITERR))
+    {
+        // transfer ended, one way or the other
+        if (mCompleteEvent != nullptr)
+        {
+            if (status & (DCRCFAIL | DTIMEOUT | TXUNDERR | RXOVERR | STBITERR)) mCompleteEvent->setResult(System::Event::Result::DataFail);
+            else mCompleteEvent->setResult(System::Event::Result::DataSuccess);
+            System::instance()->postEvent(mCompleteEvent);
+            mCompleteEvent = nullptr;
+        }
+    }
+    mBase->ICR = status;
+}
+
+bool Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response, System::Event &completeEvent)
 {
     bool longResponse = response == Response::Long || response == Response::LongNoCrc;
     bool waitResponse = response != Response::None;
-    bool ignoreCrc = response == Response::ShortNoCrc || response == Response::LongNoCrc;
+    mIgnoreCrc = response == Response::ShortNoCrc || response == Response::LongNoCrc;
+    mLastCommand = cmd & 0x3f;
+    mCompleteEvent = &completeEvent;
 
-    // Wait for previous command to finish
-    while (mBase->STA.bits.CMDACT != 0) ;
+    // check that no command is active
+    if (mBase->STA & CMDACT) return false;
     // clear all status bits
-    mBase->ICR.value = 0x00c007ff;
+    mBase->ICR = IC_MASK;
     if (mDebugLevel > 1) printf("SEND %i(%08lx) with %s\n", cmd, arg, toString(response));
     mBase->ARG = arg;
-    mBase->CMD.bits.CMD_WAIT = (longResponse ? 0x80 : 0) | (waitResponse ? 0x40 : 0) | (cmd & 0x3f);
-    if (waitResponse)
-    {
-        // Wait for command to finish or timeout or CRC fail
-        while (mBase->STA.bits.CMDREND == 0 && mBase->STA.bits.CCRCFAIL == 0 && mBase->STA.bits.CTIMEOUT == 0) ;
-        if (mBase->STA.bits.CTIMEOUT)
-        {
-            printHostStatus();
-            return false;
-        }
-        if (mBase->STA.bits.CCRCFAIL && !ignoreCrc)
-        {
-            printHostStatus();
-            return false;
-        }
-    }
-    if (mDebugLevel > 1 && waitResponse) printf("RESP: %08lx\n", mBase->RESP[0]);
+    mBase->CMD.bits.CMD_WAIT = (longResponse ? 0x80 : 0) | (waitResponse ? 0x40 : 0) | mLastCommand;
+//    if (waitResponse)
+//    {
+//        // Wait for command to finish or timeout or CRC fail
+//        while (mBase->STA.bits.CMDREND == 0 && mBase->STA.bits.CCRCFAIL == 0 && mBase->STA.bits.CTIMEOUT == 0) ;
+//        if (mBase->STA.bits.CTIMEOUT)
+//        {
+//            printHostStatus();
+//            return false;
+//        }
+//        if (mBase->STA.bits.CCRCFAIL && !ignoreCrc)
+//        {
+//            printHostStatus();
+//            return false;
+//        }
+//    }
+//    if (mDebugLevel > 1 && waitResponse) printf("RESP: %08lx\n", mBase->RESP[0]);
     return true;
 }
 
@@ -200,6 +239,14 @@ void Sdio::prepareTransfer(Direction direction, uint32_t* data, unsigned byteCou
     dctrl.bits.DTEN = 1;
     dctrl.bits.DTMODE = 0;
     mBase->DCTRL.value = dctrl.value;
+    mDma.config((direction == Direction::Read) ? Dma::Stream::Direction::PeripheralToMemory : Dma::Stream::Direction::MemoryToPeripheral, false, true, Dma::Stream::DataSize::Word, Dma::Stream::DataSize::Word, Dma::Stream::BurstLength::Single, Dma::Stream::BurstLength::Single);
+    mDma.configFifo(Dma::Stream::FifoThreshold::Disable);
+    mDma.setAddress(Dma::Stream::End::Memory, reinterpret_cast<System::BaseAddress>(data));
+    mDma.setAddress(Dma::Stream::End::Peripheral, reinterpret_cast<System::BaseAddress>(mBase->FIFO));
+    mDma.setCallback(this);
+    mDma.setFlowControl(Dma::Stream::FlowControl::Sdio);
+    mDma.setTransferCount(byteCount / 4);
+    mDma.start();
 }
 
 bool Sdio::setBlockSize(uint16_t blockSize)
