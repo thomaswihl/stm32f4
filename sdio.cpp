@@ -35,7 +35,7 @@ Sdio::Sdio(System::BaseAddress base, InterruptController::Line& irq, Dma::Stream
     mBase(reinterpret_cast<volatile SDIO*>(base)),
     mIrq(irq),
     mDma(dma),
-    mDebugLevel(0)
+    mDebugLevel(4)
 {
     static_assert(sizeof(SDIO) == 0x100, "Struct has wrong size, compiler problem.");
     enable(false);
@@ -108,7 +108,7 @@ void Sdio::reset()
     mBase->ICR = IC_MASK;
     while (mBase->FIFOCNT > 0)
     {
-        uint32_t data = mBase->FIFO[0];
+        mBase->FIFO[0];
     }
 }
 
@@ -148,10 +148,23 @@ void Sdio::interruptCallback(InterruptController::Index index)
         // command complete, one way or the other
         if (mCompleteEvent != nullptr)
         {
-            if (status & (CCRCFAIL | CTIMEOUT)) mCompleteEvent->setResult(System::Event::Result::CommandFail);
-            else mCompleteEvent->setResult(System::Event::Result::CommandSuccess);
+            if (status & CTIMEOUT)
+            {
+                mCompleteEvent->setResult(System::Event::Result::CommandTimeout);
+            }
+            else if (!mIgnoreCrc && (status & CCRCFAIL) != 0)
+            {
+                mCompleteEvent->setResult(System::Event::Result::CommandCrcFail);
+            }
+            else if (status & CMDREND)
+            {
+                mCompleteEvent->setResult(System::Event::Result::CommandResponse);
+            }
+            else if (status & CMDSENT)
+            {
+                mCompleteEvent->setResult(System::Event::Result::CommandSent);
+            }
             System::instance()->postEvent(mCompleteEvent);
-            mCompleteEvent = nullptr;
         }
     }
     if (status & (DCRCFAIL | DTIMEOUT | TXUNDERR | RXOVERR | DATAEND | STBITERR))
@@ -162,7 +175,6 @@ void Sdio::interruptCallback(InterruptController::Index index)
             if (status & (DCRCFAIL | DTIMEOUT | TXUNDERR | RXOVERR | STBITERR)) mCompleteEvent->setResult(System::Event::Result::DataFail);
             else mCompleteEvent->setResult(System::Event::Result::DataSuccess);
             System::instance()->postEvent(mCompleteEvent);
-            mCompleteEvent = nullptr;
         }
     }
     mBase->ICR = status;
@@ -177,7 +189,7 @@ bool Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response, System::Eve
     mCompleteEvent = &completeEvent;
 
     // check that no command is active
-    if (mBase->STA & CMDACT) return false;
+    assert(mBase->STA & CMDACT);
     // clear all status bits
     mBase->ICR = IC_MASK;
     if (mDebugLevel > 1) printf("SEND %i(%08lx) with %s\n", cmd, arg, toString(response));

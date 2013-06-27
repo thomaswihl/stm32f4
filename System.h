@@ -47,7 +47,7 @@ public:
     class Event
     {
     public:
-        enum class Result { Success, ParityError, FramingError, NoiseDetected, OverrunError, LineBreak, CommandSuccess, CommandFail, DataSuccess, DataFail };
+        enum class Result { Success, ParityError, FramingError, NoiseDetected, OverrunError, LineBreak, CommandResponse, CommandSent, CommandCrcFail, CommandTimeout, DataSuccess, DataFail };
         class Callback
         {
         public:

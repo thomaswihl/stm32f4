@@ -2,29 +2,33 @@
 
 #include "assert.h"
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
+const SdCard::StateFunc SdCard::mInit[] =
+{
+    &SdCard::reset,
+    &SdCard::interfaceCondition,
+    &SdCard::initializeCard,
+    &SdCard::getCardIdentifier,
+};
+
 SdCard::SdCard(Sdio& sdio, int supplyVoltage) :
     mEvent(*this),
     mSdio(sdio),
     mVolt(supplyVoltage),
     mDebugLevel(1),
-    mState(State::Ready)
+    mStateFunc(nullptr),
+    mStateFuncCount(0),
+    mStateFuncActive(0)
 {
+    mCmd.active = false;
+    mAppCmd.active = false;
 }
 
 
-void SdCard::reset()
+void SdCard::init()
 {
-    mSdio.reset();
-    memset(&mCardInfo, 0, sizeof(mCardInfo));
-    mSdio.enable(true);
-    mSdio.setClock(CLOCK_IDENTIFICATION);
-    mSdio.sendCommand(0, 0, Sdio::Response::None, mEvent);
-}
-
-bool SdCard::init()
-{
-    mState = State::Init;
-    reset();
+    executeSteps(mInit, ARRAY_SIZE(mInit));
 //    // if the card responds it is a v2 or later
 //    bool v2 = interfaceCondition();
 //    // Send ACMD41, to check voltage ranges
@@ -69,12 +73,28 @@ bool SdCard::init()
 //        System::instance()->printWarning("SDIO", "Can't set bus width.");
 //        return false;
 //    }
-    return true;
 }
 
-void SdCard::interfaceCondition() // CMD8
+SdCard::StateResult SdCard::reset()
 {
-    mState =  State::InterfaceCondition;
+    if (mStateData.step == 0)
+    {
+        mSdio.reset();
+        memset(&mCardInfo, 0, sizeof(mCardInfo));
+        mSdio.enable(true);
+        mSdio.setClock(CLOCK_IDENTIFICATION);
+        sendCommand(0, 0, Sdio::Response::None);
+        return StateResult::Repeat;
+    }
+    else if (mStateData.step == 1)
+    {
+        return StateResult::Continue;
+    }
+    return StateResult::Stop;
+}
+
+SdCard::StateResult SdCard::interfaceCondition()
+{
     union
     {
         struct
@@ -85,16 +105,25 @@ void SdCard::interfaceCondition() // CMD8
         }   bits;
         uint32_t value;
     }   arg;
-    arg.value = 0;
-    arg.bits.checkPattern = CHECK_PATTERN;
-    arg.bits.voltageSupplied = 1; // 2.7 - 3.6V
-    mInterfaceConditionResponse = arg.value;
-    mSdio.sendCommand(8, arg.value, Sdio::Response::Short, mEvent);
+    if (mStateData.step == 0)
+    {
+        arg.value = 0;
+        arg.bits.checkPattern = CHECK_PATTERN;
+        arg.bits.voltageSupplied = 1; // 2.7 - 3.6V
+        mStateData.privateData.interfaceCondition.expectedResult = arg.value;
+        sendCommand(8, arg.value, Sdio::Response::Short);
+        return StateResult::Repeat;
+    }
+    else if (mStateData.step == 1)
+    {
+        if (mStateData.privateData.interfaceCondition.expectedResult == mSdio.shortResponse()) return StateResult::Continue;
+        printf("Expected response %08lx doesn't match actual response %08lx.\n", mStateData.privateData.interfaceCondition.expectedResult, mSdio.shortResponse());
+    }
+    return StateResult::Stop;
 }
 
-void SdCard::initializeCard(bool hcSupport)
+SdCard::StateResult SdCard::initializeCard()
 {
-    mState = State::Inititalize;
     static const uint32_t READY_BIT = 0x80000000;
     static const uint32_t HIGH_CAPACITY_BIT = 0x40000000;
     union
@@ -114,56 +143,59 @@ void SdCard::initializeCard(bool hcSupport)
     }   arg;
     arg.value = 0;
     arg.bits.OCR = ocrFromVoltage(mVolt);
-    arg.bits.hcSupport = hcSupport ? 1 : 0;
+    arg.bits.hcSupport = mCardInfo.mHcSupport ? 1 : 0;
 
-    uint32_t response;
-    int timeout = 100;  // max of 100 * 10ms = 1s
-    do
-    {
-        if (!sendAppCommand(41, arg.value, Sdio::Response::ShortNoCrc)) return;
-        response = mSdio.shortResponse();
-        if ((response & READY_BIT) != 0) break;
-        // give the card some time...
-        System::instance()->usleep(10000);
-        --timeout;
-    }   while (timeout >= 0);
-    if ((response & READY_BIT) == 0) return;
-    else mCardInfo.mHc = (response & HIGH_CAPACITY_BIT) != 0;
-    if (mDebugLevel > 1) printOcr();
+    sendAppCommand(41, arg.value, Sdio::Response::ShortNoCrc);
+
+//        uint32_t response;
+//        int timeout = 100;  // max of 100 * 10ms = 1s
+//        do
+//        {
+//        response = mSdio.shortResponse();
+//        if ((response & READY_BIT) != 0) break;
+//        // give the card some time...
+//        System::instance()->usleep(10000);
+//        --timeout;
+//    }   while (timeout >= 0);
+//    if ((response & READY_BIT) == 0) return;
+//    else mCardInfo.mHc = (response & HIGH_CAPACITY_BIT) != 0;
+//    if (mDebugLevel > 1) printOcr();
+    return StateResult::Stop;
 }
 
-bool SdCard::getCardIdentifier()
+SdCard::StateResult SdCard::getCardIdentifier()
 {
-    union
-    {
-        struct
-        {
-            uint8_t MID;
-            uint8_t OID[2];
-            uint8_t PNM[5];
-            uint8_t PRV;
-            uint8_t PSN[4];
-            uint8_t MDT[2];
-            uint8_t CRC;
-        }   bits;
-        uint8_t value[16];
-    }   cid;
+//    union
+//    {
+//        struct
+//        {
+//            uint8_t MID;
+//            uint8_t OID[2];
+//            uint8_t PNM[5];
+//            uint8_t PRV;
+//            uint8_t PSN[4];
+//            uint8_t MDT[2];
+//            uint8_t CRC;
+//        }   bits;
+//        uint8_t value[16];
+//    }   cid;
 
-    if (mSdio.sendCommand(2, 0, Sdio::Response::Long, mEvent))
-    {
-        mSdio.longResponse(cid.value);
-        if (mDebugLevel > 0)
-        {
-            printf("   Manufacturer ID : %u\n", cid.bits.MID);
-            printf("OEM/Application ID : %c%c\n", cid.bits.OID[0], cid.bits.OID[1]);
-            printf("      Product name : %c%c%c%c%c\n", cid.bits.PNM[0], cid.bits.PNM[1], cid.bits.PNM[2], cid.bits.PNM[3], cid.bits.PNM[4]);
-            printf("  Product revision : %i.%i\n", cid.bits.PRV >> 4, cid.bits.PRV & 0xf);
-            printf("    Product serial : %u\n", cid.bits.PSN[0] << 24 | cid.bits.PSN[1] << 16 | cid.bits.PSN[2] << 8 | cid.bits.PSN[3]);
-            printf("Manufacturing Date : %u.%u\n", cid.bits.MDT[1] & 0xf, ((cid.bits.MDT[1] >> 4) | ((cid.bits.MDT[0] & 0x0f) << 4)) + 2000);
-        }
-        return true;
-    }
-    return false;
+//    if (mSdio.sendCommand(2, 0, Sdio::Response::Long, mEvent))
+//    {
+//        mSdio.longResponse(cid.value);
+//        if (mDebugLevel > 0)
+//        {
+//            printf("   Manufacturer ID : %u\n", cid.bits.MID);
+//            printf("OEM/Application ID : %c%c\n", cid.bits.OID[0], cid.bits.OID[1]);
+//            printf("      Product name : %c%c%c%c%c\n", cid.bits.PNM[0], cid.bits.PNM[1], cid.bits.PNM[2], cid.bits.PNM[3], cid.bits.PNM[4]);
+//            printf("  Product revision : %i.%i\n", cid.bits.PRV >> 4, cid.bits.PRV & 0xf);
+//            printf("    Product serial : %u\n", cid.bits.PSN[0] << 24 | cid.bits.PSN[1] << 16 | cid.bits.PSN[2] << 8 | cid.bits.PSN[3]);
+//            printf("Manufacturing Date : %u.%u\n", cid.bits.MDT[1] & 0xf, ((cid.bits.MDT[1] >> 4) | ((cid.bits.MDT[0] & 0x0f) << 4)) + 2000);
+//        }
+//        return true;
+//    }
+//    return false;
+    return StateResult::Stop;
 }
 
 bool SdCard::getRelativeCardAddress()
@@ -369,13 +401,13 @@ bool SdCard::getCardConfiguration()
 
 bool SdCard::setBusWidth()
 {
-    if (sendAppCommand(6, (mCardInfo.mBusWidth == 4) ? 2 : 0, Sdio::Response::Short) && checkCardStatus(mSdio.shortResponse()))
-    {
-        if (mCardInfo.mBusWidth == 1) mSdio.setBusWidth(Sdio::BusWidth::OneDataLine);
-        else if (mCardInfo.mBusWidth == 4) mSdio.setBusWidth(Sdio::BusWidth::FourDataLines);
-        else if (mCardInfo.mBusWidth == 8) mSdio.setBusWidth(Sdio::BusWidth::EightDataLines);
-        return true;
-    }
+//    if (sendAppCommand(6, (mCardInfo.mBusWidth == 4) ? 2 : 0, Sdio::Response::Short) && checkCardStatus(mSdio.shortResponse()))
+//    {
+//        if (mCardInfo.mBusWidth == 1) mSdio.setBusWidth(Sdio::BusWidth::OneDataLine);
+//        else if (mCardInfo.mBusWidth == 4) mSdio.setBusWidth(Sdio::BusWidth::FourDataLines);
+//        else if (mCardInfo.mBusWidth == 8) mSdio.setBusWidth(Sdio::BusWidth::EightDataLines);
+//        return true;
+//    }
     return false;
 }
 
@@ -386,37 +418,78 @@ bool SdCard::setBlockSize(uint16_t blockSize)
 
 void SdCard::eventCallback(System::Event *event)
 {
-    printf("%s(%s)\n", toResult(event->result()), toState(mState));
-    switch (mState)
+    mStateData.lastResult = event->result();
+    printf("%u[%lu]:%s\n", mStateFuncActive, mStateData.step, toResult(mStateData.lastResult));
+    if (mAppCmd.active != 0)
     {
-    case SdCard::State::Ready:
-        break;
-    case SdCard::State::Init:
-        interfaceCondition();
-        break;
-    case SdCard::State::InterfaceCondition:
-    {
-        bool hc = true;
-        if (event->result() != System::Event::Result::CommandSuccess || mSdio.shortResponse() != mInterfaceConditionResponse)
-        {
-            if (mDebugLevel > 0) printf("Wrong response from card. Should be %08lx, but was %08lx.\n", mInterfaceConditionResponse, mSdio.shortResponse());
-            hc = false;
-        }
-        initializeCard(hc);
-    }   break;
-    case SdCard::State::Inititalize:
-        break;
+        mAppCmd.active = false;
+        sendCommand(mAppCmd.cmd, mAppCmd.arg, mAppCmd.response);
+        return;
+    }
 
+    executeStep();
+
+//        bool hc = true;
+//        if (event->result() != System::Event::Result::CommandSuccess || mSdio.shortResponse() != mInterfaceConditionResponse)
+//        {
+//            if (mDebugLevel > 0) printf("Wrong response from card. Should be %08lx, but was %08lx.\n", mInterfaceConditionResponse, mSdio.shortResponse());
+//            hc = false;
+//        }
+}
+
+void SdCard::executeSteps(const SdCard::StateFunc *functions, unsigned count)
+{
+    mStateFunc = functions;
+    mStateFuncCount = count;
+    mStateFuncActive = 0;
+    executeStep();
+}
+
+void SdCard::executeStep()
+{
+    if (mStateFunc != nullptr && mStateFuncActive < mStateFuncCount)
+    {
+        StateResult result;
+        while (true)
+        {
+            result = (this->*mStateFunc[mStateFuncActive])();
+            if (result == StateResult::Continue)
+            {
+                mStateData.step = 0;
+                mStateFuncActive++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        if (result == StateResult::Stop)
+        {
+            executeSteps(nullptr, 0);
+        }
+        else if (result == StateResult::Repeat)
+        {
+             mStateData.step++;
+        }
     }
 }
 
-bool SdCard::sendAppCommand(uint8_t cmd, uint32_t arg, Sdio::Response response)
+void SdCard::sendCommand(uint8_t cmd, uint32_t arg, Sdio::Response response)
 {
-    if (mSdio.sendCommand(55, mCardInfo.mRca, Sdio::Response::Short, mEvent) && checkCardStatus(mSdio.shortResponse()))
-    {
-        return mSdio.sendCommand(cmd, arg, response, mEvent);
-    }
-    return false;
+    mCmd.cmd = cmd;
+    mCmd.arg = arg;
+    mCmd.response = response;
+    mCmd.active = true;
+    mSdio.sendCommand(cmd, arg, response, mEvent);
+}
+
+void SdCard::sendAppCommand(uint8_t cmd, uint32_t arg, Sdio::Response response)
+{
+    mAppCmd.cmd = cmd;
+    mAppCmd.arg = arg;
+    mAppCmd.response = response;
+    mAppCmd.active = true;
+    sendCommand(55, mCardInfo.mRca, Sdio::Response::Short);
 }
 
 bool SdCard::checkCardStatus(uint32_t status)
@@ -538,24 +611,14 @@ const char * const SdCard::toResult(System::Event::Result result)
 {
     switch (result)
     {
-    case System::Event::Result::CommandSuccess: return "CommandSuccess";
-    case System::Event::Result::CommandFail:    return "CommandFail";
+    case System::Event::Result::CommandSent: return "CommandSent";
+    case System::Event::Result::CommandResponse: return "CommandResponse";
+    case System::Event::Result::CommandCrcFail:    return "CommandCrcFail";
+    case System::Event::Result::CommandTimeout:    return "CommandTimeout";
     case System::Event::Result::DataSuccess:    return "DataSuccess";
     case System::Event::Result::DataFail:       return "DataFail";
     default: return "?";
     }
 
-}
-
-const char * const SdCard::toState(SdCard::State state)
-{
-    switch (state)
-    {
-    case SdCard::State::Ready: return "Ready";
-    case SdCard::State::Init: return "Init";
-    case SdCard::State::InterfaceCondition: return "InterfaceCondition";
-    case SdCard::State::Inititalize: return "Inititalize";
-    }
-    return "UNKNOWN";
 }
 

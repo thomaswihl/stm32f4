@@ -144,6 +144,7 @@ private:
     uint8_t mLastCommand;
     System::Event* mCompleteEvent;
 
+
     virtual void dmaCallback(Dma::Stream* stream, Dma::Stream::Callback::Reason reason);
     virtual void interruptCallback(InterruptController::Index index);
 

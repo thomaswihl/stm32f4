@@ -418,7 +418,6 @@ CmdLightSensor::Color CmdLightSensor::nextColor(CmdLightSensor::Color color)
 
 CmdSdio::CmdSdio(SdCard &sdCard) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSdCard(sdCard), mEvent(*this)
 {
-    mSdCard.reset();
 }
 
 bool CmdSdio::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
