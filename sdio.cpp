@@ -35,7 +35,8 @@ Sdio::Sdio(System::BaseAddress base, InterruptController::Line& irq, Dma::Stream
     mBase(reinterpret_cast<volatile SDIO*>(base)),
     mIrq(irq),
     mDma(dma),
-    mDebugLevel(4)
+    mDebugLevel(0),
+    mCompleteEvent(nullptr)
 {
     static_assert(sizeof(SDIO) == 0x100, "Struct has wrong size, compiler problem.");
     enable(false);
@@ -129,6 +130,13 @@ void Sdio::printHostStatus()
     printf("\n");
 }
 
+void Sdio::waitReady()
+{
+    int timeout = System::instance()->bogoMips() / 1000;
+    while ((mBase->STA & CMDACT) != 0 && timeout > 0) --timeout;
+    assert((mBase->STA & CMDACT) == 0);
+}
+
 void Sdio::setBusWidth(BusWidth width)
 {
     if (width == BusWidth::OneDataLine) mBase->CLKCR.bits.WIDBUS = 0;
@@ -180,16 +188,15 @@ void Sdio::interruptCallback(InterruptController::Index index)
     mBase->ICR = status;
 }
 
-bool Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response, System::Event &completeEvent)
+bool Sdio::sendCommand(uint8_t cmd, uint32_t arg, Response response)
 {
     bool longResponse = response == Response::Long || response == Response::LongNoCrc;
     bool waitResponse = response != Response::None;
     mIgnoreCrc = response == Response::ShortNoCrc || response == Response::LongNoCrc;
     mLastCommand = cmd & 0x3f;
-    mCompleteEvent = &completeEvent;
 
     // check that no command is active
-    assert(mBase->STA & CMDACT);
+    waitReady();
     // clear all status bits
     mBase->ICR = IC_MASK;
     if (mDebugLevel > 1) printf("SEND %i(%08lx) with %s\n", cmd, arg, toString(response));

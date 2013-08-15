@@ -76,6 +76,8 @@ $(TARGET).elf: $(OBJ)
 .PHONY: clean
 clean:
 	rm -f *.o
+	rm -f hw/*.o
+	rm -f sw/*.o
 	rm -f $(TARGET).map
 	rm -f $(TARGET).elf
 	rm -f $(TARGET).bin

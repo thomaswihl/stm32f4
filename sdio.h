@@ -20,8 +20,11 @@ public:
 
     void reset();
     void printHostStatus();
+    void waitReady();
 
-    bool sendCommand(uint8_t cmd, uint32_t arg, Response response, System::Event& completeEvent);
+    void setCompleteEvent(System::Event* event) { mCompleteEvent = event; }
+
+    bool sendCommand(uint8_t cmd, uint32_t arg, Response response);
     uint32_t shortResponse();
     void longResponse(uint8_t* response);
 
@@ -140,9 +143,9 @@ private:
     InterruptController::Line& mIrq;
     Dma::Stream& mDma;
     int mDebugLevel;
+    System::Event* mCompleteEvent;
     bool mIgnoreCrc;
     uint8_t mLastCommand;
-    System::Event* mCompleteEvent;
 
 
     virtual void dmaCallback(Dma::Stream* stream, Dma::Stream::Callback::Reason reason);

@@ -16,18 +16,24 @@ SdCard::SdCard(Sdio& sdio, int supplyVoltage) :
     mEvent(*this),
     mSdio(sdio),
     mVolt(supplyVoltage),
-    mDebugLevel(1),
+    mDebugLevel(2),
     mStateFunc(nullptr),
     mStateFuncCount(0),
     mStateFuncActive(0)
 {
     mCmd.active = false;
     mAppCmd.active = false;
+    mSdio.setCompleteEvent(&mEvent);
 }
 
 
 void SdCard::init()
 {
+    mSdio.reset();
+    memset(&mCardInfo, 0, sizeof(mCardInfo));
+    mSdio.enable(true);
+    mSdio.setClock(CLOCK_IDENTIFICATION);
+    mSdio.waitReady();
     executeSteps(mInit, ARRAY_SIZE(mInit));
 //    // if the card responds it is a v2 or later
 //    bool v2 = interfaceCondition();
@@ -79,18 +85,14 @@ SdCard::StateResult SdCard::reset()
 {
     if (mStateData.step == 0)
     {
-        mSdio.reset();
-        memset(&mCardInfo, 0, sizeof(mCardInfo));
-        mSdio.enable(true);
-        mSdio.setClock(CLOCK_IDENTIFICATION);
         sendCommand(0, 0, Sdio::Response::None);
         return StateResult::Repeat;
     }
-    else if (mStateData.step == 1)
+    else if (mStateData.lastResult == System::Event::Result::CommandSent)
     {
         return StateResult::Continue;
     }
-    return StateResult::Stop;
+    return StateResult::Repeat;
 }
 
 SdCard::StateResult SdCard::interfaceCondition()
@@ -114,12 +116,27 @@ SdCard::StateResult SdCard::interfaceCondition()
         sendCommand(8, arg.value, Sdio::Response::Short);
         return StateResult::Repeat;
     }
-    else if (mStateData.step == 1)
+    else
     {
-        if (mStateData.privateData.interfaceCondition.expectedResult == mSdio.shortResponse()) return StateResult::Continue;
-        printf("Expected response %08lx doesn't match actual response %08lx.\n", mStateData.privateData.interfaceCondition.expectedResult, mSdio.shortResponse());
+        if (mStateData.lastResult == System::Event::Result::CommandTimeout)
+        {
+            printf("V1 or no SD card.\n");
+            mCardInfo.mHcSupport = false;
+            return StateResult::Continue;
+        }
+        else if (mStateData.lastResult == System::Event::Result::CommandResponse)
+        {
+            if (mStateData.privateData.interfaceCondition.expectedResult == mSdio.shortResponse())
+            {
+                printf("V2 or higher SD card.\n");
+                mCardInfo.mHcSupport = true;
+                return StateResult::Continue;
+            }
+            printf("Expected response %08lx doesn't match actual response %08lx.\n", mStateData.privateData.interfaceCondition.expectedResult, mSdio.shortResponse());
+            return StateResult::Stop;
+        }
     }
-    return StateResult::Stop;
+    return StateResult::Repeat;
 }
 
 SdCard::StateResult SdCard::initializeCard()
@@ -141,26 +158,29 @@ SdCard::StateResult SdCard::initializeCard()
         }   bits;
         uint32_t value;
     }   arg;
-    arg.value = 0;
-    arg.bits.OCR = ocrFromVoltage(mVolt);
-    arg.bits.hcSupport = mCardInfo.mHcSupport ? 1 : 0;
+    if (mStateData.step == 0 || (mStateData.lastResult == System::Event::Result::CommandResponse && (mSdio.shortResponse() & READY_BIT) == 0))
+    {
+        arg.value = 0;
+        arg.bits.OCR = ocrFromVoltage(mVolt);
+        arg.bits.hcSupport = mCardInfo.mHcSupport ? 1 : 0;
 
-    sendAppCommand(41, arg.value, Sdio::Response::ShortNoCrc);
+        sendAppCommand(41, arg.value, Sdio::Response::ShortNoCrc);
+    }
+    else
+    {
+        if (mStateData.lastResult == System::Event::Result::CommandTimeout)
+        {
+            return StateResult::Stop;
+        }
+        else if (mStateData.lastResult == System::Event::Result::CommandResponse)
+        {
+            mCardInfo.mHc = (mSdio.shortResponse() & HIGH_CAPACITY_BIT) != 0;
+            if (mDebugLevel > 1) printOcr();
+            return StateResult::Continue;
+        }
+    }
 
-//        uint32_t response;
-//        int timeout = 100;  // max of 100 * 10ms = 1s
-//        do
-//        {
-//        response = mSdio.shortResponse();
-//        if ((response & READY_BIT) != 0) break;
-//        // give the card some time...
-//        System::instance()->usleep(10000);
-//        --timeout;
-//    }   while (timeout >= 0);
-//    if ((response & READY_BIT) == 0) return;
-//    else mCardInfo.mHc = (response & HIGH_CAPACITY_BIT) != 0;
-//    if (mDebugLevel > 1) printOcr();
-    return StateResult::Stop;
+    return StateResult::Repeat;
 }
 
 SdCard::StateResult SdCard::getCardIdentifier()
@@ -200,7 +220,7 @@ SdCard::StateResult SdCard::getCardIdentifier()
 
 bool SdCard::getRelativeCardAddress()
 {
-    if (mSdio.sendCommand(3, 0, Sdio::Response::Short, mEvent))
+    if (mSdio.sendCommand(3, 0, Sdio::Response::Short))
     {
         mCardInfo.mRca = mSdio.shortResponse() & 0xffff0000;
         if (mDebugLevel > 1) printf("RCA is %04x\n", mCardInfo.mRca >> 16);
@@ -217,7 +237,7 @@ bool SdCard::getCardSpecificData()
     static const int CURRENT_MAX[8] = { 1, 5, 10, 25, 35, 45, 80, 200 };
     static const char* const FILE_FORMAT[4] = { "HDD", "Floppy", "Universal", "Others/Unknown" };
 
-    if (mSdio.sendCommand(9, mCardInfo.mRca, Sdio::Response::Long, mEvent))
+    if (mSdio.sendCommand(9, mCardInfo.mRca, Sdio::Response::Long))
     {
         uint8_t csd[16];
         mSdio.longResponse(csd);
@@ -335,13 +355,13 @@ bool SdCard::getCardSpecificData()
 
 bool SdCard::selectCard(bool select)
 {
-    if (mSdio.sendCommand(7, mCardInfo.mRca, Sdio::Response::ShortNoCrc, mEvent) && checkCardStatus(mSdio.shortResponse())) return true;
+    if (mSdio.sendCommand(7, mCardInfo.mRca, Sdio::Response::ShortNoCrc) && checkCardStatus(mSdio.shortResponse())) return true;
     return false;
 }
 
 bool SdCard::getCardStatus()
 {
-    if (mSdio.sendCommand(13, mCardInfo.mRca, Sdio::Response::Short, mEvent) && checkCardStatus(mSdio.shortResponse())) return true;
+    if (mSdio.sendCommand(13, mCardInfo.mRca, Sdio::Response::Short) && checkCardStatus(mSdio.shortResponse())) return true;
     return false;
 }
 
@@ -349,11 +369,11 @@ bool SdCard::getCardConfiguration()
 {
     static const int SCR_LEN = 8;
     if (!setBlockSize(SCR_LEN)) return false;
-    if (!mSdio.sendCommand(55, mCardInfo.mRca, Sdio::Response::Short, mEvent) || !checkCardStatus(mSdio.shortResponse())) return false;
+    if (!mSdio.sendCommand(55, mCardInfo.mRca, Sdio::Response::Short) || !checkCardStatus(mSdio.shortResponse())) return false;
 
     uint8_t data[SCR_LEN];
     mSdio.prepareTransfer(Sdio::Direction::Read, reinterpret_cast<uint32_t*>(data), SCR_LEN);
-    if (!mSdio.sendCommand(51, 0, Sdio::Response::Short, mEvent) || !checkCardStatus(mSdio.shortResponse())) return false;
+    if (!mSdio.sendCommand(51, 0, Sdio::Response::Short) || !checkCardStatus(mSdio.shortResponse())) return false;
 
 //    while (mBase->STA.bits.DBCKEND == 0 && mBase->STA.bits.DCRCFAIL == 0 && mBase->STA.bits.DTIMEOUT == 0 && mBase->STA.bits.STBITERR == 0)
 //    {
@@ -413,14 +433,14 @@ bool SdCard::setBusWidth()
 
 bool SdCard::setBlockSize(uint16_t blockSize)
 {
-    return mSdio.sendCommand(16, blockSize, Sdio::Response::Short, mEvent) && checkCardStatus(mSdio.shortResponse());
+    return mSdio.sendCommand(16, blockSize, Sdio::Response::Short) && checkCardStatus(mSdio.shortResponse());
 }
 
 void SdCard::eventCallback(System::Event *event)
 {
     mStateData.lastResult = event->result();
     printf("%u[%lu]:%s\n", mStateFuncActive, mStateData.step, toResult(mStateData.lastResult));
-    if (mAppCmd.active != 0)
+    if (mAppCmd.active)
     {
         mAppCmd.active = false;
         sendCommand(mAppCmd.cmd, mAppCmd.arg, mAppCmd.response);
@@ -441,6 +461,7 @@ void SdCard::executeSteps(const SdCard::StateFunc *functions, unsigned count)
 {
     mStateFunc = functions;
     mStateFuncCount = count;
+    mStateData.step = 0;
     mStateFuncActive = 0;
     executeStep();
 }
@@ -480,7 +501,7 @@ void SdCard::sendCommand(uint8_t cmd, uint32_t arg, Sdio::Response response)
     mCmd.arg = arg;
     mCmd.response = response;
     mCmd.active = true;
-    mSdio.sendCommand(cmd, arg, response, mEvent);
+    mSdio.sendCommand(cmd, arg, response);
 }
 
 void SdCard::sendAppCommand(uint8_t cmd, uint32_t arg, Sdio::Response response)
