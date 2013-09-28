@@ -37,6 +37,9 @@ char const * const CmdLightSensor::ARGV[] = { };
 char const * const CmdSdio::NAME[] = { "sd" };
 char const * const CmdSdio::ARGV[] = { "s:command" };
 
+char const * const CmdMotor::NAME[] = { "motor" };
+char const * const CmdMotor::ARGV[] = { "u:index", "i:speed" };
+
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -431,4 +434,51 @@ bool CmdSdio::execute(CommandInterpreter &interpreter, int argc, const CommandIn
 
 void CmdSdio::eventCallback(System::Event *event)
 {
+}
+
+
+CmdMotor::CmdMotor() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mEvent(*this), mMotorCount(0)
+{
+}
+
+bool CmdMotor::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    unsigned i = argv[1].value.u;
+    if (i >= mMotorCount)
+    {
+        printf("Motor %u not available, index has to be in the range [0,%u].\n", i, mMotorCount - 1);
+        return false;
+    }
+    int v = argv[2].value.i;
+    if (v < -100 || v > 100)
+    {
+        printf("Motor value has to be in the range [-100, 100].\n");
+        return false;
+    }
+    if (v < 0)
+    {
+        mMotor[i].mTimer->setCompare(mMotor[i].mPin1, -v * 65535 / 100);
+        mMotor[i].mTimer->setCompare(mMotor[i].mPin2, 0);
+    }
+    else
+    {
+        mMotor[i].mTimer->setCompare(mMotor[i].mPin2, v * 65535 / 100);
+        mMotor[i].mTimer->setCompare(mMotor[i].mPin1, 0);
+    }
+    return true;
+}
+
+bool CmdMotor::add(Timer &timer, Timer::CaptureCompareIndex m1, Timer::CaptureCompareIndex m2)
+{
+    if (mMotorCount >= sizeof(mMotor) / sizeof(mMotor[0])) return false;
+    mMotor[mMotorCount].mTimer = &timer;
+    mMotor[mMotorCount].mPin1 = m1;
+    mMotor[mMotorCount].mPin2 = m2;
+    ++mMotorCount;
+    return true;
+}
+
+void CmdMotor::eventCallback(System::Event *event)
+{
+
 }

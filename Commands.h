@@ -9,6 +9,7 @@
 #include "sw/sdcard.h"
 
 #include <cstdio>
+#include <vector>
 
 struct Command
 {
@@ -173,5 +174,28 @@ private:
     System::Event mEvent;
 };
 
+class CmdMotor : public CommandInterpreter::Command, public System::Event::Callback
+{
+public:
+    CmdMotor();
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Control a motors speed."; }
+    bool add(Timer& timer, Timer::CaptureCompareIndex m1, Timer::CaptureCompareIndex m2);
+protected:
+    virtual void eventCallback(System::Event* event);
+private:
+    struct Motor
+    {
+        Timer* mTimer;
+        Timer::CaptureCompareIndex mPin1;
+        Timer::CaptureCompareIndex mPin2;
+    };
+
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    System::Event mEvent;
+    unsigned mMotorCount;
+    Motor mMotor[4];
+};
 
 #endif // COMMANDS_H
