@@ -225,7 +225,7 @@ int main()
     gSys.mGpioE.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::TIM1);
     gSys.mGpioE.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
     Timer timer1(StmSystem::BaseAddress::TIM1, ClockControl::Clock::APB2);
-    timer1.setFrequency(gSys.mRcc, 5000);
+    timer1.setFrequency(gSys.mRcc, 500);
     timer1.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
     timer1.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
     timer1.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
@@ -246,7 +246,7 @@ int main()
     gSys.mGpioB.setAlternate(Gpio::Index::Pin4, Gpio::AltFunc::TIM3);
     gSys.mGpioB.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::TIM3);
     Timer timer3(StmSystem::BaseAddress::TIM3, ClockControl::Clock::APB1);
-    timer3.setFrequency(gSys.mRcc, 5000);
+    timer3.setFrequency(gSys.mRcc, 500);
     timer3.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
     timer3.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
     timer3.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
