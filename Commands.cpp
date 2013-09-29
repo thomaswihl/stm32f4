@@ -40,6 +40,9 @@ char const * const CmdSdio::ARGV[] = { "s:command" };
 char const * const CmdMotor::NAME[] = { "motor" };
 char const * const CmdMotor::ARGV[] = { "u:index", "i:speed" };
 
+char const * const CmdLed::NAME[] = { "led" };
+char const * const CmdLed::ARGV[] = { "u:index", "u:brightness" };
+
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -479,6 +482,37 @@ bool CmdMotor::add(Timer &timer, Timer::CaptureCompareIndex m1, Timer::CaptureCo
 }
 
 void CmdMotor::eventCallback(System::Event *event)
+{
+
+}
+
+
+CmdLed::CmdLed(Tlc5940 &pwm) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mEvent(*this), mPwm(pwm)
+{
+    for (int i = 0; i < 16; ++i) mPwm.setOutput(i, 0);
+    mPwm.send();
+}
+
+bool CmdLed::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    unsigned i = argv[1].value.u;
+    if (i >= 16)
+    {
+        printf("LED %u not available, index has to be in the range [0,15].\n", i);
+        return false;
+    }
+    unsigned v = argv[2].value.u;
+    if (v > 100)
+    {
+        printf("LED value has to be in the range [0, 100].\n");
+        return false;
+    }
+    mPwm.setOutput(i, v);
+    mPwm.send();
+    return true;
+}
+
+void CmdLed::eventCallback(System::Event *event)
 {
 
 }

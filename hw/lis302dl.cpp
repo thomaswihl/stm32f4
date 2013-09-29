@@ -1,6 +1,6 @@
 #include "lis302dl.h"
 
-LIS302DL::LIS302DL(Spi<char> &spi) :
+LIS302DL::LIS302DL(Spi &spi) :
     mTransferCompleteEvent(*this),
     mSpi(spi),
     mBuffer(new char[2]),
@@ -8,13 +8,21 @@ LIS302DL::LIS302DL(Spi<char> &spi) :
     mLine2(nullptr),
     mDataReadyEvent(nullptr)
 {
-    mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::HighWhenIdle, Spi<char>::ClockPhase::SecondTransition, Spi<char>::Endianess::MsbFirst);
-    mSpi.setSpeed(10000000);
+    memset(&mTransfer, 0, sizeof(mTransfer));
+    mTransfer.maxSpeed = 10000000;
+    mTransfer.mChipSelect = 0;
+    mTransfer.mClockPhase = Spi::ClockPhase::SecondTransition;
+    mTransfer.mClockPolarity = Spi::ClockPolarity::HighWhenIdle;
+    mTransfer.mEndianess = Spi::Endianess::MsbFirst;
+    mTransfer.mEvent = nullptr;
+    mTransfer.mReadData = new uint8_t[2];
+    mTransfer.mReadDataCount = 2;
+    mTransfer.mWriteData = new uint8_t[2];
+    mTransfer.mWriteDataCount = 2;
 }
 
 void LIS302DL::enable()
 {
-    mSpi.enable(Device::All);
     set(Register::Control1, DataRate100 | PowerUp | Range2G | EnableX | EnableY | EnableZ);
     set(Register::Control2, Spi4Wire | DisableFilter);
     set(Register::Control3, InterruptActiveHigh | InterruptPushPull | (static_cast<uint8_t>(InterruptConfig::DataReady) << Interrupt1ConfigShift) | (static_cast<uint8_t>(InterruptConfig::Click) << Interrupt2ConfigShift));
@@ -75,20 +83,18 @@ void LIS302DL::interruptCallback(InterruptController::Index index)
 
 void LIS302DL::set(LIS302DL::Register reg, uint8_t value)
 {
-    char buf[2];
-    buf[0] = WRITE | ADDR_CONST | static_cast<uint8_t>(reg);
-    buf[1] = value;
-    mSpi.write(buf, sizeof(buf));
+    mTransfer.mWriteData[0] = WRITE | ADDR_CONST | static_cast<uint8_t>(reg);
+    mTransfer.mWriteData[1] = value;
+    mSpi.transfer(&mTransfer);
 }
 
 uint8_t LIS302DL::get(LIS302DL::Register reg)
 {
-    char buf[2];
-    buf[0] = READ | ADDR_CONST | static_cast<uint8_t>(reg);
-    buf[1] = 0;
-    mSpi.read(buf, sizeof(buf), nullptr);
-    mSpi.write(buf, sizeof(buf));
-    return buf[1];
+    mTransfer.mWriteData[0] = READ | ADDR_CONST | static_cast<uint8_t>(reg);
+    mTransfer.mWriteData[1] = 0;
+    mSpi.transfer(&mTransfer);
+    // TODO: Wait for transfer to finish
+    return 0;//buf[1];
 }
 
 

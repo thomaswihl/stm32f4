@@ -18,6 +18,7 @@
 
 #include "System.h"
 #include "CircularBuffer.h"
+#include "Spi.h"
 #include "atomic.h"
 
 template<typename T>
@@ -166,3 +167,4 @@ template class CircularBuffer<char>;
 template class CircularBuffer<uint16_t>;
 template class CircularBuffer<System::Event*>;
 template class CircularBuffer<char*>;
+template class CircularBuffer<Spi::Transfer*>;

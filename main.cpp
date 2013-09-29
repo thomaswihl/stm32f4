@@ -79,7 +79,7 @@ int main()
 
     gSys.mRcc.enable(ClockControl::Function::Spi1);
 
-    gSys.mSpi1.configChipSelect(new Gpio::Pin(gSys.mGpioE, Gpio::Index::Pin2), true);
+    //gSys.mSpi1.configChipSelect(new Gpio::Pin(gSys.mGpioE, Gpio::Index::Pin2), true);
     gSys.mSpi1.configDma(new Dma::Stream(gSys.mDma2, Dma::Stream::StreamIndex::Stream3, Dma::Stream::ChannelIndex::Channel3,
                                          new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream3)),
                          new Dma::Stream(gSys.mDma2, Dma::Stream::StreamIndex::Stream2, Dma::Stream::ChannelIndex::Channel3,
@@ -191,6 +191,7 @@ int main()
                                          new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream0))
                          );
 
+    // LED command
     // TLC5940: 16x PWM LED
     gSys.mRcc.enable(ClockControl::Function::GpioD);
     gSys.mRcc.enable(ClockControl::Function::GpioB);
@@ -209,8 +210,7 @@ int main()
     InterruptController::Line timer9IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_BRK_TIM9);
     gsclkLatch.setInterrupt(Timer::InterruptType::Update, &timer9IrqUpdate);
     Tlc5940 tlc(gSys.mSpi3, xlat, blank, gsclkPwm, gsclkLatch);
-    for (int i = 0; i < 16; ++i) tlc.setOutput(i, i * 100 / 15);
-    tlc.send();
+    interpreter.add(new CmdLed(tlc));
 
 
     // Motor command
@@ -226,12 +226,12 @@ int main()
     gSys.mGpioE.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
     Timer timer1(StmSystem::BaseAddress::TIM1, ClockControl::Clock::APB2);
     timer1.setFrequency(gSys.mRcc, 5000);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer1.setCompare(Timer::CaptureCompareIndex::Index1, 0);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
     timer1.setCompare(Timer::CaptureCompareIndex::Index2, 0);
+    timer1.setCompare(Timer::CaptureCompareIndex::Index1, 0);
     timer1.setCompare(Timer::CaptureCompareIndex::Index3, 0);
     timer1.setCompare(Timer::CaptureCompareIndex::Index4, 0);
     timer1.enable();
@@ -247,10 +247,10 @@ int main()
     gSys.mGpioB.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::TIM3);
     Timer timer3(StmSystem::BaseAddress::TIM3, ClockControl::Clock::APB1);
     timer3.setFrequency(gSys.mRcc, 5000);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenHigher, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::ActiveHigh);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
     timer3.setCompare(Timer::CaptureCompareIndex::Index1, 0);
     timer3.setCompare(Timer::CaptureCompareIndex::Index2, 0);
     timer3.setCompare(Timer::CaptureCompareIndex::Index3, 0);

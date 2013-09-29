@@ -7,6 +7,7 @@
 #include "hw/ws2801.h"
 #include "System.h"
 #include "sw/sdcard.h"
+#include "hw/tlc5940.h"
 
 #include <cstdio>
 #include <vector>
@@ -196,6 +197,21 @@ private:
     System::Event mEvent;
     unsigned mMotorCount;
     Motor mMotor[4];
+};
+
+class CmdLed : public CommandInterpreter::Command, public System::Event::Callback
+{
+public:
+    CmdLed(Tlc5940& pwm);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Control LED intensity."; }
+protected:
+    virtual void eventCallback(System::Event* event);
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    System::Event mEvent;
+    Tlc5940& mPwm;
 };
 
 #endif // COMMANDS_H

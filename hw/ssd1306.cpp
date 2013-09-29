@@ -1,6 +1,6 @@
 #include "ssd1306.h"
 
-Ssd1306::Ssd1306(Spi<char> &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pin& reset) :
+Ssd1306::Ssd1306(Spi &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pin& reset) :
     mSpi(spi),
     mCs(cs),
     mDc(dataCommand),
@@ -8,9 +8,17 @@ Ssd1306::Ssd1306(Spi<char> &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pi
 {
     mCs.set();
     std::memset(mFb, 0, sizeof(mFb));
-    mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::LowWhenIdle, Spi<char>::ClockPhase::FirstTransition, Spi<char>::Endianess::MsbFirst);
-    mSpi.setSpeed(10 * 1000* 1000);
-    mSpi.enable(Device::All);
+    memset(&mTransfer, 0, sizeof(mTransfer));
+    mTransfer.maxSpeed = 10000000;
+    mTransfer.mChipSelect = 0;
+    mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
+    mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
+    mTransfer.mEndianess = Spi::Endianess::MsbFirst;
+    mTransfer.mEvent = 0;
+    mTransfer.mReadData = new uint8_t[2];
+    mTransfer.mReadDataCount = 2;
+    mTransfer.mWriteData = new uint8_t[2];
+    mTransfer.mWriteDataCount = 2;
 }
 
 void Ssd1306::reset()
@@ -69,7 +77,7 @@ void Ssd1306::sendCommand(uint8_t cmd)
 
     mDc.reset();
     mCs.reset();
-    mSpi.write(&buf, 1);
+    //mSpi.write(&buf, 1);
     mCs.set();
 }
 
@@ -80,6 +88,6 @@ void Ssd1306::sendData()
     sendCommand(Command::StartLine0);
     mDc.set();
     mCs.reset();
-    mSpi.write(mFb, sizeof(mFb));
+    //mSpi.write(mFb, sizeof(mFb));
     mCs.set();
 }

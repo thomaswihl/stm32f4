@@ -8,27 +8,45 @@
 #include "Gpio.h"
 #include "Device.h"
 
-template<typename T>
-class Spi : public Device, public ClockControl::Callback, public Stream<T>
+class Spi : public Device, public ClockControl::Callback
 {
 public:
-    Spi(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
     enum class MasterSlave { Master, Slave, MasterNssOut, MasterNssIn };
     enum class ClockPolarity { LowWhenIdle = 0, HighWhenIdle = 1 };
     // Selects the transition for data capture
     enum class ClockPhase { FirstTransition = 0, SecondTransition = 1 };
     enum class Endianess { MsbFirst = 0, LsbFirst = 0 };
 
-    uint32_t setSpeed(uint32_t maxSpeed);
-    void setMasterSlave(MasterSlave masterSlave);
-    void setClock(ClockPolarity clockPolarity, ClockPhase clockPhase);
-    void setEndianess(Endianess endianess);
+    class ChipSelect
+    {
+    public:
+        virtual void select() = 0;
+        virtual void deselect() = 0;
+    };
 
-    void config(MasterSlave masterSlave, ClockPolarity clockPolarity, ClockPhase clockPhase, Endianess endianess);
-    void configChipSelect(Gpio::Pin* chipSelect, bool activeLow);
+    class Transfer
+    {
+    public:
+        uint8_t* mWriteData;
+        unsigned mWriteDataCount;
+        uint8_t* mReadData;
+        unsigned mReadDataCount;
+        ChipSelect* mChipSelect;
+        ClockPolarity mClockPolarity;
+        ClockPhase mClockPhase;
+        Endianess mEndianess;
+        uint32_t maxSpeed;
+        System::Event* mEvent;
+    };
+
+    Spi(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);
+
+    void setMasterSlave(MasterSlave masterSlave);
 
     virtual void enable(Device::Part part);
     virtual void disable(Device::Part part);
+
+    bool transfer(Transfer* transfer);
 
     void configDma(Dma::Stream *write, Dma::Stream *read);
 protected:
@@ -121,27 +139,11 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     uint32_t mSpeed;
-    Gpio::Pin* mChipSelect;
-    bool mActiveLow;
-
-    void select();
-    void deselect();
+    CircularBuffer<Transfer*> mTransferBuffer;
 
     void waitTransmitComplete();
     void waitReceiveNotEmpty();
-
-    virtual void readPrepare();
-    virtual void readSync();
-    virtual void readTrigger();
-    virtual void readDone();
-
-    virtual void writePrepare();
-    virtual void writeSync();
-    virtual void writeTrigger();
-    virtual void writeDone();
-
+    uint32_t setSpeed(uint32_t maxSpeed);
 };
 
-extern template class Spi<char>;
-extern template class Spi<uint16_t>;
 #endif // SPI_H

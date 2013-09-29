@@ -1,6 +1,6 @@
 #include "tlc5940.h"
 
-Tlc5940::Tlc5940(Spi<char> &spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclkPwm, Timer &gsclkLatch) :
+Tlc5940::Tlc5940(Spi &spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclkPwm, Timer &gsclkLatch) :
     mSpi(spi),
     mXlat(xlat),
     mBlank(blank),
@@ -10,10 +10,17 @@ Tlc5940::Tlc5940(Spi<char> &spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclk
     mSpiEvent(*this),
     mNewData(false)
 {
-    mGrayScaleData = new char[GRAYSCALE_DATA_COUNT];
+    mGrayScaleData = new uint8_t[GRAYSCALE_DATA_COUNT];
     std::memset(mGrayScaleData, 0, GRAYSCALE_DATA_COUNT);
-    mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::LowWhenIdle, Spi<char>::ClockPhase::FirstTransition, Spi<char>::Endianess::MsbFirst);
-    mSpi.enable(Device::All);
+    memset(&mTransfer, 0, sizeof(mTransfer));
+    mTransfer.maxSpeed = 1000000;
+    mTransfer.mChipSelect = 0;
+    mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
+    mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
+    mTransfer.mEndianess = Spi::Endianess::MsbFirst;
+    mTransfer.mEvent = &mSpiEvent;
+    mTransfer.mWriteData = mGrayScaleData;
+    mTransfer.mWriteDataCount = GRAYSCALE_DATA_COUNT;
     mBlank.set();
     mXlat.reset();
     gsclkPwm.setMaster(Timer::MasterMode::Update);
@@ -57,7 +64,7 @@ void Tlc5940::setOutput(int index, int percent)
 
 void Tlc5940::send()
 {
-    mSpi.write(mGrayScaleData, GRAYSCALE_DATA_COUNT, &mSpiEvent);
+    mSpi.transfer(&mTransfer);
 }
 
 void Tlc5940::eventCallback(System::Event *event)

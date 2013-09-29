@@ -7,7 +7,7 @@
 class Ssd1306
 {
 public:
-    Ssd1306(Spi<char>& spi, Gpio::Pin& cs, Gpio::Pin& dataCommand, Gpio::Pin& reset);
+    Ssd1306(Spi& spi, Gpio::Pin& cs, Gpio::Pin& dataCommand, Gpio::Pin& reset);
 
     void reset();
     void init();
@@ -44,10 +44,11 @@ private:
         HighColumn0 = 0x10,
     };
 
-    Spi<char>& mSpi;
+    Spi& mSpi;
     Gpio::Pin& mCs;
     Gpio::Pin& mDc;
     Gpio::Pin& mReset;
+    Spi::Transfer mTransfer;
 
     char mFb[DISPLAY_WIDTH * DISPLAY_HEIGHT / 8];
 

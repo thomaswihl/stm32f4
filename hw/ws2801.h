@@ -7,14 +7,15 @@
 class Ws2801
 {
 public:
-    Ws2801(Spi<char>& spi, unsigned count);
+    Ws2801(Spi& spi, unsigned count);
     void enable();
     void set(unsigned index, uint8_t red, uint8_t green, uint8_t blue);
 
 private:
-    Spi<char>& mSpi;
+    Spi& mSpi;
     uint8_t* mData;
     unsigned mCount;
+    Spi::Transfer mTransfer;
 };
 
 #endif // WS2801_H

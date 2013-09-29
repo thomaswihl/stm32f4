@@ -202,9 +202,9 @@ public:
 //    Serial mUart5;
 //    Serial mUsart6;
     Serial& mDebug;
-    Spi<char> mSpi1;
-    Spi<char> mSpi2;
-    Spi<char> mSpi3;
+    Spi mSpi1;
+    Spi mSpi2;
+    Spi mSpi3;
     Flash mFlash;
     FpuControl mFpu;
     IndependentWatchdog mIWdg;

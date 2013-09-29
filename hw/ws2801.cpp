@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-Ws2801::Ws2801(Spi<char> &spi, unsigned count) :
+Ws2801::Ws2801(Spi &spi, unsigned count) :
     mSpi(spi),
     mData(new uint8_t[count * 3]),
     mCount(count)
@@ -11,9 +11,15 @@ Ws2801::Ws2801(Spi<char> &spi, unsigned count) :
 
 void Ws2801::enable()
 {
-    mSpi.config(Spi<char>::MasterSlave::Master, Spi<char>::ClockPolarity::LowWhenIdle, Spi<char>::ClockPhase::FirstTransition, Spi<char>::Endianess::MsbFirst);
-    mSpi.setSpeed(25 * 1000* 1000);
-    mSpi.enable(Device::All);
+    memset(&mTransfer, 0, sizeof(mTransfer));
+    mTransfer.maxSpeed = 25 * 1000* 1000;
+    mTransfer.mChipSelect = 0;
+    mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
+    mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
+    mTransfer.mEndianess = Spi::Endianess::MsbFirst;
+    //mTransfer.mEvent = 0;
+    mTransfer.mWriteData = mData;
+    mTransfer.mWriteDataCount = mCount * 3;
 }
 
 void Ws2801::set(unsigned index, uint8_t red, uint8_t green, uint8_t blue)
@@ -22,5 +28,5 @@ void Ws2801::set(unsigned index, uint8_t red, uint8_t green, uint8_t blue)
     mData[index * 3 + 0] = red;
     mData[index * 3 + 1] = green;
     mData[index * 3 + 2] = blue;
-    mSpi.write(reinterpret_cast<char*>(mData), mCount * 3, nullptr);
+    mSpi.transfer(&mTransfer);
 }
