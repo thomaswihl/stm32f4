@@ -60,6 +60,22 @@ bool CircularBuffer<T>::pop(T &elem)
 }
 
 template<typename T>
+bool CircularBuffer<T>::front(T elem)
+{
+    if (free() == 0) return false;
+    elem = *mWrite;
+    return true;
+}
+
+template<typename T>
+bool CircularBuffer<T>::back(T &elem)
+{
+    if (used() == 0) return false;
+    elem = *mRead;
+    return true;
+}
+
+template<typename T>
 unsigned int CircularBuffer<T>::write(const T* data, unsigned int len)
 {
     unsigned int totalLen = 0;

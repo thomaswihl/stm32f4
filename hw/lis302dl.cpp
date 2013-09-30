@@ -9,16 +9,15 @@ LIS302DL::LIS302DL(Spi &spi) :
     mDataReadyEvent(nullptr)
 {
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.maxSpeed = 10000000;
+    mTransfer.mMaxSpeed = 10000000;
     mTransfer.mChipSelect = 0;
     mTransfer.mClockPhase = Spi::ClockPhase::SecondTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::HighWhenIdle;
     mTransfer.mEndianess = Spi::Endianess::MsbFirst;
     mTransfer.mEvent = nullptr;
     mTransfer.mReadData = new uint8_t[2];
-    mTransfer.mReadDataCount = 2;
     mTransfer.mWriteData = new uint8_t[2];
-    mTransfer.mWriteDataCount = 2;
+    mTransfer.mLength = 2;
 }
 
 void LIS302DL::enable()

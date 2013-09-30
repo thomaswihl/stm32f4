@@ -12,14 +12,14 @@ Ws2801::Ws2801(Spi &spi, unsigned count) :
 void Ws2801::enable()
 {
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.maxSpeed = 25 * 1000* 1000;
+    mTransfer.mMaxSpeed = 25 * 1000* 1000;
     mTransfer.mChipSelect = 0;
     mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
     mTransfer.mEndianess = Spi::Endianess::MsbFirst;
     //mTransfer.mEvent = 0;
     mTransfer.mWriteData = mData;
-    mTransfer.mWriteDataCount = mCount * 3;
+    mTransfer.mLength = mCount * 3;
 }
 
 void Ws2801::set(unsigned index, uint8_t red, uint8_t green, uint8_t blue)

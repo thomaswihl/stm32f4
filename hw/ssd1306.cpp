@@ -9,16 +9,15 @@ Ssd1306::Ssd1306(Spi &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pin& res
     mCs.set();
     std::memset(mFb, 0, sizeof(mFb));
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.maxSpeed = 10000000;
+    mTransfer.mMaxSpeed = 10000000;
     mTransfer.mChipSelect = 0;
     mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
     mTransfer.mEndianess = Spi::Endianess::MsbFirst;
     mTransfer.mEvent = 0;
     mTransfer.mReadData = new uint8_t[2];
-    mTransfer.mReadDataCount = 2;
     mTransfer.mWriteData = new uint8_t[2];
-    mTransfer.mWriteDataCount = 2;
+    mTransfer.mLength = 2;
 }
 
 void Ssd1306::reset()
@@ -73,7 +72,7 @@ void Ssd1306::sendCommand(Ssd1306::Command cmd)
 
 void Ssd1306::sendCommand(uint8_t cmd)
 {
-    char buf = cmd;
+    //char buf = cmd;
 
     mDc.reset();
     mCs.reset();

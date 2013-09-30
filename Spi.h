@@ -28,14 +28,13 @@ public:
     {
     public:
         uint8_t* mWriteData;
-        unsigned mWriteDataCount;
         uint8_t* mReadData;
-        unsigned mReadDataCount;
+        unsigned mLength;
         ChipSelect* mChipSelect;
         ClockPolarity mClockPolarity;
         ClockPhase mClockPhase;
         Endianess mEndianess;
-        uint32_t maxSpeed;
+        uint32_t mMaxSpeed;
         System::Event* mEvent;
     };
 
@@ -144,6 +143,9 @@ private:
     void waitTransmitComplete();
     void waitReceiveNotEmpty();
     uint32_t setSpeed(uint32_t maxSpeed);
+    void config(Spi::ClockPolarity clockPolarity, Spi::ClockPhase clockPhase, Spi::Endianess endianess);
+    void nextTransfer();
+    void writeSync();
 };
 
 #endif // SPI_H
