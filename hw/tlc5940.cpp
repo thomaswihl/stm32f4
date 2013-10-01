@@ -13,7 +13,7 @@ Tlc5940::Tlc5940(Spi &spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclkPwm, T
     mGrayScaleData = new uint8_t[GRAYSCALE_DATA_COUNT];
     std::memset(mGrayScaleData, 0, GRAYSCALE_DATA_COUNT);
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.mMaxSpeed = 1000000;
+    mTransfer.mMaxSpeed = 60 * 1000 * 1000;
     mTransfer.mChipSelect = 0;
     mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
@@ -64,8 +64,6 @@ void Tlc5940::setOutput(int index, int percent)
 
 void Tlc5940::send()
 {
-    for (int i = 0; i < GRAYSCALE_DATA_COUNT; ++i) printf("%02x ", mGrayScaleData[i]);
-    printf("\n");
     mSpi.transfer(&mTransfer);
 }
 

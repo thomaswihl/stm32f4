@@ -113,6 +113,8 @@ protected:
     ExternalInterrupt::Line* mLine2;
     System::Event* mDataReadyEvent;
     Spi::Transfer mTransfer;
+    uint8_t* mReadBuffer;
+    uint8_t* mWriteBuffer;
 
     virtual void eventCallback(System::Event* event);
     void interruptCallback(InterruptController::Index index);

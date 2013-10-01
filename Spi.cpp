@@ -69,7 +69,6 @@ void Spi::nextTransfer()
             nextTransfer();
             return;
         }
-        enable(Device::Part::All);
         //printf("SPI %s(%08x)%s(%08x) %i bytes\n", ((t->mReadData != nullptr) ? "R" : ""), t->mReadData, ((t->mWriteData != nullptr) ? "W" : ""), t->mWriteData, t->mLength);
         if (t->mChipSelect != nullptr) t->mChipSelect->select();
         setSpeed(t->mMaxSpeed);
@@ -89,10 +88,6 @@ void Spi::nextTransfer()
             mDmaWrite->start();
         }
     }
-    else
-    {
-        disable(Device::Part::All);
-    }
 }
 
 void Spi::writeSync()
@@ -101,7 +96,7 @@ void Spi::writeSync()
     if (mTransferBuffer.pop(t))
     {
         unsigned len = t->mLength;
-        uint8_t* w = t->mWriteData;
+        const uint8_t* w = t->mWriteData;
         uint8_t* r = t->mReadData;
         while (len > 0)
         {

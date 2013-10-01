@@ -47,9 +47,11 @@ int main()
     printf("\n");
     gSys.printInfo();
 
+    gSys.mRcc.enable(ClockControl::Function::Dma1);
+    gSys.mRcc.enable(ClockControl::Function::Dma2);
 
-
-
+    // SPI1 for acceleration sensor and OLED displays
+    gSys.mRcc.enable(ClockControl::Function::Spi1);
     gSys.mRcc.enable(ClockControl::Function::GpioA);
     gSys.mRcc.enable(ClockControl::Function::GpioE);
     // SCK
@@ -77,17 +79,14 @@ int main()
     extInt1.setCallback(&gSys.mExtI);
     extInt1.enable();
 
-    gSys.mRcc.enable(ClockControl::Function::Spi1);
-
-    //gSys.mSpi1.configChipSelect(new Gpio::Pin(gSys.mGpioE, Gpio::Index::Pin2), true);
     gSys.mSpi1.configDma(new Dma::Stream(gSys.mDma2, Dma::Stream::StreamIndex::Stream3, Dma::Stream::ChannelIndex::Channel3,
                                          new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream3)),
                          new Dma::Stream(gSys.mDma2, Dma::Stream::StreamIndex::Stream2, Dma::Stream::ChannelIndex::Channel3,
                                          new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA2_Stream2))
                          );
+    gSys.mSpi1.setMasterSlave(Spi::MasterSlave::Master);
+    gSys.mSpi1.enable(Device::Part::All);
 
-    LIS302DL lis(gSys.mSpi1);
-    lis.configInterrupt(new ExternalInterrupt::Line(gSys.mExtI, 0), new ExternalInterrupt::Line(gSys.mExtI, 1));
     CommandInterpreter interpreter(gSys);
 
     gSys.mRcc.enable(ClockControl::Function::GpioD);
@@ -103,6 +102,10 @@ int main()
     interpreter.add(new CmdFunc(gSys));
     interpreter.add(new CmdRead());
     interpreter.add(new CmdWrite());
+
+    // acceleration sensor
+    LIS302DL lis(gSys.mSpi1);
+    lis.configInterrupt(new ExternalInterrupt::Line(gSys.mExtI, 0), new ExternalInterrupt::Line(gSys.mExtI, 1));
     interpreter.add(new CmdLis(lis));
 
     // clock command
@@ -159,18 +162,18 @@ int main()
     gSys.mGpioC.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull);
     gSys.mGpioC.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
     gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::PushPull);
-//    Ssd1306 oled1(gSys.mSpi1, cs1, dataCommand, reset);
-//    Ssd1306 oled2(gSys.mSpi1, cs2, dataCommand, reset);
-//    oled1.reset();
-//    oled1.init();
-//    oled2.init();
-//    for (int x = 0; x < 64; ++x)
-//    {
-//        oled1.setPixel(x, x);
-//        oled2.setPixel(x, x);
-//    }
-//    oled1.sendData();
-//    oled2.sendData();
+    Ssd1306 oled1(gSys.mSpi1, cs1, dataCommand, reset);
+    Ssd1306 oled2(gSys.mSpi1, cs2, dataCommand, reset);
+    oled1.reset();
+    oled1.init();
+    oled2.init();
+    for (int x = 0; x < 64; ++x)
+    {
+        oled1.setPixel(x, x);
+        oled2.setPixel(x, x);
+    }
+    oled1.sendData();
+    oled2.sendData();
 
     // SPI3
     gSys.mRcc.enable(ClockControl::Function::GpioC);
@@ -191,6 +194,8 @@ int main()
                                          new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream0))
                          );
     gSys.mSpi3.setMasterSlave(Spi::MasterSlave::Master);
+    gSys.mSpi3.enable(Device::Part::All);
+
 
     // LED command
     // TLC5940: 16x PWM LED

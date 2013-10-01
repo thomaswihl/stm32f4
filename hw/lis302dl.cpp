@@ -15,8 +15,10 @@ LIS302DL::LIS302DL(Spi &spi) :
     mTransfer.mClockPolarity = Spi::ClockPolarity::HighWhenIdle;
     mTransfer.mEndianess = Spi::Endianess::MsbFirst;
     mTransfer.mEvent = nullptr;
-    mTransfer.mReadData = new uint8_t[2];
-    mTransfer.mWriteData = new uint8_t[2];
+    mReadBuffer = new uint8_t[2];
+    mWriteBuffer = new uint8_t[2];
+    mTransfer.mReadData = mReadBuffer;
+    mTransfer.mWriteData = mWriteBuffer;
     mTransfer.mLength = 2;
 }
 
@@ -82,15 +84,15 @@ void LIS302DL::interruptCallback(InterruptController::Index index)
 
 void LIS302DL::set(LIS302DL::Register reg, uint8_t value)
 {
-    mTransfer.mWriteData[0] = WRITE | ADDR_CONST | static_cast<uint8_t>(reg);
-    mTransfer.mWriteData[1] = value;
+    mWriteBuffer[0] = WRITE | ADDR_CONST | static_cast<uint8_t>(reg);
+    mWriteBuffer[1] = value;
     mSpi.transfer(&mTransfer);
 }
 
 uint8_t LIS302DL::get(LIS302DL::Register reg)
 {
-    mTransfer.mWriteData[0] = READ | ADDR_CONST | static_cast<uint8_t>(reg);
-    mTransfer.mWriteData[1] = 0;
+    mWriteBuffer[0] = READ | ADDR_CONST | static_cast<uint8_t>(reg);
+    mWriteBuffer[1] = 0;
     mSpi.transfer(&mTransfer);
     // TODO: Wait for transfer to finish
     return 0;//buf[1];

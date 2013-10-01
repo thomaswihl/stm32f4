@@ -4,7 +4,7 @@
 #include "../Spi.h"
 #include "../System.h"
 
-class Ssd1306
+class Ssd1306 : public System::Event::Callback, public Spi::ChipSelect
 {
 public:
     Ssd1306(Spi& spi, Gpio::Pin& cs, Gpio::Pin& dataCommand, Gpio::Pin& reset);
@@ -18,7 +18,8 @@ public:
 private:
     static const int DISPLAY_WIDTH = 128;
     static const int DISPLAY_HEIGHT = 64;
-    enum class Command : uint8_t
+    static const int FB_SIZE = DISPLAY_WIDTH * DISPLAY_HEIGHT / 8;
+    enum Command
     {
         DisplayOn = 0xaf,
         DisplayOff = 0xae,
@@ -48,12 +49,21 @@ private:
     Gpio::Pin& mCs;
     Gpio::Pin& mDc;
     Gpio::Pin& mReset;
+    System::Event mSpiEvent;
     Spi::Transfer mTransfer;
 
-    char mFb[DISPLAY_WIDTH * DISPLAY_HEIGHT / 8];
+    uint8_t* mFb;
 
-    void sendCommand(Command cmd);
-    void sendCommand(uint8_t cmd);
+    void sendCommands(const uint8_t *cmds, unsigned size);
+
+    // ChipSelect interface
+public:
+    void select();
+    void deselect();
+
+    // Callback interface
+public:
+    void eventCallback(System::Event *event);
 };
 
 #endif // SSD1306_H

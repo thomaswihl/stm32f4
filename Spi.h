@@ -27,7 +27,7 @@ public:
     class Transfer
     {
     public:
-        uint8_t* mWriteData;
+        const uint8_t* mWriteData;
         uint8_t* mReadData;
         unsigned mLength;
         ChipSelect* mChipSelect;

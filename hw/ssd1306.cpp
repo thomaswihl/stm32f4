@@ -4,19 +4,19 @@ Ssd1306::Ssd1306(Spi &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pin& res
     mSpi(spi),
     mCs(cs),
     mDc(dataCommand),
-    mReset(reset)
+    mReset(reset),
+    mSpiEvent(*this)
 {
     mCs.set();
-    std::memset(mFb, 0, sizeof(mFb));
+    mFb = new uint8_t[FB_SIZE];
+    std::memset(mFb, 0, FB_SIZE);
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.mMaxSpeed = 10000000;
-    mTransfer.mChipSelect = 0;
+    mTransfer.mMaxSpeed = 10 * 1000 * 1000;
+    mTransfer.mChipSelect = this;
     mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
     mTransfer.mEndianess = Spi::Endianess::MsbFirst;
-    mTransfer.mEvent = 0;
-    mTransfer.mReadData = new uint8_t[2];
-    mTransfer.mWriteData = new uint8_t[2];
+    mTransfer.mEvent = &mSpiEvent;
     mTransfer.mLength = 2;
 }
 
@@ -31,32 +31,35 @@ void Ssd1306::reset()
 
 void Ssd1306::init()
 {
-    sendCommand(Command::DisplayOff);
-    sendCommand(Command::ClockDivide);
-    sendCommand(0x80);
-    sendCommand(Command::Multiplex);
-    sendCommand(0x3F);
-    sendCommand(Command::DisplayOffset);
-    sendCommand(0x00);
-    sendCommand(Command::StartLine0);
-    sendCommand(Command::ChargePump);
-    sendCommand(0x14);
-    sendCommand(Command::MemoryAddressing);
-    sendCommand(0x00);
-    sendCommand(Command::SegRemap127);
-    sendCommand(Command::ComScanDec);
-    sendCommand(Command::ComPins);
-    sendCommand(0x12);
-    sendCommand(Command::Contrast);
-    sendCommand(0xcf);
-    sendCommand(Command::PreCharge);
-    sendCommand(0xF1);
-    sendCommand(Command::DeselectLevel);
-    sendCommand(0x40);
-    sendCommand(Command::EntireDisplayOnResume);
-    sendCommand(Command::DisplayNormal);
-    sendCommand(Command::DisplayOn);
-    sendData();
+    static const uint8_t COMMANDS[] =
+    {
+        Command::DisplayOff,
+        Command::ClockDivide,
+        0x80,
+        Command::Multiplex,
+        0x3F,
+        Command::DisplayOffset,
+        0x00,
+        Command::StartLine0,
+        Command::ChargePump,
+        0x14,
+        Command::MemoryAddressing,
+        0x00,
+        Command::SegRemap127,
+        Command::ComScanDec,
+        Command::ComPins,
+        0x12,
+        Command::Contrast,
+        0xcf,
+        Command::PreCharge,
+        0xF1,
+        Command::DeselectLevel,
+        0x40,
+        Command::EntireDisplayOnResume,
+        Command::DisplayNormal,
+        Command::DisplayOn,
+    };
+    sendCommands(COMMANDS, sizeof(COMMANDS));
 }
 
 void Ssd1306::setPixel(int x, int y, bool on)
@@ -65,28 +68,42 @@ void Ssd1306::setPixel(int x, int y, bool on)
     else mFb[x + (y / 8) * DISPLAY_WIDTH] &= ~(1 << (y % 8));
 }
 
-void Ssd1306::sendCommand(Ssd1306::Command cmd)
+void Ssd1306::sendCommands(const uint8_t* cmds, unsigned size)
 {
-    sendCommand(static_cast<uint8_t>(cmd));
+    mDc.reset();
+    mTransfer.mWriteData = cmds;
+    mTransfer.mLength = size;
+    mSpi.transfer(&mTransfer);
 }
 
-void Ssd1306::sendCommand(uint8_t cmd)
+void Ssd1306::select()
 {
-    //char buf = cmd;
-
-    mDc.reset();
     mCs.reset();
-    //mSpi.write(&buf, 1);
+}
+
+void Ssd1306::deselect()
+{
     mCs.set();
+}
+
+void Ssd1306::eventCallback(System::Event *event)
+{
+    if (!mDc.get())
+    {
+        mDc.set();
+        mTransfer.mWriteData = mFb;
+        mTransfer.mLength = FB_SIZE;
+        mSpi.transfer(&mTransfer);
+    }
 }
 
 void Ssd1306::sendData()
 {
-    sendCommand(Command::LowColumn0);
-    sendCommand(Command::HighColumn0);
-    sendCommand(Command::StartLine0);
-    mDc.set();
-    mCs.reset();
-    //mSpi.write(mFb, sizeof(mFb));
-    mCs.set();
+    static const uint8_t COMMANDS[] =
+    {
+        Command::LowColumn0,
+        Command::HighColumn0,
+        Command::StartLine0,
+    };
+    sendCommands(COMMANDS, sizeof(COMMANDS));
 }
