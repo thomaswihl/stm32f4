@@ -167,12 +167,10 @@ int main()
     oled1.reset();
     oled1.init();
     oled2.init();
-    for (int x = 0; x < 64; ++x)
-    {
-        oled1.setPixel(x, x);
-        oled2.setPixel(x, x);
-    }
+    oled1.drawString(0, 0, "Hello World 1!");
+    oled1.drawString(1, 1, "Second line");
     oled1.sendData();
+    oled2.drawString(0, 0, "Hello World 2!");
     oled2.sendData();
 
     // SPI3

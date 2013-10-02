@@ -12,7 +12,10 @@ public:
     void reset();
     void init();
 
+    void clear();
     void setPixel(int x, int y, bool on = true);
+    void drawString(int x, int y, const char *string);
+    void drawChar(int x, int y, char c);
     void sendData();
 
 private:
