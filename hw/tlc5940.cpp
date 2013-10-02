@@ -45,7 +45,7 @@ void Tlc5940::setOutput(int index, int percent)
 
     if (percent < 0) percent = 0;
     else if (percent >= static_cast<int>(sizeof(table) / sizeof(table[0]))) percent = sizeof(table) / sizeof(table[0]) - 1;
-    int value = table[percent];
+    int value = table[percent] & 0xfff;
     int i = 15 - index;
 
     if ((i % 2) == 0)
@@ -55,7 +55,7 @@ void Tlc5940::setOutput(int index, int percent)
     }
     else
     {
-        mGrayScaleData[i + i / 2] = (mGrayScaleData[i + i / 2 + 1] & 0xf0) | ((value >> 8) & 0x0f);
+        mGrayScaleData[i + i / 2] = (mGrayScaleData[i + i / 2] & 0xf0) | ((value >> 8) & 0x0f);
         mGrayScaleData[i + i / 2 + 1] = value;
     }
 }

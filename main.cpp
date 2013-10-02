@@ -55,7 +55,7 @@ int main()
     gSys.mRcc.enable(ClockControl::Function::GpioA);
     gSys.mRcc.enable(ClockControl::Function::GpioE);
     // SCK
-    gSys.mGpioA.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull);
+    gSys.mGpioA.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull, Gpio::Pull::Down);
     gSys.mGpioA.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::SPI1);
     // MISO
     gSys.mGpioA.configInput(Gpio::Index::Pin6);

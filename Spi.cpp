@@ -82,6 +82,8 @@ void Spi::nextTransfer()
         }
         if (mDmaWrite != nullptr && t->mWriteData != nullptr)
         {
+//            for (int i = 0; i < t->mLength; ++i) printf("%02x ", t->mWriteData[i]);
+//            printf("\n");
             mBase->CR2.TXDMAEN = 1;
             mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(t->mWriteData));
             mDmaWrite->setTransferCount(t->mLength);
@@ -202,103 +204,10 @@ uint32_t Spi::setSpeed(uint32_t maxSpeed)
 
 void Spi::config(Spi::ClockPolarity clockPolarity, Spi::ClockPhase clockPhase, Spi::Endianess endianess)
 {
+    mBase->CR1.SPE = 0;
     mBase->CR1.CPOL = static_cast<uint32_t>(clockPolarity);
     mBase->CR1.CPHA = static_cast<uint32_t>(clockPhase);
     mBase->CR1.LSBFIRST = static_cast<uint32_t>(endianess);
+    mBase->CR1.SPE = 1;
 }
-
-
-
-//void Spi::readSync()
-//{
-//    do
-//    {
-//        mBase->DR = 0;
-//        waitReceiveNotEmpty();
-//    }   while (Stream<T>::read(static_cast<T>(mBase->DR)));
-//}
-
-
-//void Spi::readTrigger()
-//{
-//    return;
-//    // empty the receive register before starting another transfer,
-//    // as it might be full from last transfer, in case it was a write only transfer
-//    T c;
-//    while (mBase->SR.RXNE) c = mBase->DR;
-//    (void)c;
-//    if (mDmaRead != 0)
-//    {
-//        T* data;
-//        unsigned int len;
-//        readDmaBuffer(data, len);
-//        if (len > 0)
-//        {
-//            mBase->CR2.RXDMAEN = 1;
-//            mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
-//            mDmaRead->setTransferCount(len);
-//            mDmaRead->start();
-//        }
-//    }
-//    else if (mInterrupt != 0)
-//    {
-////        mBase->CR1.RXNEIE = 1;
-//    }
-//    else
-//    {
-//        // we have to do it manually
-//        readSync();
-//    }
-//}
-
-
-//void Spi::readDone()
-//{
-//    deselect();
-//}
-
-
-
-//void Spi::writePrepare()
-//{
-//    select();
-//}
-
-
-
-//void Spi::writeTrigger()
-//{
-//    if (mDmaWrite != 0)
-//    {
-//        const T* data;
-//        unsigned int len;
-//        writeDmaBuffer(data, len);
-//        if (len > 0)
-//        {
-//            mBase->CR2.TXDMAEN = 1;
-//            mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(data));
-//            mDmaWrite->setTransferCount(len);
-//            mDmaWrite->start();
-//        }
-//    }
-//    else if (mInterrupt != 0)
-//    {
-////        mBase->CR1.TCIE = 1;
-////        // send first bye, to start transmission
-////        char c;
-////        if (Stream<char>::write(c)) mBase->DR = c;
-////        else mBase->CR1.TCIE = 0;
-//    }
-//    else
-//    {
-//        // we have to do it manually
-//        writeSync();
-//    }
-//}
-
-
-//void Spi::writeDone()
-//{
-//    deselect();
-//}
 
