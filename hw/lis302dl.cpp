@@ -1,6 +1,6 @@
 #include "lis302dl.h"
 
-LIS302DL::LIS302DL(Spi &spi) :
+LIS302DL::LIS302DL(Spi::Chip &spi) :
     mTransferCompleteEvent(*this),
     mSpi(spi),
     mBuffer(new char[2]),
@@ -33,7 +33,6 @@ void LIS302DL::enable()
 
 void LIS302DL::disable()
 {
-    mSpi.disable(Device::All);
     set(Register::Control1, PowerDown);
 }
 

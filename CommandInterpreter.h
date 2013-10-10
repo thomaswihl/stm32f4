@@ -22,6 +22,7 @@
 #include "Serial.h"
 #include "StmSystem.h"
 #include "CircularBuffer.h"
+#include "hw/ssd1306.h"
 
 #include <vector>
 
@@ -80,6 +81,7 @@ public:
     void printArguments(Command* cmd, bool summary);
     void printAliases(Command* cmd);
     bool parseArgument(Argument& argument);
+    void setDisplay(Ssd1306* display) { mDisplay = display; }
 protected:
     virtual void eventCallback(System::Event *event);
 private:
@@ -123,6 +125,9 @@ private:
     unsigned int mEscapeLen;
     unsigned int mFirstSpace;
     Argument mArguments[MAX_ARG_LEN];
+    Ssd1306* mDisplay;
+    int mFbIndex;
+    int mFbIndexOffset;
 
 
     void printLine();

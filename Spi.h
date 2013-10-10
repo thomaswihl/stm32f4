@@ -24,6 +24,8 @@ public:
         virtual void deselect() = 0;
     };
 
+    class Chip;
+
     class Transfer
     {
     public:
@@ -36,6 +38,20 @@ public:
         Endianess mEndianess;
         uint32_t mMaxSpeed;
         System::Event* mEvent;
+        Chip* mChip;
+    };
+
+    class Chip
+    {
+    public:
+        Chip(Spi& spi) :
+            mSpi(spi)
+        { }
+
+        virtual bool transfer(Transfer* transfer) { transfer->mChip = this; return mSpi.transfer(transfer); }
+        virtual void prepare() { };
+    private:
+        Spi& mSpi;
     };
 
     Spi(System::BaseAddress base, ClockControl* clockControl, ClockControl::Clock clock);

@@ -64,3 +64,5 @@ sdio.h
 sdio.cpp
 sw/sdcard.h
 sw/sdcard.cpp
+sw/images.cpp
+sw/images.h

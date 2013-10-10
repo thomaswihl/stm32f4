@@ -1,6 +1,6 @@
 #include "tlc5940.h"
 
-Tlc5940::Tlc5940(Spi &spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclkPwm, Timer &gsclkLatch) :
+Tlc5940::Tlc5940(Spi::Chip& spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclkPwm, Timer &gsclkLatch) :
     mSpi(spi),
     mXlat(xlat),
     mBlank(blank),

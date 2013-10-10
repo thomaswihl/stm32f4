@@ -7,7 +7,7 @@
 class Ssd1306 : public System::Event::Callback, public Spi::ChipSelect
 {
 public:
-    Ssd1306(Spi& spi, Gpio::Pin& cs, Gpio::Pin& dataCommand, Gpio::Pin& reset);
+    Ssd1306(Spi::Chip& spi, Gpio::Pin& cs, Gpio::Pin& dataCommand, Gpio::Pin& reset);
 
     void reset();
     void init();
@@ -17,6 +17,7 @@ public:
     void drawString(int x, int y, const char *string);
     void drawChar(int x, int y, char c);
     void sendData();
+    void sendData(const uint8_t *data);
 
 private:
     static const int DISPLAY_WIDTH = 128;
@@ -48,7 +49,7 @@ private:
         HighColumn0 = 0x10,
     };
 
-    Spi& mSpi;
+    Spi::Chip& mSpi;
     Gpio::Pin& mCs;
     Gpio::Pin& mDc;
     Gpio::Pin& mReset;
@@ -56,6 +57,7 @@ private:
     Spi::Transfer mTransfer;
 
     uint8_t* mFb;
+    const uint8_t* mData;
 
     void sendCommands(const uint8_t *cmds, unsigned size);
 

@@ -17,6 +17,7 @@
  */
 
 #include "CommandInterpreter.h"
+#include "sw/images.h"
 
 #include <cstring>
 #include <cstdlib>
@@ -34,7 +35,10 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mHistory(64),
     mHistoryIndex(0),
     mEscapeLen(0),
-    mFirstSpace(0)
+    mFirstSpace(0),
+    mDisplay(nullptr),
+    mFbIndex(0),
+    mFbIndexOffset(1)
 {
     strcpy(mPrompt, "# ");
 }
@@ -54,6 +58,7 @@ void CommandInterpreter::feed()
             complete();
             break;
         case '\r':
+        case '\n':
             mSystem.mDebug.write("\r\n", 2);
             if (mHistoryIndex != 0)
             {
@@ -341,21 +346,35 @@ void CommandInterpreter::eventCallback(System::Event* event)
     }
     else if (event == &mTickEvent)
     {
-        static unsigned int ps = -1;
-        unsigned int s = mSystem.mSysTick.ticks() * mSystem.mSysTick.interval() / 1000;
-        if (s != ps)
+        const uint8_t* images[] = { IMG_01, IMG_02, IMG_03, IMG_04, IMG_05, IMG_06, IMG_07, IMG_08, IMG_09, IMG_10 };
+        if (mDisplay != nullptr)
         {
-            ps = s;
-            uint32_t te = mSystem.timeInEvent() / 1000000;
-            uint32_t ti = mSystem.timeInInterrupt() / 1000000;
-            uint32_t ic = mSystem.interruptCount();
-            uint32_t ec = mSystem.eventCount();
-            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus in %10lu Events, %10lu.%03lus in %10lu IRQs\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
-                   te / 1000, te % 1000, ec,
-                   ti / 1000, ti % 1000, ic);
-            fflush(nullptr);
-            System::instance()->debugMsg(((s % 64) < 32) ? "#" : ".", 1);
+            mDisplay->sendData(images[mFbIndex]);
+            mFbIndex += mFbIndexOffset;
+            if (mFbIndex <= 0)
+            {
+                mFbIndexOffset = 1;
+            }
+            else if (mFbIndex >= static_cast<int>(sizeof(images) / sizeof(images[0]) - 3))
+            {
+                mFbIndexOffset = -1;
+            }
         }
+//        static unsigned int ps = -1;
+//        unsigned int s = mSystem.mSysTick.ticks() * mSystem.mSysTick.interval() / 1000;
+//        if (s != ps)
+//        {
+//            ps = s;
+//            uint32_t te = mSystem.timeInEvent() / 1000000;
+//            uint32_t ti = mSystem.timeInInterrupt() / 1000000;
+//            uint32_t ic = mSystem.interruptCount();
+//            uint32_t ec = mSystem.eventCount();
+//            printf("\x1b[s\x1b[;H%4u:%02u:%02u, %10lu.%03lus in %10lu Events, %10lu.%03lus in %10lu IRQs\x1b[K\x1b[u", s / 3600, (s / 60) % 60, s % 60,
+//                   te / 1000, te % 1000, ec,
+//                   ti / 1000, ti % 1000, ic);
+//            fflush(nullptr);
+//            System::instance()->debugMsg(((s % 64) < 32) ? "#" : ".", 1);
+//        }
     }
 }
 
@@ -499,7 +518,13 @@ void CommandInterpreter::execute()
     Command* cmd = findCommand(mArguments[0].value.s, strlen(mArguments[0].value.s), possible);
     if (cmd == nullptr)
     {
-        printf("Unknown command: %s, try help.\n", mArguments[0].value.s);
+        printf("Unknown command: %s", mArguments[0].value.s);
+//        const char* p = mArguments[0].value.s;
+//        while (*p != 0)
+//        {
+//            printf(" %02x", *p++);
+//        }
+        printf(", try help.\n");
         return;
     }
     unsigned int maxArgc = std::min(static_cast<unsigned int>(MAX_ARG_LEN), cmd->argumentCount() + 1);

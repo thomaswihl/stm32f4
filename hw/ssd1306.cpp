@@ -101,7 +101,7 @@ static const uint8_t FONT[] =
 };
 
 
-Ssd1306::Ssd1306(Spi &spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pin& reset) :
+Ssd1306::Ssd1306(Spi::Chip& spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pin& reset) :
     mSpi(spi),
     mCs(cs),
     mDc(dataCommand),
@@ -220,7 +220,7 @@ void Ssd1306::eventCallback(System::Event *event)
     if (!mDc.get())
     {
         mDc.set();
-        mTransfer.mWriteData = mFb;
+        mTransfer.mWriteData = mData;
         mTransfer.mLength = FB_SIZE;
         mSpi.transfer(&mTransfer);
     }
@@ -228,11 +228,18 @@ void Ssd1306::eventCallback(System::Event *event)
 
 void Ssd1306::sendData()
 {
+    sendData(mFb);
+}
+
+
+void Ssd1306::sendData(const uint8_t* data)
+{
     static const uint8_t COMMANDS[] =
     {
         Command::LowColumn0,
         Command::HighColumn0,
         Command::StartLine0,
     };
+    mData = data;
     sendCommands(COMMANDS, sizeof(COMMANDS));
 }

@@ -9,7 +9,7 @@
 class LIS302DL : public System::Event::Callback, public InterruptController::Callback
 {
 public:
-    LIS302DL(Spi& spi);
+    LIS302DL(Spi::Chip& spi);
 
     void enable();
     void disable();
@@ -107,7 +107,7 @@ protected:
     };
 
     System::Event mTransferCompleteEvent;
-    Spi& mSpi;
+    Spi::Chip& mSpi;
     char* mBuffer;
     ExternalInterrupt::Line* mLine1;
     ExternalInterrupt::Line* mLine2;

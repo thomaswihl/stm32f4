@@ -70,6 +70,7 @@ void Spi::nextTransfer()
             return;
         }
         //printf("SPI %s(%08x)%s(%08x) %i bytes\n", ((t->mReadData != nullptr) ? "R" : ""), t->mReadData, ((t->mWriteData != nullptr) ? "W" : ""), t->mWriteData, t->mLength);
+        if (t->mChip != nullptr) t->mChip->prepare();
         if (t->mChipSelect != nullptr) t->mChipSelect->select();
         setSpeed(t->mMaxSpeed);
         config(t->mClockPolarity, t->mClockPhase, t->mEndianess);

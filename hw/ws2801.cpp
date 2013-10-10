@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-Ws2801::Ws2801(Spi &spi, unsigned count) :
+Ws2801::Ws2801(Spi::Chip& spi, unsigned count) :
     mSpi(spi),
     mData(new uint8_t[count * 3]),
     mCount(count)
@@ -12,7 +12,7 @@ Ws2801::Ws2801(Spi &spi, unsigned count) :
 void Ws2801::enable()
 {
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.mMaxSpeed = 25 * 1000* 1000;
+    mTransfer.mMaxSpeed = 25 * 1000 * 1000;
     mTransfer.mChipSelect = 0;
     mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;

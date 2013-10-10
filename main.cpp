@@ -30,8 +30,26 @@
 #include <cstdio>
 #include <memory>
 
-
 StmSystem gSys;
+
+class SpiChip : public Spi::Chip
+{
+public:
+    SpiChip(Spi& spi, Gpio::Pin& s0, Gpio::Pin& s1, int value) :
+        Spi::Chip(spi),
+        mS0(s0),
+        mS1(s1),
+        mValue(value)
+    { }
+
+    void prepare() { mS0.set(mValue & 0x01); mS1.set(mValue & 0x02); }
+
+private:
+    Gpio::Pin& mS0;
+    Gpio::Pin& mS1;
+    int mValue;
+
+};
 
 int main()
 {
@@ -103,8 +121,9 @@ int main()
     interpreter.add(new CmdRead());
     interpreter.add(new CmdWrite());
 
+    Spi::Chip spi1(gSys.mSpi1);
     // acceleration sensor
-    LIS302DL lis(gSys.mSpi1);
+    LIS302DL lis(spi1);
     lis.configInterrupt(new ExternalInterrupt::Line(gSys.mExtI, 0), new ExternalInterrupt::Line(gSys.mExtI, 1));
     interpreter.add(new CmdLis(lis));
 
@@ -138,10 +157,6 @@ int main()
 //                                         new InterruptController::Line(gSys.mNvic, StmSystem::InterruptIndex::DMA1_Stream3))
 //                         );
 
-//    Ws2801 ws(gSys.mSpi2, 4);
-//    ws.enable();
-//    interpreter.add(new CmdRgb(ws));
-
     // 74HC4052: 1x SPI3 -> 4x SPI
     gSys.mRcc.enable(ClockControl::Function::GpioE);
     Gpio::Pin s0(gSys.mGpioE, Gpio::Index::Pin5);
@@ -150,6 +165,10 @@ int main()
     gSys.mGpioE.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
     s0.reset();
     s1.reset();
+    SpiChip spi3_0(gSys.mSpi3, s0, s1, 0);
+    SpiChip spi3_1(gSys.mSpi3, s0, s1, 1);
+    SpiChip spi3_2(gSys.mSpi3, s0, s1, 2);
+    SpiChip spi3_3(gSys.mSpi3, s0, s1, 3);
 
 
     // 2 OLED displays
@@ -162,8 +181,8 @@ int main()
     gSys.mGpioC.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull);
     gSys.mGpioC.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
     gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::PushPull);
-    Ssd1306 oled1(gSys.mSpi1, cs1, dataCommand, reset);
-    Ssd1306 oled2(gSys.mSpi1, cs2, dataCommand, reset);
+    Ssd1306 oled1(spi1, cs1, dataCommand, reset);
+    Ssd1306 oled2(spi1, cs2, dataCommand, reset);
     oled1.reset();
     oled1.init();
     oled2.init();
@@ -172,6 +191,7 @@ int main()
     oled1.sendData();
     oled2.drawString(0, 0, "Hello World 2!");
     oled2.sendData();
+    interpreter.setDisplay(&oled1);
 
     // SPI3
     gSys.mRcc.enable(ClockControl::Function::GpioC);
@@ -203,7 +223,7 @@ int main()
     gSys.mRcc.enable(ClockControl::Function::Tim10);
     Gpio::Pin xlat(gSys.mGpioD, Gpio::Index::Pin1);
     Gpio::Pin blank(gSys.mGpioD, Gpio::Index::Pin3);
-    Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin8);
+    //Gpio::Pin gsclk(gSys.mGpioB, Gpio::Index::Pin8);
     gSys.mGpioD.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
     gSys.mGpioD.configOutput(Gpio::Index::Pin3, Gpio::OutputType::PushPull);
     gSys.mGpioB.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
@@ -213,8 +233,12 @@ int main()
     Timer gsclkLatch(StmSystem::BaseAddress::TIM9, ClockControl::Clock::APB2);
     InterruptController::Line timer9IrqUpdate(gSys.mNvic, StmSystem::InterruptIndex::TIM1_BRK_TIM9);
     gsclkLatch.setInterrupt(Timer::InterruptType::Update, &timer9IrqUpdate);
-    Tlc5940 tlc(gSys.mSpi3, xlat, blank, gsclkPwm, gsclkLatch);
+    Tlc5940 tlc(spi3_0, xlat, blank, gsclkPwm, gsclkLatch);
     interpreter.add(new CmdLed(tlc));
+
+    Ws2801 ws(spi3_1, 4);
+    ws.enable();
+    interpreter.add(new CmdRgb(ws));
 
 
     // Motor command
