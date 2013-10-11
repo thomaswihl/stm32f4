@@ -322,6 +322,12 @@ int main()
 
     interpreter.start();
 
+    // 4 x GPIO
+    // Hall sensor needs pullup
+    gSys.mGpioB.configInput(Gpio::Index::Pin11, Gpio::Pull::Up);
+    gSys.mGpioE.configInput(Gpio::Index::Pin11, Gpio::Pull::Up);
+    gSys.mGpioE.configInput(Gpio::Index::Pin13, Gpio::Pull::Up);
+    gSys.mGpioE.configInput(Gpio::Index::Pin15, Gpio::Pull::Up);
 
     //gSys.mIWdg.enable(2000000);
     System::Event* event;
@@ -330,6 +336,8 @@ int main()
         if (gSys.waitForEvent(event) && event != nullptr)
         {
             //gSys.mIWdg.service();
+//            gSys.mDebug.write(gSys.mGpioB.get(Gpio::Index::Pin11) ? "1" : "0", 1);
+
             gSys.mGpioD.set(Gpio::Index::Pin13);
             event->callback();
             gSys.mGpioD.reset(Gpio::Index::Pin13);
