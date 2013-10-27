@@ -7,12 +7,13 @@ Ws2801::Ws2801(Spi::Chip& spi, unsigned count) :
     mData(new uint8_t[count * 3]),
     mCount(count)
 {
-}
+    memset(mData, 0, mCount * 3);
+    mData[0] = 0xf0;
+    mData[1] = 0xcc;
+    mData[2] = 0xaa;
 
-void Ws2801::enable()
-{
     memset(&mTransfer, 0, sizeof(mTransfer));
-    mTransfer.mMaxSpeed = 25 * 1000 * 1000;
+    mTransfer.mMaxSpeed = 2 * 1000 * 1000;
     mTransfer.mChipSelect = 0;
     mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
     mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
@@ -20,6 +21,11 @@ void Ws2801::enable()
     //mTransfer.mEvent = 0;
     mTransfer.mWriteData = mData;
     mTransfer.mLength = mCount * 3;
+}
+
+void Ws2801::enable()
+{
+    mSpi.transfer(&mTransfer);
 }
 
 void Ws2801::set(unsigned index, uint8_t red, uint8_t green, uint8_t blue)

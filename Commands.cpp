@@ -43,6 +43,9 @@ char const * const CmdMotor::ARGV[] = { "u:index", "i:speed" };
 char const * const CmdLed::NAME[] = { "led" };
 char const * const CmdLed::ARGV[] = { "u:index", "u:brightness" };
 
+char const * const CmdDistance::NAME[] = { "dist" };
+char const * const CmdDistance::ARGV[] = { };
+
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -515,4 +518,16 @@ bool CmdLed::execute(CommandInterpreter &interpreter, int argc, const CommandInt
 void CmdLed::eventCallback(System::Event *event)
 {
 
+}
+
+
+CmdDistance::CmdDistance(HcSr04& hc) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mHc(hc)
+{
+}
+
+bool CmdDistance::execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv)
+{
+    printf("Distance is %lumm\n", mHc.distance());
+    mHc.start();
+    return true;
 }

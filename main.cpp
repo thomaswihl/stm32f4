@@ -196,13 +196,13 @@ int main()
     // SPI3
     gSys.mRcc.enable(ClockControl::Function::GpioC);
     // SCK
-    gSys.mGpioC.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull);
+    gSys.mGpioC.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
     gSys.mGpioC.setAlternate(Gpio::Index::Pin10, Gpio::AltFunc::SPI3);
     // MISO
     gSys.mGpioC.configInput(Gpio::Index::Pin11);
     gSys.mGpioC.setAlternate(Gpio::Index::Pin11, Gpio::AltFunc::SPI3);
     // MOSI
-    gSys.mGpioC.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
+    gSys.mGpioC.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Fast);
     gSys.mGpioC.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::SPI3);
 
     gSys.mRcc.enable(ClockControl::Function::Spi3);
@@ -236,7 +236,7 @@ int main()
     Tlc5940 tlc(spi3_0, xlat, blank, gsclkPwm, gsclkLatch);
     interpreter.add(new CmdLed(tlc));
 
-    Ws2801 ws(spi3_1, 4);
+    Ws2801 ws(spi3_1, 1);
     ws.enable();
     interpreter.add(new CmdRgb(ws));
 
@@ -320,14 +320,29 @@ int main()
 //    SdCard sdCard(sdio, 30);
 //    interpreter.add(new CmdSdio(sdCard));
 
-    interpreter.start();
-
     // 4 x GPIO
     // Hall sensor needs pullup
     gSys.mGpioB.configInput(Gpio::Index::Pin11, Gpio::Pull::Up);
     gSys.mGpioE.configInput(Gpio::Index::Pin11, Gpio::Pull::Up);
     gSys.mGpioE.configInput(Gpio::Index::Pin13, Gpio::Pull::Up);
     gSys.mGpioE.configInput(Gpio::Index::Pin15, Gpio::Pull::Up);
+
+    Gpio::ConfigurablePin gpio0(gSys.mGpioB, Gpio::Index::Pin11);
+    Gpio::ConfigurablePin gpio1(gSys.mGpioE, Gpio::Index::Pin15);
+    Gpio::ConfigurablePin gpio2(gSys.mGpioE, Gpio::Index::Pin13);
+    Gpio::ConfigurablePin gpio3(gSys.mGpioE, Gpio::Index::Pin11);
+
+    gSys.mSysCfg.extIntSource(Gpio::Index::Pin11, SysCfg::Gpio::E);
+    gSys.mSysCfg.extIntSource(Gpio::Index::Pin13, SysCfg::Gpio::E);
+    gSys.mSysCfg.extIntSource(Gpio::Index::Pin15, SysCfg::Gpio::E);
+    InterruptController::Line extInt10_15(gSys.mNvic, StmSystem::InterruptIndex::EXTI15_10);
+    extInt10_15.setCallback(&gSys.mExtI);
+    extInt10_15.enable();
+    HcSr04 hc(gpio1, new ExternalInterrupt::Line(gSys.mExtI, 15));
+    CmdDistance dist(hc);
+    interpreter.add(&dist);
+
+    interpreter.start();
 
     //gSys.mIWdg.enable(2000000);
     System::Event* event;

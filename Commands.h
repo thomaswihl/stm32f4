@@ -8,6 +8,7 @@
 #include "System.h"
 #include "sw/sdcard.h"
 #include "hw/tlc5940.h"
+#include "hw/hcsr04.h"
 
 #include <cstdio>
 #include <vector>
@@ -212,6 +213,18 @@ private:
     static char const * const ARGV[];
     System::Event mEvent;
     Tlc5940& mPwm;
+};
+
+class CmdDistance : public CommandInterpreter::Command
+{
+public:
+    CmdDistance(HcSr04& hc);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Measure distance."; }
+private:
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    HcSr04& mHc;
 };
 
 #endif // COMMANDS_H

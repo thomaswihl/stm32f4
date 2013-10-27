@@ -66,3 +66,5 @@ sw/sdcard.h
 sw/sdcard.cpp
 sw/images.cpp
 sw/images.h
+hw/hcsr04.h
+hw/hcsr04.cpp

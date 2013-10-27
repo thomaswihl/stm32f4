@@ -75,9 +75,20 @@ public:
         void set(bool set = true);
         void reset();
         bool get();
-    private:
+    protected:
         Gpio& mGpio;
         Index mIndex;
+    };
+
+    class ConfigurablePin : public Pin
+    {
+    public:
+        ConfigurablePin(Gpio& gpio, Index index) : Pin(gpio, index) { }
+
+        void configInput(Pull pull = Pull::None) { mGpio.configInput(mIndex, pull); }
+        void configOutput(OutputType outputType, Pull pull = Pull::None, Speed speed = Speed::Medium) { mGpio.configOutput(mIndex, outputType, pull, speed); }
+        void setMode(Mode mode) { mGpio.setMode(mIndex, mode); }
+
     };
 
     Gpio(unsigned int base);
