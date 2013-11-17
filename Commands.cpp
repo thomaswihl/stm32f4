@@ -527,7 +527,7 @@ CmdDistance::CmdDistance(HcSr04& hc) : Command(NAME, sizeof(NAME) / sizeof(NAME[
 
 bool CmdDistance::execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv)
 {
-    printf("Distance is %lumm\n", mHc.distance());
+    //printf("Distance is %lumm\n", mHc.distance());
     mHc.start();
     return true;
 }
