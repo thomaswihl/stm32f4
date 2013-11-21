@@ -106,10 +106,12 @@ Ssd1306::Ssd1306(Spi::Chip& spi, Gpio::Pin &cs, Gpio::Pin& dataCommand, Gpio::Pi
     mCs(cs),
     mDc(dataCommand),
     mReset(reset),
-    mSpiEvent(*this)
+    mSpiEvent(*this),
+    mState(Idle)
 {
     mCs.set();
     mFb = new uint8_t[FB_SIZE];
+    mData = mFb;
     clear();
     memset(&mTransfer, 0, sizeof(mTransfer));
     mTransfer.mMaxSpeed = 10 * 1000 * 1000;
@@ -199,7 +201,7 @@ void Ssd1306::drawChar(int x, int y, char c)
 
 void Ssd1306::sendCommands(const uint8_t* cmds, unsigned size)
 {
-    mDc.reset();
+    mState = SendCommands;
     mTransfer.mWriteData = cmds;
     mTransfer.mLength = size;
     mSpi.transfer(&mTransfer);
@@ -208,6 +210,8 @@ void Ssd1306::sendCommands(const uint8_t* cmds, unsigned size)
 void Ssd1306::select()
 {
     mCs.reset();
+    if (mState == SendCommands) mDc.reset();
+    else mDc.set();
 }
 
 void Ssd1306::deselect()
@@ -217,12 +221,16 @@ void Ssd1306::deselect()
 
 void Ssd1306::eventCallback(System::Event *event)
 {
-    if (!mDc.get())
+    if (mState == SendCommands)
     {
-        mDc.set();
+        mState = SendData;
         mTransfer.mWriteData = mData;
         mTransfer.mLength = FB_SIZE;
         mSpi.transfer(&mTransfer);
+    }
+    else
+    {
+        mState = Idle;
     }
 }
 

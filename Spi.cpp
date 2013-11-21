@@ -53,6 +53,7 @@ void Spi::disable(Device::Part part)
 bool Spi::transfer(Transfer *transfer)
 {
     bool success = mTransferBuffer.push(transfer);
+    //printf("PUSH\n", ((transfer->mReadData != nullptr) ? "R" : "-"), transfer->mReadData, ((transfer->mWriteData != nullptr) ? "W" : "-"), transfer->mWriteData, transfer->mLength);
     if (mBase->CR2.RXDMAEN == 0 && mBase->CR2.TXDMAEN == 0) nextTransfer();
     return success;
 }
@@ -69,7 +70,7 @@ void Spi::nextTransfer()
             nextTransfer();
             return;
         }
-        //printf("SPI %s(%08x)%s(%08x) %i bytes\n", ((t->mReadData != nullptr) ? "R" : ""), t->mReadData, ((t->mWriteData != nullptr) ? "W" : ""), t->mWriteData, t->mLength);
+        //printf("SPI POP %s(%08x)%s(%08x) %i bytes\n", ((t->mReadData != nullptr) ? "R" : "-"), t->mReadData, ((t->mWriteData != nullptr) ? "W" : "-"), t->mWriteData, t->mLength);
         if (t->mChip != nullptr) t->mChip->prepare();
         if (t->mChipSelect != nullptr) t->mChipSelect->select();
         setSpeed(t->mMaxSpeed);
@@ -90,6 +91,12 @@ void Spi::nextTransfer()
             mDmaWrite->setTransferCount(t->mLength);
             mDmaWrite->start();
         }
+    }
+    else
+    {
+        //printf("SPI IDLE\n");
+        mBase->CR2.TXDMAEN = 0;
+        mBase->CR2.RXDMAEN = 0;
     }
 }
 
@@ -145,7 +152,7 @@ void Spi::interruptCallback(InterruptController::Index index)
 
 void Spi::dmaReadComplete()
 {
-    mBase->CR2.RXDMAEN = 0;
+    //printf("RX DONE\n");
     Transfer* t;
     if (mTransferBuffer.pop(t))
     {
@@ -158,7 +165,7 @@ void Spi::dmaReadComplete()
 
 void Spi::dmaWriteComplete()
 {
-    mBase->CR2.TXDMAEN = 0;
+    //printf("TX DONE\n");
     Transfer* t;
     if (mTransferBuffer.back(t))
     {

@@ -48,6 +48,12 @@ private:
         LowColumn0 = 0x00,
         HighColumn0 = 0x10,
     };
+    enum State
+    {
+        Idle,
+        SendCommands,
+        SendData
+    };
 
     Spi::Chip& mSpi;
     Gpio::Pin& mCs;
@@ -55,6 +61,7 @@ private:
     Gpio::Pin& mReset;
     System::Event mSpiEvent;
     Spi::Transfer mTransfer;
+    State mState;
 
     uint8_t* mFb;
     const uint8_t* mData;

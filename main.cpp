@@ -183,15 +183,15 @@ int main()
     gSys.mGpioC.configOutput(Gpio::Index::Pin9, Gpio::OutputType::PushPull);
     Ssd1306 oled1(spi1, cs1, dataCommand, reset);
     Ssd1306 oled2(spi1, cs2, dataCommand, reset);
-    oled1.reset();
-    oled1.init();
-    oled2.init();
+    oled2.reset();
+    //oled2.reset(); // Same reset as oled1
     oled1.drawString(0, 0, "Hello World 1!");
-    oled1.drawString(1, 1, "Second line");
-    oled1.sendData();
+    oled1.init();
     oled2.drawString(0, 0, "Hello World 2!");
-    oled2.sendData();
-    interpreter.setDisplay(&oled1);
+    oled2.init();
+
+
+    interpreter.setDisplay(&oled1, &oled2);
 
     // SPI3
     gSys.mRcc.enable(ClockControl::Function::GpioC);

@@ -36,11 +36,11 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mHistoryIndex(0),
     mEscapeLen(0),
     mFirstSpace(0),
-    mDisplay(nullptr),
     mFbIndex(0),
     mFbIndexOffset(1)
 {
     strcpy(mPrompt, "# ");
+    mDisplay[0] = mDisplay[1] = nullptr;
 }
 
 CommandInterpreter::~CommandInterpreter()
@@ -347,9 +347,10 @@ void CommandInterpreter::eventCallback(System::Event* event)
     else if (event == &mTickEvent)
     {
         const uint8_t* images[] = { IMG_01, IMG_02, IMG_03, IMG_04, IMG_05, IMG_06, IMG_07, IMG_08, IMG_09, IMG_10 };
-        if (mDisplay != nullptr)
+        if (mDisplay[0] != nullptr)
         {
-            mDisplay->sendData(images[mFbIndex]);
+            mDisplay[0]->sendData(images[mFbIndex]);
+            if (mDisplay[1] != nullptr) mDisplay[1]->sendData(images[mFbIndex]);
             mFbIndex += mFbIndexOffset;
             if (mFbIndex <= 0)
             {
