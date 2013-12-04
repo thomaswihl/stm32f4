@@ -35,7 +35,7 @@ StmSystem::StmSystem() :
     mRcc(BaseAddress::RCC, 8000000),
     mExtI(BaseAddress::EXTI, 23),
     mNvic(BaseAddress::NVIC, 82),
-    mSysTick(BaseAddress::STK, &mRcc, 100),
+    mSysTick(BaseAddress::STK, &mRcc),
     mSysCfg(BaseAddress::SYSCFG),
     mDma1(BaseAddress::DMA1),
     mDma2(BaseAddress::DMA2),
@@ -111,7 +111,6 @@ void StmSystem::init()
     // Be careful with prefetch, it does nasty things...
     //mFlash.set(Flash::Feature::Prefetch, true);
     mFpu.enable(FpuControl::AccessPrivileges::Full);
-    mSysTick.enable();
 
     mRcc.enable(ClockControl::Function::GpioE);
     mGpioE.configOutput(Gpio::Index::Pin7, Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);

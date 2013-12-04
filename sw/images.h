@@ -3,16 +3,21 @@
 
 #include <stdint.h>
 
-extern const uint8_t IMG_01[];
-extern const uint8_t IMG_02[];
-extern const uint8_t IMG_03[];
-extern const uint8_t IMG_04[];
-extern const uint8_t IMG_05[];
-extern const uint8_t IMG_06[];
-extern const uint8_t IMG_07[];
-extern const uint8_t IMG_08[];
-extern const uint8_t IMG_09[];
-extern const uint8_t IMG_10[];
+extern const uint8_t img_0001[];
+extern const uint8_t img_0002[];
+extern const uint8_t img_0003[];
+extern const uint8_t img_0004[];
+extern const uint8_t img_0005[];
+extern const uint8_t img_0006[];
+extern const uint8_t img_0007[];
+extern const uint8_t img_0008[];
+extern const uint8_t img_0009[];
+extern const uint8_t img_0010[];
+extern const uint8_t img_0011[];
+extern const uint8_t img_0012[];
+extern const uint8_t img_0013[];
+extern const uint8_t img_0014[];
+extern const uint8_t img_0015[];
 
 
 #endif // IMAGES_H

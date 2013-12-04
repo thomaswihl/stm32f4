@@ -19,57 +19,65 @@
 #include "SysTickControl.h"
 
 
-SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock, unsigned int msInterval) :
+SysTickControl::SysTickControl(System::BaseAddress base, ClockControl *clock) :
     mBase(reinterpret_cast<volatile STK*>(base)),
     mClock(clock),
-    mInterval(msInterval),
     mSingleCountTime(1),
-    mEvent(nullptr)
+    mCountPerMs(1),
+    mMilliseconds(0),
+    mNextTick(-1)
 {
     static_assert(sizeof(STK) == 0x10, "Struct has wrong size, compiler problem.");
     clock->addChangeHandler(this);
     config();
+    setNextTick(1000);
 }
 
 void SysTickControl::enable()
 {
-    mBase->CTRL.CLKSOURCE = 0;
     mBase->VAL = 0;
-    mBase->CTRL.TICKINT = 1;
     mBase->CTRL.ENABLE = 1;
 }
 
 void SysTickControl::disable()
 {
-    mBase->CTRL.TICKINT = 0;
     mBase->CTRL.ENABLE = 0;
 }
 
-void SysTickControl::setInterval(unsigned int msInterval)
+void SysTickControl::setNextTick(unsigned ms)
 {
-    mInterval = msInterval;
-    config();
+    disable();
+    mBase->RELOAD = ms * mCountPerMs - 1;
+    enable();
 }
 
-unsigned int SysTickControl::interval()
+void SysTickControl::addRepeatingEvent(SysTickControl::RepeatingEvent *event)
 {
-    return mInterval;
+    if (event != nullptr)
+    {
+        mRepeatingEvents.push_back(event);
+    }
 }
 
+void SysTickControl::removeRepeatingEvent(SysTickControl::RepeatingEvent *event)
+{
+    if (event != nullptr)
+    {
+
+        //mRepeatingEvents.erase();
+    }
+}
+
+// IRQ callback
 void SysTickControl::tick()
 {
-    ++mTicks;
-    if (mEvent != nullptr) System::instance()->postEvent(mEvent);
-}
-
-unsigned int SysTickControl::ticks()
-{
-    return mTicks;
-}
-
-void SysTickControl::setEvent(System::Event *event)
-{
-    mEvent = event;
+    unsigned nextTick = 1000;
+    for (auto& iter : mRepeatingEvents)
+    {
+        iter->millisecondsPassed(mNextTick);
+        if (iter->msRemain() < nextTick) nextTick = iter->msRemain();
+    }
+    setNextTick(nextTick);
 }
 
 void SysTickControl::usleep(unsigned int us)
@@ -84,17 +92,17 @@ void SysTickControl::usleep(unsigned int us)
 
 uint64_t SysTickControl::ns()
 {
-    uint32_t ticks;
+    uint32_t ms;
     uint32_t count;
     do
     {
         mBase->CTRL.COUNTFLAG = 0;
         count = mBase->VAL;
-        ticks = mTicks;
+        ms = mMilliseconds;
     }   while (mBase->CTRL.COUNTFLAG);
     uint64_t val = mBase->RELOAD - count;
     val *= mSingleCountTime;
-    val += ticks * mInterval * static_cast<uint64_t>(1000000);
+    val += ms * static_cast<uint64_t>(1000000);
     return val;
 }
 
@@ -105,9 +113,21 @@ void SysTickControl::clockCallback(ClockControl::Callback::Reason reason, uint32
 
 void SysTickControl::config()
 {
-    uint32_t clock = mClock->clock(ClockControl::Clock::AHB) / 8000;
-    mSingleCountTime = 1000000 / clock;
-    clock *= mInterval;
-    mBase->RELOAD = clock - 1;
+    mCountPerMs = mClock->clock(ClockControl::Clock::AHB) / 8000;
+    mSingleCountTime = 1000000 / mCountPerMs;
+    mBase->CTRL.CLKSOURCE = 0;
+    mBase->CTRL.TICKINT = 1;
 }
 
+
+
+void SysTickControl::RepeatingEvent::millisecondsPassed(unsigned ms)
+{
+    mMsFromStart += ms;
+    if (mMsFromStart >= mMs)
+    {
+        System::instance()->postEvent(this);
+        mMsFromStart -= mMs;
+        if (mMsFromStart >= mMs) mMsFromStart = 0;
+    }
+}

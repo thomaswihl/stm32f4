@@ -49,6 +49,7 @@ public:
     {
     public:
         Command(char const *const * alias, unsigned int aliasCount, char const *const * argument, unsigned int argumentCount) : mAlias(alias), mAliasCount(aliasCount), mArgument(argument), mArgumentCount(argumentCount) { }
+        virtual ~Command() {}
 
         const char* startsWith(const char* string, unsigned int len) const;
         char const *const alias(unsigned int i) { return (i < mAliasCount) ? mAlias[i] : nullptr; }
@@ -110,7 +111,6 @@ private:
         unsigned int mCount;
     };
     StmSystem& mSystem;
-    System::Event mTickEvent;
     std::vector<Command*> mCmd;
     char mLine[MAX_LINE_LEN];
     unsigned int mLineLen;
@@ -128,6 +128,7 @@ private:
     Ssd1306* mDisplay[2];
     int mFbIndex;
     int mFbIndexOffset;
+    SysTickControl::RepeatingEvent mTickEvent;
 
 
     void printLine();

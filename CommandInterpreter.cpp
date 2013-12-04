@@ -26,7 +26,6 @@
 
 CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mSystem(system),
-    mTickEvent(*this),
     mLineLen(0),
     mState(State::Input),
     mCommandTime(false),
@@ -37,7 +36,8 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mEscapeLen(0),
     mFirstSpace(0),
     mFbIndex(0),
-    mFbIndexOffset(1)
+    mFbIndexOffset(1),
+    mTickEvent(*this, 40)
 {
     strcpy(mPrompt, "# ");
     mDisplay[0] = mDisplay[1] = nullptr;
@@ -192,7 +192,7 @@ void CommandInterpreter::add(Command* cmd)
 void CommandInterpreter::start()
 {
     mSystem.mDebug.read(&mReadChar, 1, &mCharReceived);
-    mSystem.mSysTick.setEvent(&mTickEvent);
+    mSystem.mSysTick.addRepeatingEvent(&mTickEvent);
     printLine();
 }
 
@@ -346,7 +346,7 @@ void CommandInterpreter::eventCallback(System::Event* event)
     }
     else if (event == &mTickEvent)
     {
-        const uint8_t* images[] = { IMG_01, IMG_02, IMG_03, IMG_04, IMG_05, IMG_06, IMG_07, IMG_08, IMG_09, IMG_10 };
+        const uint8_t* images[] = { img_0001, img_0002, img_0003, img_0004, img_0005, img_0006, img_0007, img_0008, img_0009, img_0010, img_0011, img_0012, img_0013, img_0014, img_0015 };
         if (mDisplay[0] != nullptr)
         {
             mDisplay[0]->sendData(images[mFbIndex]);
@@ -356,7 +356,7 @@ void CommandInterpreter::eventCallback(System::Event* event)
             {
                 mFbIndexOffset = 1;
             }
-            else if (mFbIndex >= static_cast<int>(sizeof(images) / sizeof(images[0]) - 3))
+            else if (mFbIndex >= static_cast<int>(sizeof(images) / sizeof(images[0])) - 1)
             {
                 mFbIndexOffset = -1;
             }

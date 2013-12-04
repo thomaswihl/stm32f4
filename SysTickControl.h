@@ -26,16 +26,28 @@
 class SysTickControl : ClockControl::Callback
 {
 public:
-    SysTickControl(System::BaseAddress base, ClockControl* clock, unsigned int msInterval);
-    ~SysTickControl() { disable(); }
-    void enable();
-    void disable();
+    class RepeatingEvent : public System::Event
+    {
+    public:
+        RepeatingEvent(Callback& callback, int ms) : System::Event(callback), mMs(ms), mMsFromStart(0)
+        { }
 
-    void setInterval(unsigned int msInterval);
-    unsigned int interval();
+        void millisecondsPassed(unsigned ms);
+        unsigned ms() const { return mMs; }
+        unsigned msRemain() const { return mMs - mMsFromStart; }
+    private:
+        unsigned mMs;
+
+        unsigned mMsFromStart;
+    };
+
+    SysTickControl(System::BaseAddress base, ClockControl* clock);
+    ~SysTickControl() { disable(); }
+
+    void addRepeatingEvent(RepeatingEvent* event);
+    void removeRepeatingEvent(RepeatingEvent* event);
+
     void tick();
-    unsigned int ticks();
-    void setEvent(System::Event* event);
 
     void usleep(unsigned int us);
     uint64_t ns();
@@ -67,12 +79,16 @@ private:
     };
     volatile STK* mBase;
     ClockControl* mClock;
-    unsigned int mInterval;
-    unsigned int mSingleCountTime;
-    volatile unsigned int mTicks;
-    System::Event* mEvent;
+    unsigned mSingleCountTime;
+    uint32_t mCountPerMs;
+    unsigned mMilliseconds;
+    unsigned mNextTick;
+    std::vector<RepeatingEvent*> mRepeatingEvents;
 
     void config();
+    void enable();
+    void disable();
+    void setNextTick(unsigned ms);
 };
 
 #endif // SYSTICKCONTROL_H
