@@ -26,6 +26,8 @@
 #include "Power.h"
 #include "sdio.h"
 #include "sw/sdcard.h"
+#include "sw/eyes.h"
+#include "sw/carcontroller.h"
 
 #include <cstdio>
 #include <memory>
@@ -191,7 +193,8 @@ int main()
     oled2.init();
 
 
-    interpreter.setDisplay(&oled1, &oled2);
+    Eyes eyes(gSys.mSysTick, &oled1, &oled2);
+    eyes.start(Eyes::Blink, Eyes::Blink);
 
     // SPI3
     gSys.mRcc.enable(ClockControl::Function::GpioC);
@@ -338,11 +341,53 @@ int main()
     InterruptController::Line extInt10_15(gSys.mNvic, StmSystem::InterruptIndex::EXTI15_10);
     extInt10_15.setCallback(&gSys.mExtI);
     extInt10_15.enable();
-    HcSr04 hc(gpio1, new ExternalInterrupt::Line(gSys.mExtI, 15));
-    CmdDistance dist(hc);
-    interpreter.add(&dist);
+    HcSr04 hc1(gSys.mSysTick, gpio1, new ExternalInterrupt::Line(gSys.mExtI, 15));
+    HcSr04 hc2(gSys.mSysTick, gpio2, new ExternalInterrupt::Line(gSys.mExtI, 13));
+//    CmdDistance dist(hc1, hc2);
+//    interpreter.add(&dist);
+
+    static const unsigned RIGHT_REVERSE_LIGHT = 0;
+    static const unsigned RIGHT_BACK_LIGHT = 1;
+    static const unsigned RIGHT_BREAK_LIGHT = 2;
+    static const unsigned RIGHT_BLINK_BACK_LIGHT = 3;
+
+    static const unsigned LEFT_REVERSE_LIGHT = 4;
+    static const unsigned LEFT_BACK_LIGHT = 5;
+    static const unsigned LEFT_BREAK_LIGHT = 6;
+    static const unsigned LEFT_BLINK_BACK_LIGHT = 7;
+
+    static const unsigned RIGHT_SIDE_TOP_LIGHT = 8;
+    static const unsigned RIGHT_SIDE_BOTTOM_LIGHT = 9;
+    static const unsigned RIGHT_FRONT_RIGHT_LIGHT = 10;
+    static const unsigned RIGHT_FRONT_LEFT_LIGHT = 11;
+
+    static const unsigned LEFT_SIDE_TOP_LIGHT = 12;
+    static const unsigned LEFT_SIDE_BOTTOM_LIGHT = 13;
+    static const unsigned LEFT_FRONT_RIGHT_LIGHT = 14;
+    static const unsigned LEFT_FRONT_LEFT_LIGHT = 15;
+
+    tlc.setOutput(RIGHT_BACK_LIGHT, 100);
+    tlc.setOutput(LEFT_BACK_LIGHT, 100);
+    tlc.setOutput(RIGHT_FRONT_LEFT_LIGHT, 100);
+    tlc.setOutput(RIGHT_FRONT_RIGHT_LIGHT, 100);
+    tlc.setOutput(LEFT_FRONT_LEFT_LIGHT, 100);
+    tlc.setOutput(LEFT_FRONT_RIGHT_LIGHT, 100);
+
+    tlc.setOutput(RIGHT_REVERSE_LIGHT, 0);
+    tlc.setOutput(LEFT_REVERSE_LIGHT, 0);
+    tlc.setOutput(RIGHT_BREAK_LIGHT, 0);
+    tlc.setOutput(LEFT_BREAK_LIGHT, 0);
+    tlc.setOutput(RIGHT_BLINK_BACK_LIGHT, 0);
+    tlc.setOutput(LEFT_BLINK_BACK_LIGHT, 0);
+    tlc.setOutput(RIGHT_SIDE_TOP_LIGHT, 0);
+    tlc.setOutput(LEFT_SIDE_TOP_LIGHT, 0);
+    tlc.setOutput(RIGHT_SIDE_BOTTOM_LIGHT, 0);
+    tlc.setOutput(LEFT_SIDE_BOTTOM_LIGHT, 0);
+    tlc.send();
 
     interpreter.start();
+    CarController cc(gSys.mSysTick, hc1, hc2, *motor, 1, 0);
+
 
     //gSys.mIWdg.enable(2000000);
     System::Event* event;

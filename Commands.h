@@ -183,6 +183,7 @@ public:
     virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
     virtual const char* helpText() const { return "Control a motors speed."; }
     bool add(Timer& timer, Timer::CaptureCompareIndex m1, Timer::CaptureCompareIndex m2);
+    bool set(unsigned index, int value);
 protected:
     virtual void eventCallback(System::Event* event);
 private:
@@ -218,13 +219,14 @@ private:
 class CmdDistance : public CommandInterpreter::Command
 {
 public:
-    CmdDistance(HcSr04& hc);
+    CmdDistance(HcSr04& hc1, HcSr04& hc2);
     virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
     virtual const char* helpText() const { return "Measure distance."; }
 private:
     static char const * const NAME[];
     static char const * const ARGV[];
-    HcSr04& mHc;
+    HcSr04& mHc1;
+    HcSr04& mHc2;
 };
 
 #endif // COMMANDS_H

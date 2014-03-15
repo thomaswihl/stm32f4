@@ -68,3 +68,7 @@ sw/images.cpp
 sw/images.h
 hw/hcsr04.h
 hw/hcsr04.cpp
+sw/eyes.h
+sw/eyes.cpp
+sw/carcontroller.h
+sw/carcontroller.cpp

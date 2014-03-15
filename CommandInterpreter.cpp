@@ -40,7 +40,6 @@ CommandInterpreter::CommandInterpreter(StmSystem& system) :
     mTickEvent(*this, 40)
 {
     strcpy(mPrompt, "# ");
-    mDisplay[0] = mDisplay[1] = nullptr;
 }
 
 CommandInterpreter::~CommandInterpreter()
@@ -346,21 +345,6 @@ void CommandInterpreter::eventCallback(System::Event* event)
     }
     else if (event == &mTickEvent)
     {
-        const uint8_t* images[] = { img_0001, img_0002, img_0003, img_0004, img_0005, img_0006, img_0007, img_0008, img_0009, img_0010, img_0011, img_0012, img_0013, img_0014, img_0015 };
-        if (mDisplay[0] != nullptr)
-        {
-            mDisplay[0]->sendData(images[mFbIndex]);
-            if (mDisplay[1] != nullptr) mDisplay[1]->sendData(images[mFbIndex]);
-            mFbIndex += mFbIndexOffset;
-            if (mFbIndex <= 0)
-            {
-                mFbIndexOffset = 1;
-            }
-            else if (mFbIndex >= static_cast<int>(sizeof(images) / sizeof(images[0])) - 1)
-            {
-                mFbIndexOffset = -1;
-            }
-        }
 //        static unsigned int ps = -1;
 //        unsigned int s = mSystem.mSysTick.ticks() * mSystem.mSysTick.interval() / 1000;
 //        if (s != ps)

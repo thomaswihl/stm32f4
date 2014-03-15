@@ -450,28 +450,8 @@ CmdMotor::CmdMotor() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeo
 bool CmdMotor::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
 {
     unsigned i = argv[1].value.u;
-    if (i >= mMotorCount)
-    {
-        printf("Motor %u not available, index has to be in the range [0,%u].\n", i, mMotorCount - 1);
-        return false;
-    }
     int v = argv[2].value.i;
-    if (v < -100 || v > 100)
-    {
-        printf("Motor value has to be in the range [-100, 100].\n");
-        return false;
-    }
-    if (v < 0)
-    {
-        mMotor[i].mTimer->setCompare(mMotor[i].mPin1, -v * 65535 / 100);
-        mMotor[i].mTimer->setCompare(mMotor[i].mPin2, 0);
-    }
-    else
-    {
-        mMotor[i].mTimer->setCompare(mMotor[i].mPin2, v * 65535 / 100);
-        mMotor[i].mTimer->setCompare(mMotor[i].mPin1, 0);
-    }
-    return true;
+    return set(i, v);
 }
 
 bool CmdMotor::add(Timer &timer, Timer::CaptureCompareIndex m1, Timer::CaptureCompareIndex m2)
@@ -481,6 +461,31 @@ bool CmdMotor::add(Timer &timer, Timer::CaptureCompareIndex m1, Timer::CaptureCo
     mMotor[mMotorCount].mPin1 = m1;
     mMotor[mMotorCount].mPin2 = m2;
     ++mMotorCount;
+    return true;
+}
+
+bool CmdMotor::set(unsigned index, int value)
+{
+    if (index >= mMotorCount)
+    {
+        printf("Motor %u not available, index has to be in the range [0,%u].\n", index, mMotorCount - 1);
+        return false;
+    }
+    if (value < -100 || value > 100)
+    {
+        printf("Motor value (%i) has to be in the range [-100, 100].\n", value);
+        return false;
+    }
+    if (value < 0)
+    {
+        mMotor[index].mTimer->setCompare(mMotor[index].mPin1, -value * 65535 / 100);
+        mMotor[index].mTimer->setCompare(mMotor[index].mPin2, 0);
+    }
+    else
+    {
+        mMotor[index].mTimer->setCompare(mMotor[index].mPin2, value * 65535 / 100);
+        mMotor[index].mTimer->setCompare(mMotor[index].mPin1, 0);
+    }
     return true;
 }
 
@@ -521,13 +526,13 @@ void CmdLed::eventCallback(System::Event *event)
 }
 
 
-CmdDistance::CmdDistance(HcSr04& hc) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mHc(hc)
+CmdDistance::CmdDistance(HcSr04& hc1, HcSr04 &hc2) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mHc1(hc1), mHc2(hc2)
 {
 }
 
 bool CmdDistance::execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv)
 {
-    //printf("Distance is %lumm\n", mHc.distance());
-    mHc.start();
+    mHc1.start();
+    mHc2.start();
     return true;
 }

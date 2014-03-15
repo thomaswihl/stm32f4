@@ -3,12 +3,13 @@
 
 #include "../System.h"
 #include "../Gpio.h"
+#include "../SysTickControl.h"
 #include <stdint.h>
 
 class HcSr04 : public InterruptController::Callback, public System::Event::Callback
 {
 public:
-    HcSr04(Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq);
+    HcSr04(SysTickControl& sysTick, Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq);
     void start();
     uint32_t distance() { return mAvgDistance; } // in mm
 

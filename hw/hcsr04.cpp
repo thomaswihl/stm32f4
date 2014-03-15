@@ -1,10 +1,9 @@
 #include "hcsr04.h"
 
-HcSr04::HcSr04(Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq) :
+HcSr04::HcSr04(SysTickControl &sysTick, Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq) :
     mPin(pin), mIrq(irq), mEvent(*this), mState(Init), mDistanceIndex(0)
 {
     mPin.configOutput(Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
-    mIrq->setCallback(this);
 }
 
 void HcSr04::start()
@@ -17,6 +16,7 @@ void HcSr04::start()
     System::instance()->usleep(20);
     mPin.setMode(Gpio::Mode::Input);
     mState = WaitForEchoStart;
+    mIrq->setCallback(this);
     mIrq->enable(ExternalInterrupt::Trigger::RisingAndFalling);
 }
 
@@ -38,26 +38,26 @@ void HcSr04::interruptCallback(InterruptController::Index index)
 
 void HcSr04::eventCallback(System::Event* event)
 {
-    uint32_t min = -1, max = 0, sum = 0;
-    int minAt = 0, maxAt = 0;
-    for (int i = 0; i < DISTANCE_COUNT; ++i)
+    if (event == &mEvent)
     {
-        sum += mDistance[i];
-        if (mDistance[i] < min)
+        uint32_t min = -1, max = 0, sum = 0;
+        int minAt = 0, maxAt = 0;
+        for (int i = 0; i < DISTANCE_COUNT; ++i)
         {
-            min = mDistance[i];
-            minAt = i;
+            sum += mDistance[i];
+            if (mDistance[i] < min)
+            {
+                min = mDistance[i];
+                minAt = i;
+            }
+            if (mDistance[i] > max)
+            {
+                max = mDistance[i];
+                maxAt = i;
+            }
         }
-        if (mDistance[i] > max)
-        {
-            max = mDistance[i];
-            maxAt = i;
-        }
+        sum -= mDistance[minAt] + mDistance[maxAt];
+        sum /= DISTANCE_COUNT - 2;
+        mAvgDistance = sum;
     }
-    sum -= mDistance[minAt] + mDistance[maxAt];
-    sum /= DISTANCE_COUNT - 2;
-    mAvgDistance = sum;
-    printf("\r%li         ", sum);
-    fflush(stdout);
-    start();
 }
