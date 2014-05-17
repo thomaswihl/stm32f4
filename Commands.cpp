@@ -461,6 +461,7 @@ bool CmdMotor::add(Timer &timer, Timer::CaptureCompareIndex m1, Timer::CaptureCo
     mMotor[mMotorCount].mPin1 = m1;
     mMotor[mMotorCount].mPin2 = m2;
     ++mMotorCount;
+    set(mMotorCount - 1, 0);
     return true;
 }
 
@@ -526,13 +527,12 @@ void CmdLed::eventCallback(System::Event *event)
 }
 
 
-CmdDistance::CmdDistance(HcSr04& hc1, HcSr04 &hc2) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mHc1(hc1), mHc2(hc2)
+CmdDistance::CmdDistance(HcSr04& hc) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mHc(hc)
 {
 }
 
 bool CmdDistance::execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv)
 {
-    mHc1.start();
-    mHc2.start();
+    mHc.start();
     return true;
 }

@@ -123,6 +123,57 @@ int main()
     interpreter.add(new CmdRead());
     interpreter.add(new CmdWrite());
 
+    // Motor command
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull);
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
+//    gSys.mGpioE.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
+    gSys.mRcc.enable(ClockControl::Function::Tim1);
+    Timer timer1(StmSystem::BaseAddress::TIM1, ClockControl::Clock::APB2);
+    timer1.setFrequency(gSys.mRcc, 500);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
+    timer1.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer1.setCompare(Timer::CaptureCompareIndex::Index2, 0);
+    timer1.setCompare(Timer::CaptureCompareIndex::Index1, 0);
+    timer1.setCompare(Timer::CaptureCompareIndex::Index3, 0);
+    timer1.setCompare(Timer::CaptureCompareIndex::Index4, 0);
+    timer1.enable();
+    gSys.mRcc.enable(ClockControl::Function::Tim3);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin4, Gpio::OutputType::PushPull);
+//    gSys.mGpioB.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull);
+    Timer timer3(StmSystem::BaseAddress::TIM3, ClockControl::Clock::APB1);
+    timer3.setFrequency(gSys.mRcc, 500);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
+    timer3.setCompare(Timer::CaptureCompareIndex::Index1, 0);
+    timer3.setCompare(Timer::CaptureCompareIndex::Index2, 0);
+    timer3.setCompare(Timer::CaptureCompareIndex::Index3, 0);
+    timer3.setCompare(Timer::CaptureCompareIndex::Index4, 0);
+    timer3.enable();
+    CmdMotor* motor = new CmdMotor;
+    motor->add(timer1, Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareIndex::Index2);
+    motor->add(timer1, Timer::CaptureCompareIndex::Index3, Timer::CaptureCompareIndex::Index4);
+    motor->add(timer3, Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareIndex::Index2);
+    motor->add(timer3, Timer::CaptureCompareIndex::Index3, Timer::CaptureCompareIndex::Index4);
+    interpreter.add(motor);
+    gSys.mRcc.enable(ClockControl::Function::GpioE);
+    gSys.mGpioE.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM1);
+    gSys.mGpioE.setAlternate(Gpio::Index::Pin10, Gpio::AltFunc::TIM1);
+    gSys.mGpioE.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::TIM1);
+    gSys.mGpioE.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
+    gSys.mRcc.enable(ClockControl::Function::GpioB);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin0, Gpio::AltFunc::TIM3);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin1, Gpio::AltFunc::TIM3);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin4, Gpio::AltFunc::TIM3);
+    gSys.mGpioB.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::TIM3);
+
+
     Spi::Chip spi1(gSys.mSpi1);
     // acceleration sensor
     LIS302DL lis(spi1);
@@ -244,56 +295,6 @@ int main()
     interpreter.add(new CmdRgb(ws));
 
 
-    // Motor command
-    gSys.mRcc.enable(ClockControl::Function::GpioE);
-    gSys.mRcc.enable(ClockControl::Function::Tim1);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin8, Gpio::OutputType::PushPull);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin10, Gpio::OutputType::PushPull);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin12, Gpio::OutputType::PushPull);
-    gSys.mGpioE.configOutput(Gpio::Index::Pin14, Gpio::OutputType::PushPull);
-    gSys.mGpioE.setAlternate(Gpio::Index::Pin8, Gpio::AltFunc::TIM1);
-    gSys.mGpioE.setAlternate(Gpio::Index::Pin10, Gpio::AltFunc::TIM1);
-    gSys.mGpioE.setAlternate(Gpio::Index::Pin12, Gpio::AltFunc::TIM1);
-    gSys.mGpioE.setAlternate(Gpio::Index::Pin14, Gpio::AltFunc::TIM1);
-    Timer timer1(StmSystem::BaseAddress::TIM1, ClockControl::Clock::APB2);
-    timer1.setFrequency(gSys.mRcc, 500);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::Disabled, Timer::CompareOutput::ActiveHigh);
-    timer1.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
-    timer1.setCompare(Timer::CaptureCompareIndex::Index2, 0);
-    timer1.setCompare(Timer::CaptureCompareIndex::Index1, 0);
-    timer1.setCompare(Timer::CaptureCompareIndex::Index3, 0);
-    timer1.setCompare(Timer::CaptureCompareIndex::Index4, 0);
-    timer1.enable();
-    gSys.mRcc.enable(ClockControl::Function::GpioB);
-    gSys.mRcc.enable(ClockControl::Function::Tim3);
-    gSys.mGpioB.configOutput(Gpio::Index::Pin0, Gpio::OutputType::PushPull);
-    gSys.mGpioB.configOutput(Gpio::Index::Pin1, Gpio::OutputType::PushPull);
-    gSys.mGpioB.configOutput(Gpio::Index::Pin4, Gpio::OutputType::PushPull);
-    gSys.mGpioB.configOutput(Gpio::Index::Pin5, Gpio::OutputType::PushPull);
-    gSys.mGpioB.setAlternate(Gpio::Index::Pin0, Gpio::AltFunc::TIM3);
-    gSys.mGpioB.setAlternate(Gpio::Index::Pin1, Gpio::AltFunc::TIM3);
-    gSys.mGpioB.setAlternate(Gpio::Index::Pin4, Gpio::AltFunc::TIM3);
-    gSys.mGpioB.setAlternate(Gpio::Index::Pin5, Gpio::AltFunc::TIM3);
-    Timer timer3(StmSystem::BaseAddress::TIM3, ClockControl::Clock::APB1);
-    timer3.setFrequency(gSys.mRcc, 500);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index1, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index2, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index3, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
-    timer3.configCompare(Timer::CaptureCompareIndex::Index4, Timer::CompareMode::PwmActiveWhenLower, Timer::CompareOutput::ActiveHigh, Timer::CompareOutput::Disabled);
-    timer3.setCompare(Timer::CaptureCompareIndex::Index1, 0);
-    timer3.setCompare(Timer::CaptureCompareIndex::Index2, 0);
-    timer3.setCompare(Timer::CaptureCompareIndex::Index3, 0);
-    timer3.setCompare(Timer::CaptureCompareIndex::Index4, 0);
-    timer3.enable();
-    CmdMotor* motor = new CmdMotor;
-    motor->add(timer1, Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareIndex::Index2);
-    motor->add(timer1, Timer::CaptureCompareIndex::Index3, Timer::CaptureCompareIndex::Index4);
-    motor->add(timer3, Timer::CaptureCompareIndex::Index1, Timer::CaptureCompareIndex::Index2);
-    motor->add(timer3, Timer::CaptureCompareIndex::Index3, Timer::CaptureCompareIndex::Index4);
-    interpreter.add(motor);
-
     gSys.mRcc.enable(ClockControl::Function::GpioC);
     gSys.mGpioC.configInput(Gpio::Index::Pin1, Gpio::Pull::Up);
 
@@ -341,60 +342,37 @@ int main()
     InterruptController::Line extInt10_15(gSys.mNvic, StmSystem::InterruptIndex::EXTI15_10);
     extInt10_15.setCallback(&gSys.mExtI);
     extInt10_15.enable();
-    HcSr04 hc1(gSys.mSysTick, gpio1, new ExternalInterrupt::Line(gSys.mExtI, 15));
-    HcSr04 hc2(gSys.mSysTick, gpio2, new ExternalInterrupt::Line(gSys.mExtI, 13));
-//    CmdDistance dist(hc1, hc2);
-//    interpreter.add(&dist);
-
-    static const unsigned RIGHT_REVERSE_LIGHT = 0;
-    static const unsigned RIGHT_BACK_LIGHT = 1;
-    static const unsigned RIGHT_BREAK_LIGHT = 2;
-    static const unsigned RIGHT_BLINK_BACK_LIGHT = 3;
-
-    static const unsigned LEFT_REVERSE_LIGHT = 4;
-    static const unsigned LEFT_BACK_LIGHT = 5;
-    static const unsigned LEFT_BREAK_LIGHT = 6;
-    static const unsigned LEFT_BLINK_BACK_LIGHT = 7;
-
-    static const unsigned RIGHT_SIDE_TOP_LIGHT = 8;
-    static const unsigned RIGHT_SIDE_BOTTOM_LIGHT = 9;
-    static const unsigned RIGHT_FRONT_RIGHT_LIGHT = 10;
-    static const unsigned RIGHT_FRONT_LEFT_LIGHT = 11;
-
-    static const unsigned LEFT_SIDE_TOP_LIGHT = 12;
-    static const unsigned LEFT_SIDE_BOTTOM_LIGHT = 13;
-    static const unsigned LEFT_FRONT_RIGHT_LIGHT = 14;
-    static const unsigned LEFT_FRONT_LEFT_LIGHT = 15;
-
-    tlc.setOutput(RIGHT_BACK_LIGHT, 100);
-    tlc.setOutput(LEFT_BACK_LIGHT, 100);
-    tlc.setOutput(RIGHT_FRONT_LEFT_LIGHT, 100);
-    tlc.setOutput(RIGHT_FRONT_RIGHT_LIGHT, 100);
-    tlc.setOutput(LEFT_FRONT_LEFT_LIGHT, 100);
-    tlc.setOutput(LEFT_FRONT_RIGHT_LIGHT, 100);
-
-    tlc.setOutput(RIGHT_REVERSE_LIGHT, 0);
-    tlc.setOutput(LEFT_REVERSE_LIGHT, 0);
-    tlc.setOutput(RIGHT_BREAK_LIGHT, 0);
-    tlc.setOutput(LEFT_BREAK_LIGHT, 0);
-    tlc.setOutput(RIGHT_BLINK_BACK_LIGHT, 0);
-    tlc.setOutput(LEFT_BLINK_BACK_LIGHT, 0);
-    tlc.setOutput(RIGHT_SIDE_TOP_LIGHT, 0);
-    tlc.setOutput(LEFT_SIDE_TOP_LIGHT, 0);
-    tlc.setOutput(RIGHT_SIDE_BOTTOM_LIGHT, 0);
-    tlc.setOutput(LEFT_SIDE_BOTTOM_LIGHT, 0);
-    tlc.send();
+    HcSr04 hc(gSys.mSysTick, gpio1, new ExternalInterrupt::Line(gSys.mExtI, 15));
+    hc.addDevice(gpio2, new ExternalInterrupt::Line(gSys.mExtI, 13));
+    hc.addDevice(gpio3, new ExternalInterrupt::Line(gSys.mExtI, 11));
+    CmdDistance dist(hc);
+    interpreter.add(&dist);
 
     interpreter.start();
-    CarController cc(gSys.mSysTick, hc1, hc2, *motor, 1, 0);
+    CarController cc(gSys.mSysTick, hc, 0, 1, 2,
+                     *motor, 1, 0, 3,
+                     tlc);
+    cc.setEyes(&eyes);
+    cc.stop();
 
 
     //gSys.mIWdg.enable(2000000);
     System::Event* event;
+    uint64_t old = 0;
     while (true)
     {
         if (gSys.waitForEvent(event) && event != nullptr)
         {
+            if (old == 0 && gSys.mGpioA.get(Gpio::Index::Pin0))
+            {
+                old = System::instance()->ns();
+                if (cc.running()) cc.stop();
+                else cc.start();
+            }
+            else if (old != 0 && !gSys.mGpioA.get(Gpio::Index::Pin0) && System::instance()->ns() - old > 100000000)
+            {
+                old = 0;
+            }
             //gSys.mIWdg.service();
 //            gSys.mDebug.write(gSys.mGpioB.get(Gpio::Index::Pin11) ? "1" : "0", 1);
 

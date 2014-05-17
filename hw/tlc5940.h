@@ -20,6 +20,7 @@ private:
     Timer& mPwm;
     Timer& mLatch;
 
+    bool mModified;
     uint8_t* mGrayScaleData;
     System::Event mLatchEvent;
     System::Event mSpiEvent;

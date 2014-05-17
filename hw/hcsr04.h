@@ -10,24 +10,23 @@ class HcSr04 : public InterruptController::Callback, public System::Event::Callb
 {
 public:
     HcSr04(SysTickControl& sysTick, Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq);
+    void addDevice(Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq);
     void start();
-    uint32_t distance() { return mAvgDistance; } // in mm
+    uint32_t distance(int index) { return mDistance[index]; } // in mm
+    void clear();
 
 private:
     void interruptCallback(InterruptController::Index index);
     void eventCallback(System::Event *event);
 
 private:
-    static const int DISTANCE_COUNT = 5;
     enum State { Init, SendStartPulse, WaitForEchoStart, WaitForEchoEnd };
-    Gpio::ConfigurablePin& mPin;
-    ExternalInterrupt::Line* mIrq;
+    std::vector<Gpio::ConfigurablePin> mPins;
+    std::vector<ExternalInterrupt::Line*> mIrqs;
     System::Event mEvent;
     State mState;
-    uint64_t mEchoStart;
-    int mDistanceIndex;
-    uint32_t mDistance[DISTANCE_COUNT];
-    uint32_t mAvgDistance;
+    std::vector<uint64_t> mEchoStart;
+    std::vector<uint32_t> mDistance;
 };
 
 #endif // HCSR04_H

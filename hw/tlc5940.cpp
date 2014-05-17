@@ -6,6 +6,7 @@ Tlc5940::Tlc5940(Spi::Chip& spi, Gpio::Pin &xlat, Gpio::Pin &blank, Timer &gsclk
     mBlank(blank),
     mPwm(gsclkPwm),
     mLatch(gsclkLatch),
+    mModified(true),
     mLatchEvent(*this),
     mSpiEvent(*this),
     mNewData(false)
@@ -48,6 +49,9 @@ void Tlc5940::setOutput(int index, int percent)
     int value = table[percent] & 0xfff;
     int i = 15 - index;
 
+    uint8_t old[2];
+    old[0] = mGrayScaleData[i + i / 2];
+    old[1] = mGrayScaleData[i + i / 2 + 1];
     if ((i % 2) == 0)
     {
         mGrayScaleData[i + i / 2] = value >> 4;
@@ -58,13 +62,18 @@ void Tlc5940::setOutput(int index, int percent)
         mGrayScaleData[i + i / 2] = (mGrayScaleData[i + i / 2] & 0xf0) | ((value >> 8) & 0x0f);
         mGrayScaleData[i + i / 2 + 1] = value;
     }
+    if (old[0] != mGrayScaleData[i + i / 2] || old[1] != mGrayScaleData[i + i / 2 + 1]) mModified = true;
 }
 
 
 
 void Tlc5940::send()
 {
-    mSpi.transfer(&mTransfer);
+    if (mModified)
+    {
+        mModified = false;
+        mSpi.transfer(&mTransfer);
+    }
 }
 
 void Tlc5940::eventCallback(System::Event *event)

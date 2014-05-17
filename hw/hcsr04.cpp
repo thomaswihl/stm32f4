@@ -1,63 +1,64 @@
 #include "hcsr04.h"
 
 HcSr04::HcSr04(SysTickControl &sysTick, Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq) :
-    mPin(pin), mIrq(irq), mEvent(*this), mState(Init), mDistanceIndex(0)
+    mPins(&pin, &pin + 1), mIrqs(&irq, &irq + 1), mEvent(*this), mState(Init)
 {
-    mPin.configOutput(Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    pin.configOutput(Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    clear();
+}
+
+void HcSr04::addDevice(Gpio::ConfigurablePin &pin, ExternalInterrupt::Line *irq)
+{
+    mPins.push_back(pin);
+    mIrqs.push_back(irq);
+    pin.configOutput(Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
+    mEchoStart.resize(mPins.size());
+    mDistance.resize(mPins.size());
 }
 
 void HcSr04::start()
 {
     //printf("State = %i\n", mState);
     mState = SendStartPulse;
-    mIrq->disable();
-    mPin.setMode(Gpio::Mode::Output);
-    mPin.set();
+    for (auto& irq : mIrqs) irq->disable();
+    for (auto& pin : mPins)
+    {
+        pin.setMode(Gpio::Mode::Output);
+        pin.set();
+    }
     System::instance()->usleep(20);
-    mPin.setMode(Gpio::Mode::Input);
+    for (auto& pin : mPins)
+    {
+        pin.setMode(Gpio::Mode::Input);
+    }
     mState = WaitForEchoStart;
-    mIrq->setCallback(this);
-    mIrq->enable(ExternalInterrupt::Trigger::RisingAndFalling);
+    for (auto& irq : mIrqs)
+    {
+        irq->setCallback(this);
+        irq->enable(ExternalInterrupt::Trigger::RisingAndFalling);
+    }
+}
+
+void HcSr04::clear()
+{
+    for (unsigned i = 0; i < mDistance.size(); ++i) mDistance[i] = 0;
 }
 
 void HcSr04::interruptCallback(InterruptController::Index index)
 {
-    if (mState == WaitForEchoStart)
+    unsigned i = -1;
+    for (i = 0; i < mIrqs.size(); ++i)
     {
-        mEchoStart = System::instance()->ns();
-        mState = WaitForEchoEnd;
+        if (mIrqs[i]->index() == index) break;
     }
-    else if (mState == WaitForEchoEnd)
+    if (i >= mIrqs.size()) return;
+    if (mPins[i].get()) mEchoStart[i] = System::instance()->ns();
+    else
     {
-        mState = Init;
-        mDistance[mDistanceIndex++] = (System::instance()->ns() - mEchoStart) / 100 / 58;
-        if (mDistanceIndex > DISTANCE_COUNT) mDistanceIndex = 0;
-        System::instance()->postEvent(&mEvent);
+        mDistance[i] = (System::instance()->ns() - mEchoStart[i]) / 100 / 58;
     }
 }
 
 void HcSr04::eventCallback(System::Event* event)
 {
-    if (event == &mEvent)
-    {
-        uint32_t min = -1, max = 0, sum = 0;
-        int minAt = 0, maxAt = 0;
-        for (int i = 0; i < DISTANCE_COUNT; ++i)
-        {
-            sum += mDistance[i];
-            if (mDistance[i] < min)
-            {
-                min = mDistance[i];
-                minAt = i;
-            }
-            if (mDistance[i] > max)
-            {
-                max = mDistance[i];
-                maxAt = i;
-            }
-        }
-        sum -= mDistance[minAt] + mDistance[maxAt];
-        sum /= DISTANCE_COUNT - 2;
-        mAvgDistance = sum;
-    }
 }
