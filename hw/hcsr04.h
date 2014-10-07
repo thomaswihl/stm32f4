@@ -11,7 +11,7 @@ class HcSr04 : public InterruptController::Callback, public System::Event::Callb
 public:
     HcSr04(SysTickControl& sysTick, Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq);
     void addDevice(Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq);
-    void start();
+    void start(unsigned index);
     uint32_t distance(int index) { return mDistance[index]; } // in mm
     void clear();
 
@@ -25,6 +25,7 @@ private:
     std::vector<ExternalInterrupt::Line*> mIrqs;
     System::Event mEvent;
     State mState;
+    unsigned mIndex;
     std::vector<uint64_t> mEchoStart;
     std::vector<uint32_t> mDistance;
 };

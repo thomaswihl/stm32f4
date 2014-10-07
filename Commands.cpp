@@ -46,6 +46,9 @@ char const * const CmdLed::ARGV[] = { "u:index", "u:brightness" };
 char const * const CmdDistance::NAME[] = { "dist" };
 char const * const CmdDistance::ARGV[] = { };
 
+char const * const CmdSpiTest::NAME[] = { "spi" };
+char const * const CmdSpiTest::ARGV[] = { "u:speed" };
+
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -533,6 +536,61 @@ CmdDistance::CmdDistance(HcSr04& hc) : Command(NAME, sizeof(NAME) / sizeof(NAME[
 
 bool CmdDistance::execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv)
 {
-    mHc.start();
+    mHc.start(0);
     return true;
+}
+
+
+CmdSpiTest::CmdSpiTest(Spi &spi, Gpio::Pin &ss) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mSpi(spi), mSs(ss), mEvent(*this)
+{
+    memset(&mTransfer, 0, sizeof(mTransfer));
+    mTransfer.mChip = nullptr;
+    mTransfer.mChipSelect = this;
+    mTransfer.mClockPhase = Spi::ClockPhase::FirstTransition;
+    mTransfer.mClockPolarity = Spi::ClockPolarity::LowWhenIdle;
+    mTransfer.mEndianess = Spi::Endianess::MsbFirst;
+    mTransfer.mEvent = &mEvent;
+    mTransfer.mLength = LEN;
+    mTransfer.mReadData = new uint8_t[LEN];
+    mWriteData = new uint8_t[LEN];
+    mTransfer.mWriteData = mWriteData;
+    for (unsigned i = 0; i < 16; ++i)
+    {
+        mWriteData[i] = i + (i << 4);
+    }
+    mSs.set();
+}
+
+bool CmdSpiTest::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    mTransfer.mMaxSpeed = argv[1].value.u;
+    mSpi.transfer(&mTransfer);
+    return true;
+}
+
+void CmdSpiTest::eventCallback(System::Event *event)
+{
+    unsigned failed = 0;
+    printf("SPI: ");
+    for (unsigned i = 0; i < LEN - 1; ++i)
+    {
+        //printf("%02x ", mTransfer.mReadData[i + 1]);
+        if (mTransfer.mReadData[i + 1] != i)
+        {
+            printf("@%u ", i + 1);
+            ++failed;
+        }
+    }
+    printf(": %u failed\n", failed);
+}
+
+
+void CmdSpiTest::select()
+{
+    mSs.reset();
+}
+
+void CmdSpiTest::deselect()
+{
+    mSs.set();
 }

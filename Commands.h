@@ -228,4 +228,28 @@ private:
     HcSr04& mHc;
 };
 
+class CmdSpiTest : public CommandInterpreter::Command, public System::Event::Callback, public Spi::ChipSelect
+{
+public:
+    CmdSpiTest(Spi& spi, Gpio::Pin& ss);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Test a SPI connection."; }
+protected:
+    virtual void eventCallback(System::Event* event);
+private:
+    static const unsigned LEN = 256;
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    Spi& mSpi;
+    Gpio::Pin& mSs;
+    System::Event mEvent;
+    Spi::Transfer mTransfer;
+    uint8_t* mWriteData;
+
+    // ChipSelect interface
+public:
+    void select();
+    void deselect();
+};
+
 #endif // COMMANDS_H

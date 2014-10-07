@@ -48,6 +48,7 @@ void SysTickControl::setNextTick(unsigned ms)
 {
     disable();
     mBase->RELOAD = ms * mCountPerMs - 1;
+    mNextTick = ms;
     enable();
 }
 

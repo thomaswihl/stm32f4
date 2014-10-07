@@ -49,7 +49,7 @@ public:
         { }
 
         virtual bool transfer(Transfer* transfer) { transfer->mChip = this; return mSpi.transfer(transfer); }
-        virtual void prepare() { };
+        virtual void prepare() { }
     private:
         Spi& mSpi;
     };
@@ -163,5 +163,6 @@ private:
     void nextTransfer();
     void writeSync();
 };
+
 
 #endif // SPI_H

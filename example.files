@@ -72,3 +72,7 @@ sw/eyes.h
 sw/eyes.cpp
 sw/carcontroller.h
 sw/carcontroller.cpp
+sw/lego.h
+sw/lego.cpp
+i2c.h
+i2c.cpp

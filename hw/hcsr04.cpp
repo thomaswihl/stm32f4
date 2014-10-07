@@ -1,7 +1,7 @@
 #include "hcsr04.h"
 
 HcSr04::HcSr04(SysTickControl &sysTick, Gpio::ConfigurablePin& pin, ExternalInterrupt::Line* irq) :
-    mPins(&pin, &pin + 1), mIrqs(&irq, &irq + 1), mEvent(*this), mState(Init)
+    mPins(&pin, &pin + 1), mIrqs(&irq, &irq + 1), mEvent(*this), mState(Init), mIndex(-1)
 {
     pin.configOutput(Gpio::OutputType::PushPull, Gpio::Pull::None, Gpio::Speed::Medium);
     clear();
@@ -16,27 +16,19 @@ void HcSr04::addDevice(Gpio::ConfigurablePin &pin, ExternalInterrupt::Line *irq)
     mDistance.resize(mPins.size());
 }
 
-void HcSr04::start()
+void HcSr04::start(unsigned index)
 {
-    //printf("State = %i\n", mState);
+    if (index >= mPins.size()) return;
+    mIndex = index;
     mState = SendStartPulse;
-    for (auto& irq : mIrqs) irq->disable();
-    for (auto& pin : mPins)
-    {
-        pin.setMode(Gpio::Mode::Output);
-        pin.set();
-    }
+    mIrqs[index]->disable();
+    mPins[index].setMode(Gpio::Mode::Output);
+    mPins[index].set();
     System::instance()->usleep(20);
-    for (auto& pin : mPins)
-    {
-        pin.setMode(Gpio::Mode::Input);
-    }
+    mPins[index].setMode(Gpio::Mode::Input);
     mState = WaitForEchoStart;
-    for (auto& irq : mIrqs)
-    {
-        irq->setCallback(this);
-        irq->enable(ExternalInterrupt::Trigger::RisingAndFalling);
-    }
+    mIrqs[index]->setCallback(this);
+    mIrqs[index]->enable(ExternalInterrupt::Trigger::RisingAndFalling);
 }
 
 void HcSr04::clear()
@@ -44,21 +36,29 @@ void HcSr04::clear()
     for (unsigned i = 0; i < mDistance.size(); ++i) mDistance[i] = 0;
 }
 
-void HcSr04::interruptCallback(InterruptController::Index index)
+void HcSr04::interruptCallback(InterruptController::Index /*index*/)
 {
-    unsigned i = -1;
-    for (i = 0; i < mIrqs.size(); ++i)
-    {
-        if (mIrqs[i]->index() == index) break;
-    }
-    if (i >= mIrqs.size()) return;
-    if (mPins[i].get()) mEchoStart[i] = System::instance()->ns();
+    if (mIndex >= mPins.size()) return;
+    if (mPins[mIndex].get()) mEchoStart[mIndex] = System::instance()->ns();
     else
     {
-        mDistance[i] = (System::instance()->ns() - mEchoStart[i]) / 100 / 58;
+        mDistance[mIndex] = (System::instance()->ns() - mEchoStart[mIndex]) / 100 / 58;
+        mIrqs[mIndex]->disable();
+        //System::instance()->postEvent(&mEvent);
     }
 }
 
 void HcSr04::eventCallback(System::Event* event)
 {
+    if (event == &mEvent)
+    {
+        if (mIndex < mPins.size() - 1)
+        {
+            start(mIndex + 1);
+        }
+        else
+        {
+            mIndex = -1;
+        }
+    }
 }

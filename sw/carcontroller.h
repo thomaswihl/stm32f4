@@ -8,6 +8,8 @@
 #include "../Commands.h"
 #include "eyes.h"
 
+
+
 class CarController : public System::Event::Callback
 {
 public:
@@ -20,15 +22,16 @@ public:
     void start();
     void stop();
     bool running() { return mRunning; }
+    static void init(StmSystem& sys, CommandInterpreter &interpreter);
 
 protected:
     bool steer(int left);
     bool setSpeed(int forward);
     bool look(int left);
-    void newPosition(uint32_t left, uint32_t center, uint32_t right);
-    inline uint32_t position(int which, int time = 0) { return mParam[which][POSITION][time]; }
-    inline uint32_t speed(int which, int time = 0) { return mParam[which][SPEED][time]; }
-    inline uint32_t acceleration(int which, int time = 0) { return mParam[which][ACCELERATION][time]; }
+    void newPosition(int position, int which);
+    inline uint32_t position(int which, int time = HISTORY_SIZE) { return mParam[which][POSITION][time]; }
+    inline uint32_t speed(int which, int time = HISTORY_SIZE) { return mParam[which][SPEED][time]; }
+    inline uint32_t acceleration(int which, int time = HISTORY_SIZE) { return mParam[which][ACCELERATION][time]; }
     void setBlink(bool left, bool on = true);
 
 private:
@@ -52,7 +55,7 @@ private:
     static const unsigned LEFT_FRONT_RIGHT_LIGHT = 14;
     static const unsigned LEFT_FRONT_LEFT_LIGHT = 15;
 
-    enum State { Stop, Forward, SteerLeft, SteerRight, Reverse };
+    enum State { Stop, Forward, SteerLeft, SteerRight, ReverseLeft, ReverseRight };
 
     State mState;
     int mCounter;
@@ -72,10 +75,11 @@ private:
     bool mRunning;
     int mSpeed;
     int mDestinationSpeed;
+    int mLastDistanceIndex[2];
     static const int POSITION = 0;
     static const int SPEED = 1;
     static const int ACCELERATION = 2;
-    static const int HISTORY_SIZE = 4;
+    static const int HISTORY_SIZE = 2;
     static const int LEFT = 0;
     static const int CENTER = 1;
     static const int RIGHT = 2;
