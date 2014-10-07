@@ -8,17 +8,20 @@ class I2C : public Device, public ClockControl::Callback
 {
 public:
     enum class Mode { Standard, FastDuty2, FastDuty16by9 };
+    enum class AddressMode { SevenBit, TenBit };
     class Chip;
 
     class Transfer
     {
     public:
         const uint8_t* mWriteData;
-        uint8_t* mReadData;
         unsigned mWriteLength;
+        uint8_t* mReadData;
         unsigned mReadLength;
         uint32_t mMaxSpeed;
         Mode mMode;
+        uint16_t mAddress;
+        AddressMode mAddressMode;
         System::Event* mEvent;
         Chip* mChip;
     };
@@ -41,6 +44,7 @@ public:
 
     void enable(Part part);
     void disable(Part part);
+    void setAddress(uint16_t address, AddressMode mode);
 
     bool transfer(Transfer* transfer);
     void configDma(Dma::Stream *write, Dma::Stream *read);

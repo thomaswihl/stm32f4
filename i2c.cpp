@@ -13,10 +13,26 @@ I2C::I2C(System::BaseAddress base, ClockControl *clockControl, ClockControl::Clo
 
 void I2C::enable(Device::Part part)
 {
+    mBase->CR1.PE = 1;
 }
 
 void I2C::disable(Device::Part part)
 {
+    mBase->CR1.PE = 0;
+}
+
+void I2C::setAddress(uint16_t address, I2C::AddressMode mode)
+{
+    if (mode == AddressMode::SevenBit)
+    {
+        mBase->OAR1.ADDMODE = 0;
+        mBase->OAR1.ADD = (address & 0x7f) << 1;
+    }
+    else
+    {
+        mBase->OAR1.ADDMODE = 1;
+        mBase->OAR1.ADD = address & 0x3ff;
+    }
 }
 
 bool I2C::transfer(I2C::Transfer *transfer)
