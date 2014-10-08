@@ -67,12 +67,12 @@ Dma::Stream::Stream(Dma &dma, Dma::Stream::StreamIndex stream, Dma::Stream::Chan
     mCount(0)
 {
     mStreamConfig.CR = 0;
-    mStreamConfig.CHSEL = mChannel;
-    mStreamConfig.TCIE = 1;
-    mStreamConfig.TEIE = 1;
-    mStreamConfig.DMEIE = 1;
+    mStreamConfig.BITS.CHSEL = mChannel;
+    mStreamConfig.BITS.TCIE = 1;
+    mStreamConfig.BITS.TEIE = 1;
+    mStreamConfig.BITS.DMEIE = 1;
     mFifoConfig.FCR = 0;
-    mFifoConfig.FTH = static_cast<uint32_t>(FifoThreshold::Half);
+    mFifoConfig.BITS.FTH = static_cast<uint32_t>(FifoThreshold::Half);
 
     if (mInterrupt != nullptr)
     {
@@ -83,7 +83,7 @@ Dma::Stream::Stream(Dma &dma, Dma::Stream::StreamIndex stream, Dma::Stream::Chan
 
 Dma::Stream::~Stream()
 {
-    mDma.mBase->STREAM[mStream].CR.EN = 0;
+    mDma.mBase->STREAM[mStream].CR.BITS.EN = 0;
 }
 
 void Dma::Stream::start()
@@ -95,44 +95,44 @@ void Dma::Stream::start()
     mDma.mBase->STREAM[mStream].NDTR = mCount;
     mDma.mBase->STREAM[mStream].FCR.FCR = mFifoConfig.FCR;
     mDma.mBase->STREAM[mStream].CR.CR = mStreamConfig.CR;
-    mDma.mBase->STREAM[mStream].CR.EN = 1;
+    mDma.mBase->STREAM[mStream].CR.BITS.EN = 1;
 }
 
 void Dma::Stream::waitReady()
 {
-    if (mDma.mBase->STREAM[mStream].CR.EN)
+    if (mDma.mBase->STREAM[mStream].CR.BITS.EN)
     {
         System::instance()->usleep(100000);
-        mDma.mBase->STREAM[mStream].CR.EN = 0;
+        mDma.mBase->STREAM[mStream].CR.BITS.EN = 0;
     }
 }
 
 void Dma::Stream::setBurstLength(Dma::Stream::End end, Dma::Stream::BurstLength burstLength)
 {
-    if (end == End::Memory) mStreamConfig.MBURST = static_cast<uint32_t>(burstLength);
-    else mStreamConfig.PBURST = static_cast<uint32_t>(burstLength);
+    if (end == End::Memory) mStreamConfig.BITS.MBURST = static_cast<uint32_t>(burstLength);
+    else mStreamConfig.BITS.PBURST = static_cast<uint32_t>(burstLength);
 }
 
 void Dma::Stream::setPriority(Dma::Stream::Priority priority)
 {
-    mStreamConfig.PL = static_cast<uint32_t>(priority);
+    mStreamConfig.BITS.PL = static_cast<uint32_t>(priority);
 }
 
 void Dma::Stream::setDataSize(Dma::Stream::End end, Dma::Stream::DataSize dataSize)
 {
-    if (end == End::Memory) mStreamConfig.MSIZE = static_cast<uint32_t>(dataSize);
-    else mStreamConfig.PSIZE = static_cast<uint32_t>(dataSize);
+    if (end == End::Memory) mStreamConfig.BITS.MSIZE = static_cast<uint32_t>(dataSize);
+    else mStreamConfig.BITS.PSIZE = static_cast<uint32_t>(dataSize);
 }
 
 void Dma::Stream::setIncrement(Dma::Stream::End end, bool increment)
 {
-    if (end == End::Memory) mStreamConfig.MINC = increment ? 1 : 0;
-    else mStreamConfig.PINC = increment ? 1 : 0;
+    if (end == End::Memory) mStreamConfig.BITS.MINC = increment ? 1 : 0;
+    else mStreamConfig.BITS.PINC = increment ? 1 : 0;
 }
 
 void Dma::Stream::setDirection(Dma::Stream::Direction direction)
 {
-     mStreamConfig.DIR = static_cast<uint32_t>(direction);
+     mStreamConfig.BITS.DIR = static_cast<uint32_t>(direction);
 }
 
 void Dma::Stream::setAddress(Dma::Stream::End end, System::BaseAddress address)
@@ -180,7 +180,7 @@ void Dma::Stream::interruptCallback(InterruptController::Index index)
 
         // In direct transfer FIFO error signals an over/underrun and isn't serios, so we can ignore it.
         // In FIFO mode this is fatal (as no data has been transmitted) and caused by wrong configuration of FIFO.
-        if (fifoError && !mDma.mBase->STREAM[mStream].FCR.DMDIS) reason = Callback::Reason::FifoError;
+        if (fifoError && !mDma.mBase->STREAM[mStream].FCR.BITS.DMDIS) reason = Callback::Reason::FifoError;
 
         // A bus errror triggers this as well as a write to memory register during a transfer, pretty fatal.
         if (transferError) reason = Callback::Reason::DirectModeError;
@@ -190,7 +190,7 @@ void Dma::Stream::interruptCallback(InterruptController::Index index)
 
 bool Dma::Stream::complete()
 {
-    return mDma.mBase->STREAM[mStream].CR.EN == 0;
+    return mDma.mBase->STREAM[mStream].CR.BITS.EN == 0;
 }
 
 
@@ -206,12 +206,12 @@ uint16_t Dma::Stream::transferCount()
 
 void Dma::Stream::setFlowControl(Dma::Stream::FlowControl flowControl)
 {
-    mStreamConfig.PFCTRL = (flowControl == FlowControl::Dma) ? 0 : 1;
+    mStreamConfig.BITS.PFCTRL = (flowControl == FlowControl::Dma) ? 0 : 1;
 }
 
 void Dma::Stream::setCircular(bool circular)
 {
-    mDma.mBase->STREAM[mStream].CR.CIRC = circular ? 1 : 0;
+    mDma.mBase->STREAM[mStream].CR.BITS.CIRC = circular ? 1 : 0;
 }
 
 
@@ -219,11 +219,11 @@ void Dma::Stream::configFifo(Dma::Stream::FifoThreshold threshold)
 {
     if (threshold == FifoThreshold::Disable)
     {
-        mFifoConfig.DMDIS = 0;
+        mFifoConfig.BITS.DMDIS = 0;
     }
     else
     {
-        mFifoConfig.DMDIS = 1;
-        mFifoConfig.FTH = static_cast<uint32_t>(threshold);
+        mFifoConfig.BITS.DMDIS = 1;
+        mFifoConfig.BITS.FTH = static_cast<uint32_t>(threshold);
     }
 }

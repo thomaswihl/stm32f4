@@ -3,7 +3,7 @@ STM_STD_PERIPH=$(HOME)/UbuntuOne/stm/lib/STM32F4-Discovery_FW_V1.1.0/Libraries
 
 # where can I find the toolchain
 # get it from https://launchpad.net/gcc-arm-embedded/+milestone/4.6-2012-q2-update
-TOOLCHAIN=/media/raid/thomas/gcc-arm-none-eabi-4_7-2013q1/bin
+TOOLCHAIN=/media/raid/thomas/gcc-arm-none-eabi-4_8-2014q3/bin
 
 # our executable (base) name
 TARGET=example
@@ -14,7 +14,7 @@ OBJCOPY = $(TOOLCHAIN)/arm-none-eabi-objcopy
 OBJDUMP = $(TOOLCHAIN)/arm-none-eabi-objdump
 GDB     = $(TOOLCHAIN)/arm-none-eabi-gdb
 
-CFLAGS  = -g -O1 -Wall -Tstm32f407vg.ld
+CFLAGS  = -g -O1 -Wall -Wpedantic -Tstm32f407vg.ld
 CFLAGS += -mthumb -mcpu=cortex-m4
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -Wl,-Map,$(TARGET).map

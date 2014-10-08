@@ -35,7 +35,7 @@ private:
     struct __STREAM
     {
         union __CR {
-            struct
+            struct __UNNAMED
             {
                 uint32_t EN : 1;
                 uint32_t DMEIE : 1;
@@ -58,7 +58,7 @@ private:
                 uint32_t MBURST : 2;
                 uint32_t CHSEL : 3;
                 uint32_t __RESERVED1 : 4;
-            };
+            } BITS;
             uint32_t CR;
         }   CR;
         uint32_t NDTR;
@@ -67,7 +67,7 @@ private:
         uint32_t M1AR;
         union __FCR
         {
-            struct
+            struct __UNNAMED
             {
                 uint32_t FTH : 2;
                 uint32_t DMDIS : 1;
@@ -75,7 +75,7 @@ private:
                 uint32_t __RESERVED0 : 1;
                 uint32_t FEIE : 1;
                 uint32_t __RESERVED1 : 24;
-            };
+            } BITS;
             uint32_t FCR;
         }   FCR;
     };

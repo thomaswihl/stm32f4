@@ -8,7 +8,7 @@ char const * const CmdHelp::NAME[] = { "help", "?" };
 char const * const CmdHelp::ARGV[] = { "os:command" };
 
 char const * const CmdInfo::NAME[] = { "info" };
-char const * const CmdInfo::ARGV[] = { };
+char const * const CmdInfo::ARGV[] = { nullptr };
 
 char const * const CmdFunc::NAME[] = { "func" };
 char const * const CmdFunc::ARGV[] = { "s:function" };
@@ -20,19 +20,19 @@ char const * const CmdWrite::NAME[] = { "write", "wb", "wh", "ww" };
 char const * const CmdWrite::ARGV[] = { "Au:address", "Vu:data" };
 
 char const * const CmdLis::NAME[] = { "lis" };
-char const * const CmdLis::ARGV[] = { };
+char const * const CmdLis::ARGV[] = { nullptr };
 
 char const * const CmdPin::NAME[] = { "pin" };
 char const * const CmdPin::ARGV[] = { "Ps:pin", "Vob:value" };
 
 char const * const CmdMeasureClock::NAME[] = { "clock" };
-char const * const CmdMeasureClock::ARGV[] = { };
+char const * const CmdMeasureClock::ARGV[] = { nullptr };
 
 char const * const CmdRgb::NAME[] = { "rgb" };
 char const * const CmdRgb::ARGV[] = { "Vu:index", "Vu:red", "Vu:green", "Vu:blue" };
 
 char const * const CmdLightSensor::NAME[] = { "ls" };
-char const * const CmdLightSensor::ARGV[] = { };
+char const * const CmdLightSensor::ARGV[] = { nullptr };
 
 char const * const CmdSdio::NAME[] = { "sd" };
 char const * const CmdSdio::ARGV[] = { "s:command" };
@@ -44,7 +44,7 @@ char const * const CmdLed::NAME[] = { "led" };
 char const * const CmdLed::ARGV[] = { "u:index", "u:brightness" };
 
 char const * const CmdDistance::NAME[] = { "dist" };
-char const * const CmdDistance::ARGV[] = { };
+char const * const CmdDistance::ARGV[] = { nullptr };
 
 char const * const CmdSpiTest::NAME[] = { "spi" };
 char const * const CmdSpiTest::ARGV[] = { "u:speed" };
