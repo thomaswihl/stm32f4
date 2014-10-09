@@ -2,7 +2,7 @@
 STM_STD_PERIPH=$(HOME)/UbuntuOne/stm/lib/STM32F4-Discovery_FW_V1.1.0/Libraries
 
 # where can I find the toolchain
-# get it from https://launchpad.net/gcc-arm-embedded/+milestone/4.6-2012-q2-update
+# get it from https://launchpad.net/gcc-arm-embedded/
 TOOLCHAIN=/media/raid/thomas/gcc-arm-none-eabi-4_8-2014q3/bin
 
 # our executable (base) name

@@ -11,17 +11,12 @@ public:
     enum class AddressMode { SevenBit, TenBit };
     class Chip;
 
-    class Transfer
+    struct Transfer
     {
-    public:
         const uint8_t* mWriteData;
         unsigned mWriteLength;
         uint8_t* mReadData;
         unsigned mReadLength;
-        uint32_t mMaxSpeed;
-        Mode mMode;
-        uint16_t mAddress;
-        AddressMode mAddressMode;
         System::Event* mEvent;
         Chip* mChip;
     };
@@ -35,8 +30,22 @@ public:
 
         virtual bool transfer(Transfer* transfer) { transfer->mChip = this; return mI2C.transfer(transfer); }
         virtual void prepare() { }
+
+        uint32_t maxSpeed() const { return mMaxSpeed; }
+        void setMaxSpeed(const uint32_t &maxSpeed) { mMaxSpeed = maxSpeed; }
+        Mode mode() const { return mMode; }
+        void setMode(const Mode &mode) { mMode = mode; }
+        uint16_t address() const { return mAddress; }
+        void setAddress(const uint16_t &address) { mAddress = address; }
+        AddressMode addressMode() const { return mAddressMode; }
+        void setAddressMode(const AddressMode &addressMode) { mAddressMode = addressMode; }
+
     private:
         I2C& mI2C;
+        uint32_t mMaxSpeed;
+        Mode mMode;
+        uint16_t mAddress;
+        AddressMode mAddressMode;
     };
 
 
@@ -48,14 +57,13 @@ public:
 
     bool transfer(Transfer* transfer);
     void configDma(Dma::Stream *write, Dma::Stream *read);
+    void configInterrupt(InterruptController::Line *event, InterruptController::Line *error);
 
 protected:
     void dmaReadComplete();
     void dmaWriteComplete();
-    void configInterrupt(InterruptController::Line *interrupt);
 
     void clockCallback(ClockControl::Callback::Reason reason, uint32_t clock);
-    void dmaCallback(Dma::Stream *stream, Dma::Stream::Callback::Reason reason);
     void interruptCallback(InterruptController::Index index);
 
 private:
@@ -106,7 +114,8 @@ private:
             uint16_t __RESERVED1 : 8;
         }   OAR2;
         uint16_t __RESERVED3;
-        uint16_t DR;
+        uint8_t DR;
+        uint8_t __RESERVED3A;
         uint16_t __RESERVED4;
         struct __SR1
         {
@@ -160,6 +169,9 @@ private:
     ClockControl* mClockControl;
     ClockControl::Clock mClock;
     CircularBuffer<Transfer*> mTransferBuffer;
+    InterruptController::Line *mEvent;
+    InterruptController::Line *mError;
+    Transfer* mActiveTransfer;
 
     void setSpeed(uint32_t maxSpeed, Mode mode);
     void nextTransfer();

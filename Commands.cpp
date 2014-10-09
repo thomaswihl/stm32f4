@@ -49,6 +49,9 @@ char const * const CmdDistance::ARGV[] = { nullptr };
 char const * const CmdSpiTest::NAME[] = { "spi" };
 char const * const CmdSpiTest::ARGV[] = { "u:speed" };
 
+char const * const CmdI2CTest::NAME[] = { "i2c" };
+char const * const CmdI2CTest::ARGV[] = { "s:read/write", "u:len" };
+
 
 CmdHelp::CmdHelp() : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0]))
 {
@@ -593,4 +596,48 @@ void CmdSpiTest::select()
 void CmdSpiTest::deselect()
 {
     mSs.set();
+}
+
+CmdI2CTest::CmdI2CTest(I2C &i2c) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]), ARGV, sizeof(ARGV) / sizeof(ARGV[0])), mI2C(i2c), mEvent(*this), mChip(i2c)
+{
+    memset(&mTransfer, 0, sizeof(mTransfer));
+    mTransfer.mEvent = &mEvent;
+    mTransfer.mReadLength = LEN;
+    mTransfer.mWriteLength = LEN;
+    mTransfer.mReadData = new uint8_t[LEN];
+    mWriteData = new uint8_t[LEN];
+    mTransfer.mWriteData = mWriteData;
+    for (unsigned i = 0; i < 16; ++i)
+    {
+        mWriteData[i] = i + (i << 4);
+    }
+    mChip.setAddress(0x41);
+    mChip.setAddressMode(I2C::AddressMode::SevenBit);
+    mChip.setMaxSpeed(100000);
+    mChip.setMode(I2C::Mode::Standard);
+}
+
+bool CmdI2CTest::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
+{
+    mTransfer.mWriteLength = mTransfer.mReadLength = argv[2].value.u;
+    if (strcmp(argv[1].value.s, "r") == 0) mTransfer.mWriteLength = 0;
+    if (strcmp(argv[1].value.s, "w") == 0) mTransfer.mReadLength = 0;
+    mI2C.transfer(&mTransfer);
+    return true;
+}
+
+void CmdI2CTest::eventCallback(System::Event *event)
+{
+    unsigned failed = 0;
+    printf("I2C: ");
+    for (unsigned i = 0; i < mTransfer.mReadLength; ++i)
+    {
+        printf("%02x ", mTransfer.mReadData[i]);
+        if (mTransfer.mReadData[i] != i)
+        {
+            //printf("@%u ", i + 1);
+            ++failed;
+        }
+    }
+    printf(": %u failed\n", failed);
 }

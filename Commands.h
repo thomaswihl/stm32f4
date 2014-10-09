@@ -252,4 +252,23 @@ public:
     void deselect();
 };
 
+class CmdI2CTest : public CommandInterpreter::Command, public System::Event::Callback
+{
+public:
+    CmdI2CTest(I2C& i2c);
+    virtual bool execute(CommandInterpreter& interpreter, int argc, const CommandInterpreter::Argument* argv);
+    virtual const char* helpText() const { return "Test a I2C connection."; }
+protected:
+    virtual void eventCallback(System::Event* event);
+private:
+    static const unsigned LEN = 256;
+    static char const * const NAME[];
+    static char const * const ARGV[];
+    I2C& mI2C;
+    System::Event mEvent;
+    I2C::Transfer mTransfer;
+    uint8_t* mWriteData;
+    I2C::Chip mChip;
+};
+
 #endif // COMMANDS_H

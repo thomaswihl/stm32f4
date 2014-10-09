@@ -32,6 +32,7 @@
 #include "SysTickControl.h"
 #include "FpuControl.h"
 #include "Spi.h"
+#include "i2c.h"
 #include "IndependentWatchdog.h"
 #include "hw/adm1602.h"
 
@@ -56,6 +57,9 @@ public:
             GPIOG = 0x40021800,
             GPIOH = 0x40021c00,
             GPIOI = 0x40022000,
+            I2C1 = 0x40005400,
+            I2C2 = 0x40005800,
+            I2C3 = 0x40005C00,
             IWDG = 0x40003000,
             NVIC = 0xe000e100,
             PWR = 0x40007000,
@@ -205,6 +209,9 @@ public:
     Spi mSpi1;
     Spi mSpi2;
     Spi mSpi3;
+    I2C mI2C1;
+    I2C mI2C2;
+    I2C mI2C3;
     Flash mFlash;
     FpuControl mFpu;
     IndependentWatchdog mIWdg;

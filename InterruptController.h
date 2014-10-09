@@ -50,6 +50,7 @@ public:
         void setCallback(Callback *handler);
         void enable();
         void disable();
+        Index index() const { return mIndex; }
     private:
         InterruptController& mInterruptController;
         Index mIndex;
