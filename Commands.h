@@ -269,6 +269,7 @@ private:
     I2C::Transfer mTransfer;
     uint8_t* mWriteData;
     I2C::Chip mChip;
+    uint64_t mNs;
 };
 
 #endif // COMMANDS_H

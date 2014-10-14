@@ -13,7 +13,7 @@ I2C::I2C(System::BaseAddress base, ClockControl *clockControl, ClockControl::Clo
 
 void I2C::enable(Device::Part part)
 {
-    mBase->CR1.PE = 1;
+    //mBase->CR1.PE = 1;
 }
 
 void I2C::disable(Device::Part part)
@@ -38,8 +38,8 @@ void I2C::setAddress(uint16_t address, I2C::AddressMode mode)
 bool I2C::transfer(I2C::Transfer *transfer)
 {
     bool success = mTransferBuffer.push(transfer);
-    //printf("PUSH\n", ((transfer->mReadData != nullptr) ? "R" : "-"), transfer->mReadData, ((transfer->mWriteData != nullptr) ? "W" : "-"), transfer->mWriteData, transfer->mLength);
-    //if (mBase->CR2.RXDMAEN == 0 && mBase->CR2.TXDMAEN == 0) nextTransfer();
+    //printf("PUSH\n");
+    if (mBase->CR1.PE == 0) nextTransfer();
     return success;
 }
 
@@ -79,10 +79,17 @@ void I2C::configInterrupt(InterruptController::Line *event, InterruptController:
 
 void I2C::dmaReadComplete()
 {
+    mTransferBuffer.skip(1);
+    if (mActiveTransfer->mEvent != nullptr) System::instance()->postEvent(mActiveTransfer->mEvent);
+    mBase->CR1.PE = 0;
+    nextTransfer();
 }
 
 void I2C::dmaWriteComplete()
 {
+    mTransferBuffer.skip(1);
+    if (mActiveTransfer->mEvent != nullptr) System::instance()->postEvent(mActiveTransfer->mEvent);
+    mBase->CR1.PE = 0;
 }
 
 void I2C::clockCallback(ClockControl::Callback::Reason reason, uint32_t clock)
@@ -92,8 +99,8 @@ void I2C::clockCallback(ClockControl::Callback::Reason reason, uint32_t clock)
 void I2C::interruptCallback(InterruptController::Index index)
 {
     IIC::__SR1 sr1 = const_cast<const IIC::__SR1&>(mBase->SR1);
-    printf("%02x\n", sr1);
-    if (index == mEvent->index())
+    //printf("%04x\n", *((uint16_t*)&sr1));
+    if (mEvent != nullptr && index == mEvent->index())
     {
         if (sr1.SB)
         {
@@ -112,16 +119,14 @@ void I2C::interruptCallback(InterruptController::Index index)
             // EV6
             IIC::__SR2 sr2 = const_cast<const IIC::__SR2&>(mBase->SR2);
             (void)sr2;
-            if (mDmaWrite != nullptr && mActiveTransfer->mWriteData != nullptr)
+            if (mDmaWrite != nullptr && mActiveTransfer->mWriteData != nullptr && mActiveTransfer->mWriteLength != 0)
             {
-                mBase->CR2.DMAEN = 1;
                 mDmaWrite->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mActiveTransfer->mWriteData));
                 mDmaWrite->setTransferCount(mActiveTransfer->mWriteLength);
                 mDmaWrite->start();
             }
-            else if (mDmaRead != nullptr && mActiveTransfer->mReadData != nullptr)
+            else if (mDmaRead != nullptr && mActiveTransfer->mReadData != nullptr && mActiveTransfer->mReadLength != 0)
             {
-                mBase->CR2.DMAEN = 1;
                 mDmaRead->setAddress(Dma::Stream::End::Memory, reinterpret_cast<uint32_t>(mActiveTransfer->mReadData));
                 mDmaRead->setTransferCount(mActiveTransfer->mReadLength);
                 mDmaRead->start();
@@ -130,7 +135,7 @@ void I2C::interruptCallback(InterruptController::Index index)
         else if (sr1.BTF)
         {
             // EV8
-            mBase->CR1.STOP;
+            mBase->CR1.STOP = 1;
         }
         else if (sr1.ADD10)
         {
@@ -142,14 +147,14 @@ void I2C::interruptCallback(InterruptController::Index index)
         }
         else if (sr1.RxNE)
         {
-
+            (void)mBase->DR;
         }
         else if (sr1.TxE)
         {
 
         }
     }
-    else
+    else if (mError != nullptr && mError->index() == index)
     {
         if (sr1.BERR)
         {
@@ -179,6 +184,9 @@ void I2C::interruptCallback(InterruptController::Index index)
         {
             printf("SMBus alert\n");
         }
+        *((uint16_t*)&mBase->SR1) = 0;
+        mTransferBuffer.skip(1);
+        mBase->CR1.PE = 0;
     }
 }
 
@@ -205,22 +213,24 @@ void I2C::setSpeed(uint32_t maxSpeed, Mode mode)
 
     }
     mBase->CR1.PE = pe;
+    //printf("FREQ = %u, CCR = %u, TRISE = %u\n", mBase->CR2.FREQ, mBase->CCR.CCR, mBase->TRISE.TRISE);
 }
 
 void I2C::nextTransfer()
 {
     Transfer* t;
-
     if (mTransferBuffer.back(t))
     {
         if ((t->mWriteLength == 0 || t->mWriteData == nullptr) && (t->mReadLength == 0 || t->mReadData == nullptr))
         {
+            printf("No data\n");
             mTransferBuffer.pop(t);
             nextTransfer();
             return;
         }
         if (t->mChip == nullptr)
         {
+            printf("No chip\n");
             mTransferBuffer.pop(t);
             nextTransfer();
             return;
@@ -232,6 +242,8 @@ void I2C::nextTransfer()
         mBase->CCR.DUTY = t->mChip->mode() == Mode::FastDuty16by9;
 
         mActiveTransfer = t;
+        mBase->CR1.PE = 1;
+        mBase->CR1.ACK = 1;
         if (mError != nullptr)
         {
             mBase->CR2.ITERREN = 1;
@@ -242,6 +254,8 @@ void I2C::nextTransfer()
         }
         else
         {
+            mBase->CR2.DMAEN = 1;
+            mBase->CR2.LAST = 1;
             mBase->CR2.ITEVTEN = 1;
             mBase->CR1.START = 1;
         }
@@ -249,6 +263,7 @@ void I2C::nextTransfer()
     else
     {
         mBase->CR2.DMAEN = 0;
+        mBase->CR1.PE = 0;
     }
 }
 

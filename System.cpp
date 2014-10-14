@@ -324,7 +324,7 @@ uint64_t System::timeInEvent()
 void System::postEvent(Event *event)
 {
     __asm("cpsid i");
-    assert(mSystem->mEventQueue.push(event));
+    if (!mSystem->mEventQueue.push(event)) printf("Could not push event %p.\n", event);
     __asm("cpsie i");
 }
 

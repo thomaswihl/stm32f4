@@ -611,10 +611,10 @@ CmdI2CTest::CmdI2CTest(I2C &i2c) : Command(NAME, sizeof(NAME) / sizeof(NAME[0]),
     {
         mWriteData[i] = i + (i << 4);
     }
-    mChip.setAddress(0x41);
+    mChip.setAddress(0x18);
     mChip.setAddressMode(I2C::AddressMode::SevenBit);
-    mChip.setMaxSpeed(100000);
-    mChip.setMode(I2C::Mode::Standard);
+    mChip.setMaxSpeed(400000);
+    mChip.setMode(I2C::Mode::FastDuty2);
 }
 
 bool CmdI2CTest::execute(CommandInterpreter &interpreter, int argc, const CommandInterpreter::Argument *argv)
@@ -622,18 +622,20 @@ bool CmdI2CTest::execute(CommandInterpreter &interpreter, int argc, const Comman
     mTransfer.mWriteLength = mTransfer.mReadLength = argv[2].value.u;
     if (strcmp(argv[1].value.s, "r") == 0) mTransfer.mWriteLength = 0;
     if (strcmp(argv[1].value.s, "w") == 0) mTransfer.mReadLength = 0;
-    mI2C.transfer(&mTransfer);
+    mNs = System::instance()->ns();
+    mChip.transfer(&mTransfer);
     return true;
 }
 
 void CmdI2CTest::eventCallback(System::Event *event)
 {
     unsigned failed = 0;
-    printf("I2C: ");
+    printf("I2C(%llu µs): ", (System::instance()->ns() - mNs) / 1000llu);
+    uint8_t v = mTransfer.mReadData[0];
     for (unsigned i = 0; i < mTransfer.mReadLength; ++i)
     {
         printf("%02x ", mTransfer.mReadData[i]);
-        if (mTransfer.mReadData[i] != i)
+        if (mTransfer.mReadData[i] != v++)
         {
             //printf("@%u ", i + 1);
             ++failed;

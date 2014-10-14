@@ -87,6 +87,7 @@ int main()
 //            gSys.mDebug.write(gSys.mGpioB.get(Gpio::Index::Pin11) ? "1" : "0", 1);
 
             gSys.mGpioD.set(Gpio::Index::Pin13);
+            //printf("Event %p.\n", event);
             event->callback();
             gSys.mGpioD.reset(Gpio::Index::Pin13);
         }

@@ -209,7 +209,7 @@ void Serial::dmaReadComplete()
 
 void Serial::dmaWriteComplete()
 {
-    waitTransmitComplete();
+    //waitTransmitComplete();
     Stream<char>::writeDmaComplete(mDmaWrite->transferCount());
 }
 

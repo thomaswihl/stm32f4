@@ -41,13 +41,14 @@ void Lego::init(StmSystem &sys, CommandInterpreter &interpreter)
     sys.mGpioB.configOutput(Gpio::Index::Pin7, Gpio::OutputType::OpenDrain, Gpio::Pull::Up);
     sys.mGpioB.setAlternate(Gpio::Index::Pin7, Gpio::AltFunc::I2C1);
 
-    sys.mI2C1.configDma(new Dma::Stream(sys.mDma1, Dma::Stream::StreamIndex::Stream6, Dma::Stream::ChannelIndex::Channel0,
-                                         new InterruptController::Line(sys.mNvic, StmSystem::InterruptIndex::DMA1_Stream6)),
-                         new Dma::Stream(sys.mDma1, Dma::Stream::StreamIndex::Stream5, Dma::Stream::ChannelIndex::Channel0,
-                                         new InterruptController::Line(sys.mNvic, StmSystem::InterruptIndex::DMA1_Stream5))
+    sys.mI2C1.configDma(new Dma::Stream(sys.mDma1, Dma::Stream::StreamIndex::Stream7, Dma::Stream::ChannelIndex::Channel1,
+                                         new InterruptController::Line(sys.mNvic, StmSystem::InterruptIndex::DMA1_Stream7)),
+                         new Dma::Stream(sys.mDma1, Dma::Stream::StreamIndex::Stream0, Dma::Stream::ChannelIndex::Channel1,
+                                         new InterruptController::Line(sys.mNvic, StmSystem::InterruptIndex::DMA1_Stream0))
                          );
 
     sys.mI2C1.configInterrupt(new InterruptController::Line(sys.mNvic, StmSystem::InterruptIndex::I2C1_EV), new InterruptController::Line(sys.mNvic, StmSystem::InterruptIndex::I2C1_ER));
+    sys.mI2C1.enable(Device::All);
 
     interpreter.add(new CmdI2CTest(sys.mI2C1));
 }

@@ -73,6 +73,7 @@ void SysTickControl::removeRepeatingEvent(SysTickControl::RepeatingEvent *event)
 void SysTickControl::tick()
 {
     unsigned nextTick = 1000;
+    mMilliseconds += mNextTick;
     for (auto& iter : mRepeatingEvents)
     {
         iter->millisecondsPassed(mNextTick);
